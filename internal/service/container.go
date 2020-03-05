@@ -6,6 +6,7 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
+	"github.com/etf1/kafka-mongo-watcher/internal/server"
 	"github.com/etf1/kafka-mongo-watcher/internal/worker"
 	"github.com/gol4ng/logger"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
@@ -17,6 +18,8 @@ type Container struct {
 	Cfg *config.Base
 
 	logger logger.LoggerInterface
+
+	techServer *server.TechServer
 
 	mongoDB         *mongodriver.Database
 	mongoCollection *mongodriver.Collection

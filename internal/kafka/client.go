@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/gol4ng/logger"
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
@@ -30,9 +31,9 @@ func NewClient(logger logger.LoggerInterface, producer *kafka.Producer) Client {
 }
 
 func (c *client) Produce(message *kafka.Message) error {
-	addTracingHeader(message)
-
 	c.logger.Info("Kafka client: Producing message", logger.ByteString("key", message.Key), logger.ByteString("value", message.Value))
+
+	addTracingHeader(message)
 	return c.producer.Produce(message, nil)
 }
 
@@ -45,6 +46,6 @@ func addTracingHeader(message *kafka.Message) {
 
 	message.Headers = append(message.Headers, kafka.Header{
 		Key:   "x-tracing",
-		Value: []byte(fmt.Sprintf(`kafka-mongo-watcher,%d`, now.Unix())),
+		Value: []byte(fmt.Sprintf(`%s,%d`, config.AppName, now.Unix())),
 	})
 }

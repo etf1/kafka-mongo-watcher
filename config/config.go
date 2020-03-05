@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gol4ng/logger"
 
@@ -20,9 +21,21 @@ type Base struct {
 	GraylogEndpoint string             `config:"KAFKA_MONGO_WATCHER_GRAYLOG_ENDPOINT"`
 	Replay          bool               `config:"KAFKA_MONGO_WATCHER_REPLAY"`
 	WorkerNumber    int                `config:"KAFKA_MONGO_WATCHER_WORKER_NUMBER"`
+	WorkerTimeout   time.Duration      `config:"KAFKA_MONGO_WATCHER_WORKER_TIMEOUT"`
 
+	TechServer
 	MongoDB
 	Kafka
+}
+
+// TechServer is the configuration provider for monitoring HTTP server
+type TechServer struct {
+	PprofEnabled bool   `config:"KAFKA_MONGO_WATCHER_PPROF_ENABLED"`
+	HTTPAddr     string `config:"KAFKA_MONGO_WATCHER_HTTP_TECH_ADDR"`
+
+	ReadHeaderTimeout time.Duration `config:"KAFKA_MONGO_WATCHER_HTTP_READ_HEADER_TIMEOUT"`
+	WriteTimeout      time.Duration `config:"KAFKA_MONGO_WATCHER_HTTP_WRITE_TIMEOUT"`
+	IdleTimeout       time.Duration `config:"KAFKA_MONGO_WATCHER_HTTP_IDLE_TIMEOUT"`
 }
 
 // MongoDB is the configuration provider for MongoDB
@@ -45,6 +58,15 @@ func NewBase() *Base {
 		LogLevel:      logger.LevelString(logger.InfoLevel.String()),
 		Replay:        false,
 		WorkerNumber:  5,
+		WorkerTimeout: 10 * time.Second,
+		TechServer: TechServer{
+			PprofEnabled: true,
+			HTTPAddr:     ":8001",
+
+			ReadHeaderTimeout: 1 * time.Second,
+			WriteTimeout:      10 * time.Second,
+			IdleTimeout:       90 * time.Second,
+		},
 		MongoDB: MongoDB{
 			URI:            "mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/local?replicaSet=replicaset",
 			DatabaseName:   "local",

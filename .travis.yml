@@ -1,0 +1,40 @@
+language: go
+matrix:
+  include:
+    - go: 1.x
+      env: LATEST=true
+    - go: 1.10.x
+    - go: 1.11.x
+    - go: 1.12.x
+    - go: 1.13.x
+    - go: tip
+  allow_failures:
+    - go: tip
+
+before_install:
+
+install:
+  - export GO111MODULE=on
+  - go get github.com/mitchellh/gox
+
+script:
+  - go test -mod=vendor -v -race ./...
+  - if [ "${LATEST}" = "true" ]; then gox -ldflags "-s -w" -os="linux darwin windows" -arch="386 amd64" -osarch="linux/arm" -output="kafka-mongo-watcher-{{.OS}}-{{.Arch}}"  -verbose ./...; fi
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: $GITHUB_TOKEN
+  file:
+    - kafka-mongo-watcher-windows-386.exe
+    - kafka-mongo-watcher-windows-amd64.exe
+    - kafka-mongo-watcher-darwin-386
+    - kafka-mongo-watcher-darwin-amd64
+    - kafka-mongo-watcher-linux-386
+    - kafka-mongo-watcher-linux-amd64
+    - kafka-mongo-watcher-linux-arm
+  on:
+    repo: etf1/kafka-mongo-watcher
+    tags: true
+    condition: $LATEST = true

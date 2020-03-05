@@ -18,6 +18,9 @@ func main() {
 	cfg := config.NewBase()
 
 	container := service.NewContainer(ctx, cfg)
+
+	go container.GetTechServer().Start()
+
 	worker := container.GetWorker()
 
 	if container.Cfg.Replay {
@@ -39,6 +42,7 @@ func handleExitSignal(ctx context.Context, container *service.Container) func() 
 		container.GetWorker().Close()
 		container.GetMongoConnection().Client().Disconnect(ctx)
 		container.GetKafkaClient().Close()
+		container.GetTechServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)
 }
 

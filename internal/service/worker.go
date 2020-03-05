@@ -10,6 +10,7 @@ func (container *Container) GetWorker() worker.Worker {
 			container.GetMongoClient(),
 			container.GetKafkaClient(),
 			container.Cfg.WorkerNumber,
+			container.Cfg.WorkerTimeout,
 		)
 	}
 

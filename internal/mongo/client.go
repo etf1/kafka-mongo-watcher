@@ -16,7 +16,7 @@ type MongoDriverCursor interface {
 }
 
 type Client interface {
-	Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem, finished chan bool) error
+	Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem) error
 	Watch(collection *mongodriver.Collection, itemsChan chan *WatchItem) error
 }
 
@@ -32,7 +32,7 @@ func NewClient(ctx context.Context, logger logger.LoggerInterface) Client {
 	}
 }
 
-func (c *client) Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem, finished chan bool) error {
+func (c *client) Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem) error {
 	pipeline := bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
@@ -63,7 +63,6 @@ func (c *client) Replay(collection *mongodriver.Collection, itemsChan chan *Watc
 	defer cursor.Close(c.ctx)
 
 	c.watchCursor(cursor, itemsChan)
-	finished <- true
 	return nil
 }
 
