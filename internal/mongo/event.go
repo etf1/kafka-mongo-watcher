@@ -21,8 +21,8 @@ type changeEvent struct {
 	DocumentKey       documentKey `bson:"documentKey"`
 	Updates           bson.M      `bson:"updateDescription,omitempty"`
 	ClusterTime       time.Time   `bson:"clusterTime"`
-	Transaction       int64       `bson:"txnNumber"`
-	SessionID         bson.M      `bson:"lsid"`
+	Transaction       int64       `bson:"txnNumber,omitempty"`
+	SessionID         bson.M      `bson:"lsid,omitempty"`
 }
 
 // marshall event to an array of bytes
