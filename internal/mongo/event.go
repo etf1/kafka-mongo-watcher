@@ -12,6 +12,8 @@ type documentKey struct {
 	ID primitive.ObjectID `bson:"_id"`
 }
 
+// change event document according
+// https://docs.mongodb.com/manual/reference/change-events/#change-stream-output
 type changeEvent struct {
 	ID                interface{} `bson:"_id"`
 	Operation         string      `bson:"operationType"`
