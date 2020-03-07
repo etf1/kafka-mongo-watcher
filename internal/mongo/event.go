@@ -8,9 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const documentKeyField = "documentKey"
-const idField = "_id"
-
 type documentKey struct {
 	ID primitive.ObjectID `bson:"_id"`
 }
