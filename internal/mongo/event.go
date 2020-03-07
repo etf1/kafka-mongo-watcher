@@ -1,7 +1,6 @@
 package mongo
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -10,10 +9,6 @@ import (
 
 const documentKeyField = "documentKey"
 const idField = "_id"
-
-type documentKey struct {
-	ID primitive.ObjectID `bson:"_id"`
-}
 
 // check if a change event if valid
 // A valid event has at least a document key value
@@ -27,7 +22,7 @@ func marshall(event bson.M) ([]byte, error) {
 	if err := isValid(event); err != nil {
 		return nil, fmt.Errorf("%v is not a valid change event : %w", event, err)
 	}
-	return json.Marshal(event)
+	return bson.MarshalExtJSON(event, true, true)
 }
 
 // return the document id of the event
