@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -10,41 +11,33 @@ import (
 const documentKeyField = "documentKey"
 const idField = "_id"
 
-// check if a change event if valid
-// A valid event has at least a document key value
-func isValid(event bson.M) error {
-	_, err := documentID(event)
-	return err
+type documentKey struct {
+	ID primitive.ObjectID `bson:"_id"`
+}
+
+type changeEvent struct {
+	ID                interface{} `bson:"_id"`
+	Operation         string      `bson:"operationType"`
+	Document          bson.M      `bson:"fullDocument"`
+	Namespace         bson.M      `bson:"ns"`
+	NewCollectionName bson.M      `bson:"to,omitempty"`
+	DocumentKey       documentKey `bson:"documentKey"`
+	Updates           bson.M      `bson:"updateDescription,omitempty"`
+	ClusterTime       time.Time   `bson:"clusterTime"`
+	Transaction       int64       `bson:"txnNumber"`
+	SessionID         bson.M      `bson:"lsid"`
 }
 
 // marshall event to an array of bytes
-func marshall(event bson.M) ([]byte, error) {
-	if err := isValid(event); err != nil {
-		return nil, fmt.Errorf("%v is not a valid change event : %w", event, err)
-	}
-	return bson.MarshalExtJSON(event, true, true)
+func (e changeEvent) marshal() ([]byte, error) {
+	return bson.MarshalExtJSON(e, true, true)
 }
 
 // return the document id of the event
-func documentID(event bson.M) (string, error) {
-	rawKey, ok := event[documentKeyField]
-	if !ok {
-		return "", fmt.Errorf("%s is missing", documentKeyField)
-	}
-	key, ok := rawKey.(bson.M)
-	if !ok {
-		return "", fmt.Errorf("%v invalid type for %s", rawKey, documentKeyField)
-	}
-	rawID, ok := key[idField]
-	if !ok {
-		return "", fmt.Errorf("%s.%s is missing", documentKeyField, idField)
-	}
-	id, ok := rawID.(primitive.ObjectID)
-	if !ok {
-		return "", fmt.Errorf("invalid type for %s.%s", documentKeyField, idField)
-	}
+func (e changeEvent) documentID() (string, error) {
+	id := e.DocumentKey.ID
 	if id.IsZero() {
-		return "", fmt.Errorf("%s.%s should not be empty", documentKeyField, idField)
+		return "", fmt.Errorf("documentKey should not be empty")
 	}
 	return id.Hex(), nil
 }

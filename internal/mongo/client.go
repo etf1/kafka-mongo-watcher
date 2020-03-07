@@ -87,7 +87,7 @@ func (c *client) Watch(collection *mongodriver.Collection, itemsChan chan *Watch
 
 func (c *client) watchCursor(cursor MongoDriverCursor, itemsChan chan *WatchItem) {
 	for cursor.Next(c.ctx) {
-		var event bson.M
+		var event changeEvent
 		if err := cursor.Decode(&event); err != nil {
 			c.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
 		}
@@ -98,15 +98,17 @@ func (c *client) watchCursor(cursor MongoDriverCursor, itemsChan chan *WatchItem
 	}
 }
 
-func (c *client) sendIntoChannel(event bson.M, itemsChan chan *WatchItem) error {
-	jsonBytes, err := marshall(event)
+func (c *client) sendIntoChannel(event changeEvent, itemsChan chan *WatchItem) error {
+	docID, err := event.documentID()
+	if err != nil {
+		c.logger.Error("Mongo client: Unable to extract document id from event", logger.Error("error", err))
+		return err
+	}
+	jsonBytes, err := event.marshal()
 	if err != nil {
 		c.logger.Error("Mongo client: Unable to unmarshal change event to json", logger.Error("error", err))
 		return err
 	}
-
-	// if marshalling is ok, the changeEvent is well formed, we can skip error checking
-	docID, _ := documentID(event)
 
 	itemsChan <- &WatchItem{
 		Key:   []byte(docID),
