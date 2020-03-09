@@ -43,6 +43,13 @@ type MongoDB struct {
 	URI            string `config:"KAFKA_MONGO_WATCHER_MONGODB_URI"`
 	DatabaseName   string `config:"KAFKA_MONGO_WATCHER_MONGODB_DATABASE_NAME"`
 	CollectionName string `config:"KAFKA_MONGO_WATCHER_MONGODB_COLLECTION_NAME"`
+	Options        MongoDBOptions
+}
+
+type MongoDBOptions struct {
+	BatchSize    int32         `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_BATCH_SIZE"`
+	FullDocument bool          `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_FULL_DOCUMENT"`
+	MaxAwaitTime time.Duration `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_MAX_AWAIT_TIME"`
 }
 
 // Kafka is the configuration provider for Kafka
@@ -71,6 +78,9 @@ func NewBase() *Base {
 			URI:            "mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/local?replicaSet=replicaset",
 			DatabaseName:   "local",
 			CollectionName: "items",
+			Options: MongoDBOptions{
+				FullDocument: false,
+			},
 		},
 		Kafka: Kafka{
 			BootstrapServers: "localhost",

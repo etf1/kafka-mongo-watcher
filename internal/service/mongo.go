@@ -13,9 +13,17 @@ import (
 
 func (container *Container) GetMongoClient() mongo.Client {
 	if container.mongoClient == nil {
+		var configOptions = container.Cfg.MongoDB.Options
+		var options = []mongo.Option{
+			mongo.WithBatchSize(configOptions.BatchSize),
+			mongo.WithFullDocument(configOptions.FullDocument),
+			mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
+		}
+
 		container.mongoClient = mongo.NewClient(
 			container.Ctx,
 			container.GetLogger(),
+			options...,
 		)
 	}
 
