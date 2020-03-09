@@ -1,68 +1,77 @@
 package kafka
 
 import (
-	"os"
+	"errors"
 	"testing"
 
-	"github.com/gol4ng/logger"
-	"github.com/gol4ng/logger/formatter"
-	"github.com/gol4ng/logger/handler"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 func TestNewClient(t *testing.T) {
-	logger := logger.NewLogger(handler.Stream(os.Stdout, formatter.NewDefaultFormatter()))
-	producer, err := kafkaconfluent.NewProducer(&kafkaconfluent.ConfigMap{"bootstrap.servers": "test"})
-	clientTest := NewClient(logger, producer)
-
-	assert.Nil(t, err)
-	assert.IsType(t, new(client), clientTest)
-
-	assert.Equal(t, logger, clientTest.logger)
-	assert.Equal(t, producer, clientTest.producer)
-}
-
-func TestProduce(t *testing.T) {
-	logger := logger.NewLogger(handler.Stream(os.Stdout, formatter.NewDefaultFormatter()))
-
-	// message
-	topic := "topic"
-	message := &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic, Partition: kafkaconfluent.PartitionAny},
-		Key:            []byte("key"),
-		Value:          []byte("value"),
-	}
-
-	// kafka producer mock
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	kafkaProducer := NewMockKafkaProducer(ctrl)
 
-	clientTest := NewClient(logger, kafkaProducer)
+	// Given
+	producer := NewMockKafkaProducer(ctrl)
 
-	// expected call
-	kafkaProducer.EXPECT().Produce(message, nil).Return(nil).Times(1)
+	// When
+	cli := NewClient(producer)
 
-	// test
-	err := clientTest.Produce(message)
+	// Then
+	assert.IsType(t, new(client), cli)
+	assert.Equal(t, producer, cli.producer)
+}
+
+func TestClientProduceWhenSuccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Given
+	message := &kafkaconfluent.Message{}
+	producer := NewMockKafkaProducer(ctrl)
+	producer.EXPECT().Produce(message, nil).Return(nil)
+
+	cli := NewClient(producer)
+
+	// When
+	err := cli.Produce(message)
+
+	// Then
 	assert.Nil(t, err)
 }
 
-func TestClose(t *testing.T) {
-	logger := logger.NewLogger(handler.Stream(os.Stdout, formatter.NewDefaultFormatter()))
-
-	// kafka producer mock
+func TestClientProduceWhenError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	kafkaProducer := NewMockKafkaProducer(ctrl)
 
-	clientTest := NewClient(logger, kafkaProducer)
+	// Given
+	expectedErr := errors.New("an unexpected error occured")
 
-	// expected call
-	kafkaProducer.EXPECT().Close().Return().Times(1)
+	message := &kafkaconfluent.Message{}
+	producer := NewMockKafkaProducer(ctrl)
+	producer.EXPECT().Produce(message, nil).Return(expectedErr)
 
-	// test
-	clientTest.Close()
+	cli := NewClient(producer)
+
+	// When
+	err := cli.Produce(message)
+
+	// Then
+	assert.Equal(t, err, expectedErr)
+}
+
+func TestClientClose(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Given
+	producer := NewMockKafkaProducer(ctrl)
+	producer.EXPECT().Close()
+
+	cli := NewClient(producer)
+
+	// When - Then
+	cli.Close()
 }

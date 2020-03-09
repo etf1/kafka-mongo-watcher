@@ -31,11 +31,26 @@ func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 
 func (container *Container) GetKafkaClient() kafka.Client {
 	if container.kafkaClient == nil {
-		container.kafkaClient = kafka.NewClient(
-			container.GetLogger(),
-			container.GetKafkaProducer(),
+		container.kafkaClient = container.decorateKafkaClientWithLogger(
+			container.decorateKafkaClientWithTracer(
+				container.getKafkaBaseClient(),
+			),
 		)
 	}
 
 	return container.kafkaClient
+}
+
+func (container *Container) getKafkaBaseClient() kafka.Client {
+	return kafka.NewClient(
+		container.GetKafkaProducer(),
+	)
+}
+
+func (container *Container) decorateKafkaClientWithLogger(client kafka.Client) kafka.Client {
+	return kafka.NewClientLogger(client, container.GetLogger())
+}
+
+func (container *Container) decorateKafkaClientWithTracer(client kafka.Client) kafka.Client {
+	return kafka.NewClientTracer(client, kafka.AddTracingHeader)
 }
