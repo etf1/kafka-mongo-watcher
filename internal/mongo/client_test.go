@@ -26,11 +26,13 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestReplay(t *testing.T) {
-	mongoClient := newClient()
+	ctx := context.Background()
+
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mongoCollection := NewMockMongoDriverCollection(ctrl)
-	mongoCursor := NewMockMongoDriverCursor(ctrl)
+
+	mongoClient := newClient()
+	mongoCollection := NewMockCollectionAdapter(ctrl)
 
 	pipeline := bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
@@ -55,12 +57,16 @@ func TestReplay(t *testing.T) {
 		}}},
 	}
 
-	// expected
+	mongoCursor := NewMockMongoDriverCursor(ctrl)
+	mongoCursor.EXPECT().Next(ctx)
+	mongoCursor.EXPECT().Close(ctx)
+
 	mongoCollection.EXPECT().Aggregate(mongoClient.ctx, pipeline).Return(mongoCursor, nil)
-	mongoCursor.EXPECT().Next(mongoClient.ctx).Return(false)
-	mongoCursor.EXPECT().Close(mongoClient.ctx).Return(nil)
-	// test
-	mongoClient.Replay(mongoCollection, nil)
+
+	itemsChan := make(chan *WatchItem)
+
+	// When - Then
+	mongoClient.Replay(mongoCollection, itemsChan)
 }
 
 func newClient() *client {

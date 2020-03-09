@@ -44,9 +44,9 @@ func (container *Container) GetMongoConnection() *mongodriver.Database {
 	return container.mongoDB
 }
 
-func (container *Container) GetMongoCollection() *mongodriver.Collection {
+func (container *Container) GetMongoCollection() mongo.CollectionAdapter {
 	if container.mongoCollection == nil {
-		container.mongoCollection = container.GetMongoConnection().Collection(container.Cfg.MongoDB.CollectionName)
+		container.mongoCollection = mongo.NewCollectionAdapter(container.GetMongoConnection().Collection(container.Cfg.MongoDB.CollectionName))
 	}
 
 	return container.mongoCollection

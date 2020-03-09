@@ -25,7 +25,7 @@ type Container struct {
 	kafkaMetricsRecorder *metrics.KafkaRecorder
 
 	mongoDB         *mongodriver.Database
-	mongoCollection *mongodriver.Collection
+	mongoCollection mongo.CollectionAdapter
 
 	kafkaProducer *kafkaconfluent.Producer
 

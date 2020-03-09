@@ -8,14 +8,13 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/gol4ng/logger"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 type Worker interface {
 	Close()
-	Replay(collection *mongodriver.Collection, topic string)
-	WatchAndProduce(collection *mongodriver.Collection, topic string)
+	Replay(collection mongo.CollectionAdapter, topic string)
+	WatchAndProduce(collection mongo.CollectionAdapter, topic string)
 }
 
 type worker struct {
@@ -52,12 +51,12 @@ func (w *worker) Close() {
 	close(w.itemsChan)
 }
 
-func (w *worker) Replay(collection *mongodriver.Collection, topic string) {
+func (w *worker) Replay(collection mongo.CollectionAdapter, topic string) {
 	go w.mongoClient.Replay(collection, w.itemsChan)
 	w.work(topic, true)
 }
 
-func (w *worker) WatchAndProduce(collection *mongodriver.Collection, topic string) {
+func (w *worker) WatchAndProduce(collection mongo.CollectionAdapter, topic string) {
 	go w.mongoClient.Watch(collection, w.itemsChan)
 	w.work(topic, false)
 }

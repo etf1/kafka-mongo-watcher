@@ -7,7 +7,6 @@ import (
 
 	"github.com/gol4ng/logger"
 	"go.mongodb.org/mongo-driver/bson"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -17,17 +16,11 @@ type MongoDriverCursor interface {
 	Close(ctx context.Context) error
 }
 
-type MongoDriverCollection interface {
-	Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (MongoDriverCursor, error)
-	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (*mongodriver.ChangeStream, error)
-	Name() string
-}
-
 type Option func(*client)
 
 type Client interface {
-	Replay(collection MongoDriverCollection, itemsChan chan *WatchItem) error
-	Watch(collection MongoDriverCollection, itemsChan chan *WatchItem) error
+	Replay(collection CollectionAdapter, itemsChan chan *WatchItem) error
+	Watch(collection CollectionAdapter, itemsChan chan *WatchItem) error
 }
 
 type client struct {
@@ -38,7 +31,7 @@ type client struct {
 	maxAwaitTime        time.Duration
 }
 
-func NewClient(ctx context.Context, logger logger.LoggerInterface, options ...Option) Client {
+func NewClient(ctx context.Context, logger logger.LoggerInterface, options ...Option) *client {
 	client := &client{
 		ctx:                 ctx,
 		logger:              logger,
@@ -70,7 +63,7 @@ func WithMaxAwaitTime(maxAwaitTime time.Duration) Option {
 	}
 }
 
-func (c *client) Replay(collection MongoDriverCollection, itemsChan chan *WatchItem) error {
+func (c *client) Replay(collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	pipeline := bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
@@ -104,7 +97,7 @@ func (c *client) Replay(collection MongoDriverCollection, itemsChan chan *WatchI
 	return nil
 }
 
-func (c *client) Watch(collection MongoDriverCollection, itemsChan chan *WatchItem) error {
+func (c *client) Watch(collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	var emptyPipeline = []bson.M{}
 
 	println(c.maxAwaitTime)
