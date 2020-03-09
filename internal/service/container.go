@@ -5,6 +5,7 @@ import (
 
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
+	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/etf1/kafka-mongo-watcher/internal/server"
 	"github.com/etf1/kafka-mongo-watcher/internal/worker"
@@ -21,8 +22,10 @@ type Container struct {
 
 	techServer *server.TechServer
 
+	kafkaMetricsRecorder *metrics.KafkaRecorder
+
 	mongoDB         *mongodriver.Database
-	mongoCollection *mongodriver.Collection
+	mongoCollection mongo.CollectionAdapter
 
 	kafkaProducer *kafkaconfluent.Producer
 

@@ -1,38 +1,22 @@
 package metrics
 
 import (
+	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/prometheus/client_golang/prometheus"
+	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 type KafkaRecorder struct {
-	kafkaProducerSuccessCounter *prometheus.CounterVec
-	kafkaProducerErrorCounter   *prometheus.CounterVec
+	producer               kafka.KafkaProducer
+	producerSuccessCounter *prometheus.CounterVec
+	producerErrorCounter   *prometheus.CounterVec
 }
 
-func (r *KafkaRecorder) RegisterOn(registry prometheus.Registerer) *KafkaRecorder {
-	if registry == nil {
-		registry = prometheus.DefaultRegisterer
-	}
-
-	registry.MustRegister(
-		r.kafkaProducerSuccessCounter,
-		r.kafkaProducerErrorCounter,
-	)
-	return r
-}
-
-func (r *KafkaRecorder) IncKafkaProducerSuccessCounter(topic string) {
-	r.kafkaProducerSuccessCounter.WithLabelValues(topic).Inc()
-}
-
-func (r *KafkaRecorder) IncKafkaProducerErrorCounter(topic string) {
-	r.kafkaProducerErrorCounter.WithLabelValues(topic).Inc()
-}
-
-func NewKafkaRecorder() *KafkaRecorder {
-	return &Recorder{
+func NewKafkaRecorder(producer kafka.KafkaProducer) *KafkaRecorder {
+	return &KafkaRecorder{
+		producer: producer,
 		// Kafka producer metrics
-		kafkaProducerSuccessCounter: prometheus.NewCounterVec(
+		producerSuccessCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "kafka",
 				Name:      "producer_success_counter_total",
@@ -40,7 +24,7 @@ func NewKafkaRecorder() *KafkaRecorder {
 			},
 			[]string{"topic"},
 		),
-		kafkaProducerErrorCounter: prometheus.NewCounterVec(
+		producerErrorCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "kafka",
 				Name:      "producer_error_counter_total",
@@ -49,4 +33,37 @@ func NewKafkaRecorder() *KafkaRecorder {
 			[]string{"topic"},
 		),
 	}
+}
+
+func (r *KafkaRecorder) RegisterOn(registry prometheus.Registerer) *KafkaRecorder {
+	if registry == nil {
+		registry = prometheus.DefaultRegisterer
+	}
+
+	registry.MustRegister(
+		r.producerSuccessCounter,
+		r.producerErrorCounter,
+	)
+	return r
+}
+
+func (r *KafkaRecorder) Record() {
+	for e := range r.producer.Events() {
+		switch ev := e.(type) {
+		case *kafkaconfluent.Message:
+			if ev.TopicPartition.Error != nil {
+				r.IncKafkaProducerErrorCounter(*ev.TopicPartition.Topic)
+			} else {
+				r.IncKafkaProducerSuccessCounter(*ev.TopicPartition.Topic)
+			}
+		}
+	}
+}
+
+func (r *KafkaRecorder) IncKafkaProducerSuccessCounter(topic string) {
+	r.producerSuccessCounter.WithLabelValues(topic).Inc()
+}
+
+func (r *KafkaRecorder) IncKafkaProducerErrorCounter(topic string) {
+	r.producerErrorCounter.WithLabelValues(topic).Inc()
 }

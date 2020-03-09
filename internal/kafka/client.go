@@ -9,9 +9,9 @@ import (
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
-// XTracingHeaderName corresponds to the X-Tracing header to is sent in Kafka messages
+// xTracingHeaderName corresponds to the X-Tracing header to is sent in Kafka messages
 // with some tracing information
-const XTracingHeaderName = "x-tracing"
+const xTracingHeaderName = "x-tracing"
 
 type Client interface {
 	Produce(message *kafka.Message) error
@@ -20,10 +20,10 @@ type Client interface {
 
 type client struct {
 	logger   logger.LoggerInterface
-	producer *kafka.Producer
+	producer KafkaProducer
 }
 
-func NewClient(logger logger.LoggerInterface, producer *kafka.Producer) Client {
+func NewClient(logger logger.LoggerInterface, producer KafkaProducer) *client {
 	return &client{
 		logger:   logger,
 		producer: producer,
@@ -45,7 +45,7 @@ func addTracingHeader(message *kafka.Message) {
 	now := time.Now()
 
 	message.Headers = append(message.Headers, kafka.Header{
-		Key:   "x-tracing",
+		Key:   xTracingHeaderName,
 		Value: []byte(fmt.Sprintf(`%s,%d`, config.AppName, now.Unix())),
 	})
 }

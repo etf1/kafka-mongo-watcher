@@ -2,36 +2,67 @@ package mongo
 
 import (
 	"context"
+	"time"
 
 	"github.com/gol4ng/logger"
 	"go.mongodb.org/mongo-driver/bson"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type MongoDriverCursor interface {
 	Decode(val interface{}) error
 	Next(ctx context.Context) bool
+	Close(ctx context.Context) error
 }
 
+type Option func(*client)
+
 type Client interface {
-	Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem) error
-	Watch(collection *mongodriver.Collection, itemsChan chan *WatchItem) error
+	Replay(collection CollectionAdapter, itemsChan chan *WatchItem) error
+	Watch(collection CollectionAdapter, itemsChan chan *WatchItem) error
 }
 
 type client struct {
-	ctx    context.Context
-	logger logger.LoggerInterface
+	ctx                 context.Context
+	logger              logger.LoggerInterface
+	fullDocumentEnabled bool
+	batchSize           int32
+	maxAwaitTime        time.Duration
 }
 
-func NewClient(ctx context.Context, logger logger.LoggerInterface) Client {
-	return &client{
-		ctx:    ctx,
-		logger: logger,
+func NewClient(ctx context.Context, logger logger.LoggerInterface, options ...Option) *client {
+	client := &client{
+		ctx:                 ctx,
+		logger:              logger,
+		fullDocumentEnabled: false,
+	}
+
+	for _, option := range options {
+		option(client)
+	}
+
+	return client
+}
+
+func WithBatchSize(batchSize int32) Option {
+	return func(c *client) {
+		c.batchSize = batchSize
 	}
 }
 
-func (c *client) Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem) error {
+func WithFullDocument(enabled bool) Option {
+	return func(c *client) {
+		c.fullDocumentEnabled = enabled
+	}
+}
+
+func WithMaxAwaitTime(maxAwaitTime time.Duration) Option {
+	return func(c *client) {
+		c.maxAwaitTime = maxAwaitTime
+	}
+}
+
+func (c *client) Replay(collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	pipeline := bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
@@ -65,11 +96,17 @@ func (c *client) Replay(collection *mongodriver.Collection, itemsChan chan *Watc
 	return nil
 }
 
-func (c *client) Watch(collection *mongodriver.Collection, itemsChan chan *WatchItem) error {
+func (c *client) Watch(collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	var emptyPipeline = []bson.M{}
 
-	opts := &options.ChangeStreamOptions{}
-	opts.SetFullDocument(options.UpdateLookup) // TODO dans config
+	println(c.maxAwaitTime)
+	opts := &options.ChangeStreamOptions{
+		BatchSize:    &c.batchSize,
+		MaxAwaitTime: &c.maxAwaitTime,
+	}
+	if c.fullDocumentEnabled {
+		opts.SetFullDocument(options.UpdateLookup)
+	}
 
 	cursor, err := collection.Watch(c.ctx, emptyPipeline, opts)
 	if err != nil {
