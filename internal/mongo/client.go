@@ -13,11 +13,18 @@ import (
 type MongoDriverCursor interface {
 	Decode(val interface{}) error
 	Next(ctx context.Context) bool
+	Close(ctx context.Context) error
+}
+
+type MongoDriverCollection interface {
+	Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (MongoDriverCursor, error)
+	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (*mongodriver.ChangeStream, error)
+	Name() string
 }
 
 type Client interface {
-	Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem) error
-	Watch(collection *mongodriver.Collection, itemsChan chan *WatchItem) error
+	Replay(collection MongoDriverCollection, itemsChan chan *WatchItem) error
+	Watch(collection MongoDriverCollection, itemsChan chan *WatchItem) error
 }
 
 type client struct {
@@ -25,14 +32,14 @@ type client struct {
 	logger logger.LoggerInterface
 }
 
-func NewClient(ctx context.Context, logger logger.LoggerInterface) Client {
+func NewClient(ctx context.Context, logger logger.LoggerInterface) *client {
 	return &client{
 		ctx:    ctx,
 		logger: logger,
 	}
 }
 
-func (c *client) Replay(collection *mongodriver.Collection, itemsChan chan *WatchItem) error {
+func (c *client) Replay(collection MongoDriverCollection, itemsChan chan *WatchItem) error {
 	pipeline := bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
@@ -66,7 +73,7 @@ func (c *client) Replay(collection *mongodriver.Collection, itemsChan chan *Watc
 	return nil
 }
 
-func (c *client) Watch(collection *mongodriver.Collection, itemsChan chan *WatchItem) error {
+func (c *client) Watch(collection MongoDriverCollection, itemsChan chan *WatchItem) error {
 	var emptyPipeline = []bson.M{}
 
 	opts := &options.ChangeStreamOptions{}

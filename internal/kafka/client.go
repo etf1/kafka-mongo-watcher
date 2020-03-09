@@ -23,7 +23,7 @@ type client struct {
 	producer KafkaProducer
 }
 
-func NewClient(logger logger.LoggerInterface, producer KafkaProducer) Client {
+func NewClient(logger logger.LoggerInterface, producer KafkaProducer) *client {
 	return &client{
 		logger:   logger,
 		producer: producer,
