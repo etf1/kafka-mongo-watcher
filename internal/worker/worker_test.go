@@ -10,6 +10,7 @@ import (
 	"github.com/gol4ng/logger"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 func TestNewWorker(t *testing.T) {
@@ -38,7 +39,7 @@ func TestNewWorker(t *testing.T) {
 	assert.Equal(mongoClient, workerInstance.mongoClient)
 	assert.Equal(number, workerInstance.number)
 	assert.Equal(timeout, workerInstance.timeout)
-	assert.Equal(0, workerInstance.numberRunning)
+	assert.Equal(int32(0), workerInstance.numberRunning)
 }
 
 func TestClose(t *testing.T) {
@@ -62,94 +63,162 @@ func TestClose(t *testing.T) {
 
 	// Then
 	assert := assert.New(t)
-	assert.Equal(workerInstance.numberRunning, 0)
+	assert.Equal(workerInstance.numberRunning, int32(0))
 	assert.Equal(cap(workerInstance.itemsChan), 0)
 	assert.Equal(len(workerInstance.itemsChan), 0)
 }
 
-// func TestReplay(t *testing.T) {
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
+func TestReplayWhenMongoEvents(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-// 	// Given
-// 	ctx := context.Background()
-// 	number := 5
-// 	timeout := 1 * time.Millisecond
+	// Given
+	ctx := context.Background()
+	number := 5
+	timeout := 300 * time.Millisecond
 
-// 	logger := logger.NewNopLogger()
+	logger := logger.NewNopLogger()
 
-// 	mongoClient := mongo.NewMockClient(ctrl)
-// 	kafkaClient := kafka.NewMockClient(ctrl)
+	collection := mongo.NewMockCollectionAdapter(ctrl)
 
-// 	// collection := mongo.NewC
+	mongoClient := mongo.NewMockClient(ctrl)
 
-// 	workerInstance := New(ctx, logger, mongoClient, kafkaClient, number, timeout)
-// 	mongoClient.EXPECT().Replay(collection, workerInstance.itemsChan)
+	topic := "my-test-topic"
+	kafkaClient := kafka.NewMockClient(ctrl)
+	kafkaClient.EXPECT().Produce(&kafkaconfluent.Message{
+		TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic, Partition: kafkaconfluent.PartitionAny},
+		Key:            []byte(`1`),
+		Value:          []byte(`A test value to be sent`),
+	})
 
-// 	// When - Then
-// 	workerInstance.Replay(collection)
+	workerInstance := New(ctx, logger, mongoClient, kafkaClient, number, timeout)
+	mongoClient.EXPECT().Replay(collection, workerInstance.itemsChan)
 
-// 	// Then
-// 	assert := assert.New(t)
-// 	assert.Equal(workerInstance.numberRunning, 0)
-// 	assert.Equal(cap(workerInstance.itemsChan), 0)
-// 	assert.Equal(len(workerInstance.itemsChan), 0)
-// }
+	// Run this asynchronously to simulate MongoDB sending events
+	go func() {
+		workerInstance.itemsChan <- &mongo.WatchItem{
+			Key:   []byte(`1`),
+			Value: []byte(`A test value to be sent`),
+		}
+	}()
 
-// func TestReplayWhenNoDocument(t *testing.T) {
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
+	// When - Then
+	workerInstance.Replay(collection, topic)
 
-// 	// Given
-// 	ctx := context.Background()
-// 	number := 5
-// 	timeout := 1 * time.Millisecond
+	// Then
+	assert := assert.New(t)
+	assert.Equal(workerInstance.numberRunning, int32(0))
+	assert.Equal(cap(workerInstance.itemsChan), 0)
+	assert.Equal(len(workerInstance.itemsChan), 0)
+}
 
-// 	logger := logger.NewNopLogger()
+func TestReplayWhenNoMongoEvent(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-// 	mongoClient := mongo.NewMockClient(ctrl)
-// 	kafkaClient := kafka.NewMockClient(ctrl)
+	// Given
+	ctx := context.Background()
+	number := 5
+	timeout := 1 * time.Millisecond
 
-// 	// collection := mongo.NewC
+	logger := logger.NewNopLogger()
 
-// 	workerInstance := New(ctx, logger, mongoClient, kafkaClient, number, timeout)
-// 	mongoClient.EXPECT().Replay(collection, workerInstance.itemsChan)
+	mongoClient := mongo.NewMockClient(ctrl)
+	kafkaClient := kafka.NewMockClient(ctrl)
 
-// 	// When - Then
-// 	workerInstance.Replay(collection)
+	collection := mongo.NewMockCollectionAdapter(ctrl)
 
-// 	// Then
-// 	assert := assert.New(t)
-// 	assert.Equal(workerInstance.numberRunning, 0)
-// 	assert.Equal(cap(workerInstance.itemsChan), 0)
-// 	assert.Equal(len(workerInstance.itemsChan), 0)
-// }
+	workerInstance := New(ctx, logger, mongoClient, kafkaClient, number, timeout)
+	mongoClient.EXPECT().Replay(collection, workerInstance.itemsChan)
 
-// func TestWatchAndProduce(t *testing.T) {
-// 	ctrl := gomock.NewController(t)
-// 	defer ctrl.Finish()
+	// When - Then
+	workerInstance.Replay(collection, "my-test-topic")
 
-// 	// Given
-// 	ctx := context.Background()
-// 	number := 5
-// 	timeout := 1 * time.Millisecond
+	// Then
+	assert := assert.New(t)
+	assert.Equal(workerInstance.numberRunning, int32(0))
+	assert.Equal(cap(workerInstance.itemsChan), 0)
+	assert.Equal(len(workerInstance.itemsChan), 0)
+}
 
-// 	logger := logger.NewNopLogger()
+func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-// 	mongoClient := mongo.NewMockClient(ctrl)
-// 	kafkaClient := kafka.NewMockClient(ctrl)
+	// Given
+	ctx, cancel := context.WithCancel(context.Background())
+	number := 5
+	timeout := 300 * time.Millisecond
 
-// 	// collection := mongo.NewC
+	logger := logger.NewNopLogger()
 
-// 	workerInstance := New(ctx, logger, mongoClient, kafkaClient, number, timeout)
-// 	mongoClient.EXPECT().Watch(collection, workerInstance.itemsChan)
+	collection := mongo.NewMockCollectionAdapter(ctrl)
 
-// 	// When - Then
-// 	workerInstance.WatchAndProduce(collection)
+	mongoClient := mongo.NewMockClient(ctrl)
 
-// 	// Then
-// 	assert := assert.New(t)
-// 	assert.Equal(workerInstance.numberRunning, 0)
-// 	assert.Equal(cap(workerInstance.itemsChan), 0)
-// 	assert.Equal(len(workerInstance.itemsChan), 0)
-// }
+	topic := "my-test-topic"
+	kafkaClient := kafka.NewMockClient(ctrl)
+	kafkaClient.EXPECT().Produce(&kafkaconfluent.Message{
+		TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic, Partition: kafkaconfluent.PartitionAny},
+		Key:            []byte(`1`),
+		Value:          []byte(`A test value to be sent`),
+	})
+
+	workerInstance := New(ctx, logger, mongoClient, kafkaClient, number, timeout)
+	mongoClient.EXPECT().Watch(collection, workerInstance.itemsChan)
+
+	// Run this asynchronously to simulate MongoDB sending events
+	go func() {
+		workerInstance.itemsChan <- &mongo.WatchItem{
+			Key:   []byte(`1`),
+			Value: []byte(`A test value to be sent`),
+		}
+
+		// Cancel context because there is no timeout when using WatchAndProduce()
+		cancel()
+	}()
+
+	// When - Then
+	workerInstance.WatchAndProduce(collection, topic)
+
+	// Then
+	assert := assert.New(t)
+	assert.Equal(workerInstance.numberRunning, int32(0))
+	assert.Equal(cap(workerInstance.itemsChan), 0)
+	assert.Equal(len(workerInstance.itemsChan), 0)
+}
+
+func TestWatchAndProduceWhenNoMongoEvent(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Given
+	ctx, cancel := context.WithCancel(context.Background())
+	number := 5
+	timeout := 1 * time.Millisecond
+
+	logger := logger.NewNopLogger()
+
+	mongoClient := mongo.NewMockClient(ctrl)
+	kafkaClient := kafka.NewMockClient(ctrl)
+
+	collection := mongo.NewMockCollectionAdapter(ctrl)
+
+	workerInstance := New(ctx, logger, mongoClient, kafkaClient, number, timeout)
+	mongoClient.EXPECT().Watch(collection, workerInstance.itemsChan)
+
+	// Run this asynchronously
+	go func() {
+		// Cancel context because there is no timeout when using WatchAndProduce()
+		cancel()
+	}()
+
+	// When - Then
+	workerInstance.WatchAndProduce(collection, "my-test-topic")
+
+	// Then
+	assert := assert.New(t)
+	assert.Equal(workerInstance.numberRunning, int32(0))
+	assert.Equal(cap(workerInstance.itemsChan), 0)
+	assert.Equal(len(workerInstance.itemsChan), 0)
+}

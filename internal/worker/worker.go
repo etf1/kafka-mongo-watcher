@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
@@ -24,7 +25,7 @@ type worker struct {
 	kafkaClient   kafka.Client
 	itemsChan     chan *mongo.WatchItem
 	number        int
-	numberRunning int
+	numberRunning int32
 	timeout       time.Duration
 	waitGroup     sync.WaitGroup
 }
@@ -44,7 +45,7 @@ func New(ctx context.Context, logger logger.LoggerInterface, mongoClient mongo.C
 }
 
 func (w *worker) Close() {
-	for i := 0; i < w.numberRunning; i++ {
+	for i := int32(0); i < w.numberRunning; i++ {
 		w.waitGroup.Done()
 	}
 
@@ -64,7 +65,7 @@ func (w *worker) WatchAndProduce(collection mongo.CollectionAdapter, topic strin
 func (w *worker) work(topic string, canTimeout bool) {
 	for i := 0; i < w.number; i++ {
 		w.waitGroup.Add(1)
-		w.numberRunning++
+		atomic.AddInt32(&w.numberRunning, 1)
 		go w.produce(topic, canTimeout)
 	}
 
@@ -77,11 +78,11 @@ func (w *worker) produce(topic string, canTimeout bool) {
 	for {
 		select {
 		case <-w.ctx.Done():
-			w.numberRunning--
+			atomic.AddInt32(&w.numberRunning, -1)
 			return
 		case <-time.After(w.timeout):
 			if canTimeout {
-				w.numberRunning--
+				atomic.AddInt32(&w.numberRunning, -1)
 				return
 			}
 		case item := <-w.itemsChan:
