@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
@@ -24,18 +23,16 @@ type worker struct {
 	kafkaClient   kafka.Client
 	number        int
 	numberRunning int32
-	timeout       time.Duration
 	waitGroup     sync.WaitGroup
 }
 
-func New(logger logger.LoggerInterface, mongoClient mongo.Client, kafkaClient kafka.Client, number int, timeout time.Duration) *worker {
+func New(logger logger.LoggerInterface, mongoClient mongo.Client, kafkaClient kafka.Client, number int) *worker {
 	return &worker{
 		logger:        logger,
 		mongoClient:   mongoClient,
 		kafkaClient:   kafkaClient,
 		number:        number,
 		numberRunning: 0,
-		timeout:       timeout,
 		waitGroup:     sync.WaitGroup{},
 	}
 }
@@ -53,8 +50,7 @@ func (w *worker) Replay(ctx context.Context, collection mongo.CollectionAdapter,
 		return
 	}
 
-	w.work(ctx, topic, itemsChan, true)
-	close(itemsChan)
+	w.work(ctx, topic, itemsChan)
 }
 
 func (w *worker) WatchAndProduce(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
@@ -64,39 +60,30 @@ func (w *worker) WatchAndProduce(ctx context.Context, collection mongo.Collectio
 		return
 	}
 
-	w.work(ctx, topic, itemsChan, false)
-	close(itemsChan)
+	w.work(ctx, topic, itemsChan)
 }
 
-func (w *worker) work(ctx context.Context, topic string, itemsChan chan *mongo.WatchItem, canTimeout bool) {
+func (w *worker) work(ctx context.Context, topic string, itemsChan chan *mongo.WatchItem) {
 	for i := 0; i < w.number; i++ {
-		w.waitGroup.Add(1)
 		atomic.AddInt32(&w.numberRunning, 1)
-		go w.produce(ctx, topic, itemsChan, canTimeout)
+		w.waitGroup.Add(1)
+		go w.produce(ctx, topic, itemsChan)
 	}
 
 	w.waitGroup.Wait()
 }
 
-func (w *worker) produce(ctx context.Context, topic string, itemsChan chan *mongo.WatchItem, canTimeout bool) {
-	defer w.waitGroup.Done()
+func (w *worker) produce(ctx context.Context, topic string, itemsChan chan *mongo.WatchItem) {
+	defer func() {
+		atomic.AddInt32(&w.numberRunning, -1)
+		w.waitGroup.Done()
+	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			atomic.AddInt32(&w.numberRunning, -1)
-			return
-		case <-time.After(w.timeout):
-			if canTimeout {
-				atomic.AddInt32(&w.numberRunning, -1)
-				return
-			}
-		case item := <-itemsChan:
-			w.kafkaClient.Produce(&kafkaconfluent.Message{
-				TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic, Partition: kafkaconfluent.PartitionAny},
-				Key:            item.Key,
-				Value:          item.Value,
-			})
-		}
+	for item := range itemsChan {
+		w.kafkaClient.Produce(&kafkaconfluent.Message{
+			TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic, Partition: kafkaconfluent.PartitionAny},
+			Key:            item.Key,
+			Value:          item.Value,
+		})
 	}
 }

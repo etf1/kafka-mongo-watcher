@@ -91,7 +91,11 @@ func (c *client) Replay(ctx context.Context, collection CollectionAdapter) (chan
 
 	var itemsChan = make(chan *WatchItem)
 
-	go c.watchCursor(ctx, cursor, itemsChan)
+	go func() {
+		defer close(itemsChan)
+		c.watchCursor(ctx, cursor, itemsChan)
+	}()
+
 	return itemsChan, nil
 }
 
@@ -115,6 +119,8 @@ func (c *client) Watch(ctx context.Context, collection CollectionAdapter) (chan 
 	var itemsChan = make(chan *WatchItem)
 
 	go func() {
+		defer close(itemsChan)
+
 		for {
 			c.watchCursor(ctx, cursor, itemsChan)
 		}

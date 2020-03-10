@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
@@ -19,7 +18,6 @@ func TestNewWorker(t *testing.T) {
 
 	// Given
 	number := 5
-	timeout := 5 * time.Second
 
 	logger := logger.NewNopLogger()
 
@@ -27,7 +25,7 @@ func TestNewWorker(t *testing.T) {
 	kafkaClient := kafka.NewMockClient(ctrl)
 
 	// When
-	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// Then
 	assert := assert.New(t)
@@ -35,7 +33,6 @@ func TestNewWorker(t *testing.T) {
 
 	assert.Equal(mongoClient, workerInstance.mongoClient)
 	assert.Equal(number, workerInstance.number)
-	assert.Equal(timeout, workerInstance.timeout)
 	assert.Equal(int32(0), workerInstance.numberRunning)
 }
 
@@ -45,14 +42,13 @@ func TestClose(t *testing.T) {
 
 	// Given
 	number := 5
-	timeout := 5 * time.Second
 
 	logger := logger.NewNopLogger()
 
 	mongoClient := mongo.NewMockClient(ctrl)
 	kafkaClient := kafka.NewMockClient(ctrl)
 
-	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When
 	workerInstance.Close()
@@ -69,13 +65,20 @@ func TestReplayWhenMongoEvents(t *testing.T) {
 	// Given
 	ctx := context.Background()
 	number := 5
-	timeout := 300 * time.Millisecond
 
 	logger := logger.NewNopLogger()
 
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
 	itemsChan := make(chan *mongo.WatchItem)
+
+	go func() {
+		itemsChan <- &mongo.WatchItem{
+			Key:   []byte(`1`),
+			Value: []byte(`A test value to be sent`),
+		}
+		close(itemsChan)
+	}()
 
 	mongoClient := mongo.NewMockClient(ctrl)
 	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, nil)
@@ -88,15 +91,7 @@ func TestReplayWhenMongoEvents(t *testing.T) {
 		Value:          []byte(`A test value to be sent`),
 	})
 
-	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
-
-	// Run this asynchronously to simulate MongoDB sending events
-	go func() {
-		itemsChan <- &mongo.WatchItem{
-			Key:   []byte(`1`),
-			Value: []byte(`A test value to be sent`),
-		}
-	}()
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
 	workerInstance.Replay(ctx, collection, topic)
@@ -115,20 +110,20 @@ func TestReplayWhenNoMongoEvent(t *testing.T) {
 	// Given
 	ctx := context.Background()
 	number := 5
-	timeout := 1 * time.Millisecond
 
 	logger := logger.NewNopLogger()
 
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
 	itemsChan := make(chan *mongo.WatchItem)
+	close(itemsChan)
 
 	mongoClient := mongo.NewMockClient(ctrl)
 	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, nil)
 
 	kafkaClient := kafka.NewMockClient(ctrl)
 
-	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
 	workerInstance.Replay(ctx, collection, "my-test-topic")
@@ -145,15 +140,21 @@ func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Given
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	number := 5
-	timeout := 300 * time.Millisecond
 
 	logger := logger.NewNopLogger()
 
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
 	itemsChan := make(chan *mongo.WatchItem)
+	go func() {
+		itemsChan <- &mongo.WatchItem{
+			Key:   []byte(`1`),
+			Value: []byte(`A test value to be sent`),
+		}
+		close(itemsChan)
+	}()
 
 	mongoClient := mongo.NewMockClient(ctrl)
 	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, nil)
@@ -166,18 +167,7 @@ func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 		Value:          []byte(`A test value to be sent`),
 	})
 
-	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
-
-	// Run this asynchronously to simulate MongoDB sending events
-	go func() {
-		itemsChan <- &mongo.WatchItem{
-			Key:   []byte(`1`),
-			Value: []byte(`A test value to be sent`),
-		}
-
-		// Cancel context because there is no timeout when using WatchAndProduce()
-		cancel()
-	}()
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
 	workerInstance.WatchAndProduce(ctx, collection, topic)
@@ -194,28 +184,22 @@ func TestWatchAndProduceWhenNoMongoEvent(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Given
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	number := 5
-	timeout := 1 * time.Millisecond
 
 	logger := logger.NewNopLogger()
 
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
 	itemsChan := make(chan *mongo.WatchItem)
+	close(itemsChan)
 
 	mongoClient := mongo.NewMockClient(ctrl)
 	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, nil)
 
 	kafkaClient := kafka.NewMockClient(ctrl)
 
-	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
-
-	// Run this asynchronously
-	go func() {
-		// Cancel context because there is no timeout when using WatchAndProduce()
-		cancel()
-	}()
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
 	workerInstance.WatchAndProduce(ctx, collection, "my-test-topic")

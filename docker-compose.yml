@@ -11,11 +11,12 @@ services:
     ports:
       - 27011:27011
     environment:
-        MONGODB_PORT_NUMBER: 27011
-        MONGODB_ADVERTISED_HOSTNAME: mongo-primary
-        MONGODB_REPLICA_SET_MODE: primary
-        MONGODB_REPLICA_SET_KEY: replicasetkey123
-        MONGODB_ROOT_PASSWORD: toor
+      MONGODB_DATABASE: "watcher"
+      MONGODB_PORT_NUMBER: 27011
+      MONGODB_ADVERTISED_HOSTNAME: mongo-primary
+      MONGODB_REPLICA_SET_MODE: primary
+      MONGODB_REPLICA_SET_KEY: replicasetkey123
+      MONGODB_ROOT_PASSWORD: toor
 
   mongo-secondary:
     hostname: mongo-secondary
@@ -27,13 +28,14 @@ services:
     ports:
       - 27012:27012
     environment:
-        MONGODB_PORT_NUMBER: 27012
-        MONGODB_PRIMARY_HOST: mongo-primary
-        MONGODB_PRIMARY_PORT_NUMBER: 27011
-        MONGODB_ADVERTISED_HOSTNAME: mongo-secondary
-        MONGODB_REPLICA_SET_MODE: secondary
-        MONGODB_REPLICA_SET_KEY: replicasetkey123
-        MONGODB_PRIMARY_ROOT_PASSWORD: toor
+      MONGODB_DATABASE: "watcher"
+      MONGODB_PORT_NUMBER: 27012
+      MONGODB_PRIMARY_HOST: mongo-primary
+      MONGODB_PRIMARY_PORT_NUMBER: 27011
+      MONGODB_ADVERTISED_HOSTNAME: mongo-secondary
+      MONGODB_REPLICA_SET_MODE: secondary
+      MONGODB_REPLICA_SET_KEY: replicasetkey123
+      MONGODB_PRIMARY_ROOT_PASSWORD: toor
 
   mongo-arbiter:
     hostname: mongo-arbiter
@@ -45,13 +47,14 @@ services:
     ports:
       - 27013:27013
     environment:
-        MONGODB_PORT_NUMBER: 27013
-        MONGODB_PRIMARY_HOST: mongo-primary
-        MONGODB_PRIMARY_PORT_NUMBER: 27011
-        MONGODB_ADVERTISED_HOSTNAME: mongo-arbiter
-        MONGODB_REPLICA_SET_MODE: arbiter
-        MONGODB_REPLICA_SET_KEY: replicasetkey123
-        MONGODB_PRIMARY_ROOT_PASSWORD: toor
+      MONGODB_DATABASE: "watcher"
+      MONGODB_PORT_NUMBER: 27013
+      MONGODB_PRIMARY_HOST: mongo-primary
+      MONGODB_PRIMARY_PORT_NUMBER: 27011
+      MONGODB_ADVERTISED_HOSTNAME: mongo-arbiter
+      MONGODB_REPLICA_SET_MODE: arbiter
+      MONGODB_REPLICA_SET_KEY: replicasetkey123
+      MONGODB_PRIMARY_ROOT_PASSWORD: toor
 
   zookeeper:
     image: confluentinc/cp-zookeeper:5.4.0
