@@ -7,14 +7,12 @@ import (
 )
 
 type KafkaRecorder struct {
-	producer               kafka.KafkaProducer
 	producerSuccessCounter *prometheus.CounterVec
 	producerErrorCounter   *prometheus.CounterVec
 }
 
-func NewKafkaRecorder(producer kafka.KafkaProducer) *KafkaRecorder {
+func NewKafkaRecorder() *KafkaRecorder {
 	return &KafkaRecorder{
-		producer: producer,
 		// Kafka producer metrics
 		producerSuccessCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -47,8 +45,8 @@ func (r *KafkaRecorder) RegisterOn(registry prometheus.Registerer) *KafkaRecorde
 	return r
 }
 
-func (r *KafkaRecorder) Record() {
-	for e := range r.producer.Events() {
+func (r *KafkaRecorder) Record(producer kafka.KafkaProducer) {
+	for e := range producer.Events() {
 		switch ev := e.(type) {
 		case *kafkaconfluent.Message:
 			if ev.TopicPartition.Error != nil {
