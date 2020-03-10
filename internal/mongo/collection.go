@@ -7,9 +7,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+type DriverDatabase interface {
+	Name() string
+}
+
 type CollectionAdapter interface {
-	Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (MongoDriverCursor, error)
-	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (MongoDriverCursor, error)
+	Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (DriverCursor, error)
+	Database() DriverDatabase
+	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (DriverCursor, error)
 	Name() string
 }
 
@@ -23,11 +28,15 @@ func NewCollectionAdapter(collection *mongodriver.Collection) *collectionAdapter
 	}
 }
 
-func (c *collectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (MongoDriverCursor, error) {
+func (c *collectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (DriverCursor, error) {
 	return c.collection.Aggregate(ctx, pipeline, opts...)
 }
 
-func (c *collectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (MongoDriverCursor, error) {
+func (c *collectionAdapter) Database() DriverDatabase {
+	return c.collection.Database()
+}
+
+func (c *collectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (DriverCursor, error) {
 	return c.collection.Watch(ctx, pipeline, opts...)
 }
 

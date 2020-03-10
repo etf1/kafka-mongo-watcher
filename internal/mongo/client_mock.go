@@ -10,31 +10,31 @@ import (
 	reflect "reflect"
 )
 
-// MockMongoDriverCursor is a mock of MongoDriverCursor interface
-type MockMongoDriverCursor struct {
+// MockDriverCursor is a mock of DriverCursor interface
+type MockDriverCursor struct {
 	ctrl     *gomock.Controller
-	recorder *MockMongoDriverCursorMockRecorder
+	recorder *MockDriverCursorMockRecorder
 }
 
-// MockMongoDriverCursorMockRecorder is the mock recorder for MockMongoDriverCursor
-type MockMongoDriverCursorMockRecorder struct {
-	mock *MockMongoDriverCursor
+// MockDriverCursorMockRecorder is the mock recorder for MockDriverCursor
+type MockDriverCursorMockRecorder struct {
+	mock *MockDriverCursor
 }
 
-// NewMockMongoDriverCursor creates a new mock instance
-func NewMockMongoDriverCursor(ctrl *gomock.Controller) *MockMongoDriverCursor {
-	mock := &MockMongoDriverCursor{ctrl: ctrl}
-	mock.recorder = &MockMongoDriverCursorMockRecorder{mock}
+// NewMockDriverCursor creates a new mock instance
+func NewMockDriverCursor(ctrl *gomock.Controller) *MockDriverCursor {
+	mock := &MockDriverCursor{ctrl: ctrl}
+	mock.recorder = &MockDriverCursorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockMongoDriverCursor) EXPECT() *MockMongoDriverCursorMockRecorder {
+func (m *MockDriverCursor) EXPECT() *MockDriverCursorMockRecorder {
 	return m.recorder
 }
 
 // Decode mocks base method
-func (m *MockMongoDriverCursor) Decode(val interface{}) error {
+func (m *MockDriverCursor) Decode(val interface{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Decode", val)
 	ret0, _ := ret[0].(error)
@@ -42,13 +42,13 @@ func (m *MockMongoDriverCursor) Decode(val interface{}) error {
 }
 
 // Decode indicates an expected call of Decode
-func (mr *MockMongoDriverCursorMockRecorder) Decode(val interface{}) *gomock.Call {
+func (mr *MockDriverCursorMockRecorder) Decode(val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockMongoDriverCursor)(nil).Decode), val)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockDriverCursor)(nil).Decode), val)
 }
 
 // Next mocks base method
-func (m *MockMongoDriverCursor) Next(ctx context.Context) bool {
+func (m *MockDriverCursor) Next(ctx context.Context) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Next", ctx)
 	ret0, _ := ret[0].(bool)
@@ -56,13 +56,13 @@ func (m *MockMongoDriverCursor) Next(ctx context.Context) bool {
 }
 
 // Next indicates an expected call of Next
-func (mr *MockMongoDriverCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
+func (mr *MockDriverCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockMongoDriverCursor)(nil).Next), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockDriverCursor)(nil).Next), ctx)
 }
 
 // Close mocks base method
-func (m *MockMongoDriverCursor) Close(ctx context.Context) error {
+func (m *MockDriverCursor) Close(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close", ctx)
 	ret0, _ := ret[0].(error)
@@ -70,9 +70,9 @@ func (m *MockMongoDriverCursor) Close(ctx context.Context) error {
 }
 
 // Close indicates an expected call of Close
-func (mr *MockMongoDriverCursorMockRecorder) Close(ctx interface{}) *gomock.Call {
+func (mr *MockDriverCursorMockRecorder) Close(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockMongoDriverCursor)(nil).Close), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDriverCursor)(nil).Close), ctx)
 }
 
 // MockClient is a mock of Client interface
@@ -99,29 +99,31 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Replay mocks base method
-func (m *MockClient) Replay(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
+func (m *MockClient) Replay(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Replay", ctx, collection, itemsChan)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Replay", ctx, collection)
+	ret0, _ := ret[0].(chan *WatchItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Replay indicates an expected call of Replay
-func (mr *MockClientMockRecorder) Replay(ctx, collection, itemsChan interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) Replay(ctx, collection interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Replay", reflect.TypeOf((*MockClient)(nil).Replay), ctx, collection, itemsChan)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Replay", reflect.TypeOf((*MockClient)(nil).Replay), ctx, collection)
 }
 
 // Watch mocks base method
-func (m *MockClient) Watch(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
+func (m *MockClient) Watch(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Watch", ctx, collection, itemsChan)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Watch", ctx, collection)
+	ret0, _ := ret[0].(chan *WatchItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Watch indicates an expected call of Watch
-func (mr *MockClientMockRecorder) Watch(ctx, collection, itemsChan interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) Watch(ctx, collection interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockClient)(nil).Watch), ctx, collection, itemsChan)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockClient)(nil).Watch), ctx, collection)
 }

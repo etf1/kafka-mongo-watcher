@@ -34,7 +34,6 @@ func TestNewWorker(t *testing.T) {
 	assert.IsType(new(worker), workerInstance)
 
 	assert.Equal(mongoClient, workerInstance.mongoClient)
-	assert.Equal(mongoClient, workerInstance.mongoClient)
 	assert.Equal(number, workerInstance.number)
 	assert.Equal(timeout, workerInstance.timeout)
 	assert.Equal(int32(0), workerInstance.numberRunning)
@@ -61,8 +60,6 @@ func TestClose(t *testing.T) {
 	// Then
 	assert := assert.New(t)
 	assert.Equal(workerInstance.numberRunning, int32(0))
-	assert.Equal(cap(workerInstance.itemsChan), 0)
-	assert.Equal(len(workerInstance.itemsChan), 0)
 }
 
 func TestReplayWhenMongoEvents(t *testing.T) {
@@ -78,7 +75,10 @@ func TestReplayWhenMongoEvents(t *testing.T) {
 
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
+	itemsChan := make(chan *mongo.WatchItem)
+
 	mongoClient := mongo.NewMockClient(ctrl)
+	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, nil)
 
 	topic := "my-test-topic"
 	kafkaClient := kafka.NewMockClient(ctrl)
@@ -89,11 +89,10 @@ func TestReplayWhenMongoEvents(t *testing.T) {
 	})
 
 	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
-	mongoClient.EXPECT().Replay(ctx, collection, workerInstance.itemsChan)
 
 	// Run this asynchronously to simulate MongoDB sending events
 	go func() {
-		workerInstance.itemsChan <- &mongo.WatchItem{
+		itemsChan <- &mongo.WatchItem{
 			Key:   []byte(`1`),
 			Value: []byte(`A test value to be sent`),
 		}
@@ -105,8 +104,8 @@ func TestReplayWhenMongoEvents(t *testing.T) {
 	// Then
 	assert := assert.New(t)
 	assert.Equal(workerInstance.numberRunning, int32(0))
-	assert.Equal(cap(workerInstance.itemsChan), 0)
-	assert.Equal(len(workerInstance.itemsChan), 0)
+	assert.Equal(cap(itemsChan), 0)
+	assert.Equal(len(itemsChan), 0)
 }
 
 func TestReplayWhenNoMongoEvent(t *testing.T) {
@@ -120,13 +119,16 @@ func TestReplayWhenNoMongoEvent(t *testing.T) {
 
 	logger := logger.NewNopLogger()
 
-	mongoClient := mongo.NewMockClient(ctrl)
-	kafkaClient := kafka.NewMockClient(ctrl)
-
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
+	itemsChan := make(chan *mongo.WatchItem)
+
+	mongoClient := mongo.NewMockClient(ctrl)
+	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, nil)
+
+	kafkaClient := kafka.NewMockClient(ctrl)
+
 	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
-	mongoClient.EXPECT().Replay(ctx, collection, workerInstance.itemsChan)
 
 	// When - Then
 	workerInstance.Replay(ctx, collection, "my-test-topic")
@@ -134,8 +136,8 @@ func TestReplayWhenNoMongoEvent(t *testing.T) {
 	// Then
 	assert := assert.New(t)
 	assert.Equal(workerInstance.numberRunning, int32(0))
-	assert.Equal(cap(workerInstance.itemsChan), 0)
-	assert.Equal(len(workerInstance.itemsChan), 0)
+	assert.Equal(cap(itemsChan), 0)
+	assert.Equal(len(itemsChan), 0)
 }
 
 func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
@@ -151,7 +153,10 @@ func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
+	itemsChan := make(chan *mongo.WatchItem)
+
 	mongoClient := mongo.NewMockClient(ctrl)
+	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, nil)
 
 	topic := "my-test-topic"
 	kafkaClient := kafka.NewMockClient(ctrl)
@@ -162,11 +167,10 @@ func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 	})
 
 	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
-	mongoClient.EXPECT().Watch(ctx, collection, workerInstance.itemsChan)
 
 	// Run this asynchronously to simulate MongoDB sending events
 	go func() {
-		workerInstance.itemsChan <- &mongo.WatchItem{
+		itemsChan <- &mongo.WatchItem{
 			Key:   []byte(`1`),
 			Value: []byte(`A test value to be sent`),
 		}
@@ -181,8 +185,8 @@ func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 	// Then
 	assert := assert.New(t)
 	assert.Equal(workerInstance.numberRunning, int32(0))
-	assert.Equal(cap(workerInstance.itemsChan), 0)
-	assert.Equal(len(workerInstance.itemsChan), 0)
+	assert.Equal(cap(itemsChan), 0)
+	assert.Equal(len(itemsChan), 0)
 }
 
 func TestWatchAndProduceWhenNoMongoEvent(t *testing.T) {
@@ -196,13 +200,16 @@ func TestWatchAndProduceWhenNoMongoEvent(t *testing.T) {
 
 	logger := logger.NewNopLogger()
 
-	mongoClient := mongo.NewMockClient(ctrl)
-	kafkaClient := kafka.NewMockClient(ctrl)
-
 	collection := mongo.NewMockCollectionAdapter(ctrl)
 
+	itemsChan := make(chan *mongo.WatchItem)
+
+	mongoClient := mongo.NewMockClient(ctrl)
+	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, nil)
+
+	kafkaClient := kafka.NewMockClient(ctrl)
+
 	workerInstance := New(logger, mongoClient, kafkaClient, number, timeout)
-	mongoClient.EXPECT().Watch(ctx, collection, workerInstance.itemsChan)
 
 	// Run this asynchronously
 	go func() {
@@ -216,6 +223,6 @@ func TestWatchAndProduceWhenNoMongoEvent(t *testing.T) {
 	// Then
 	assert := assert.New(t)
 	assert.Equal(workerInstance.numberRunning, int32(0))
-	assert.Equal(cap(workerInstance.itemsChan), 0)
-	assert.Equal(len(workerInstance.itemsChan), 0)
+	assert.Equal(cap(itemsChan), 0)
+	assert.Equal(len(itemsChan), 0)
 }

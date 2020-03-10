@@ -11,6 +11,43 @@ import (
 	reflect "reflect"
 )
 
+// MockDriverDatabase is a mock of DriverDatabase interface
+type MockDriverDatabase struct {
+	ctrl     *gomock.Controller
+	recorder *MockDriverDatabaseMockRecorder
+}
+
+// MockDriverDatabaseMockRecorder is the mock recorder for MockDriverDatabase
+type MockDriverDatabaseMockRecorder struct {
+	mock *MockDriverDatabase
+}
+
+// NewMockDriverDatabase creates a new mock instance
+func NewMockDriverDatabase(ctrl *gomock.Controller) *MockDriverDatabase {
+	mock := &MockDriverDatabase{ctrl: ctrl}
+	mock.recorder = &MockDriverDatabaseMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockDriverDatabase) EXPECT() *MockDriverDatabaseMockRecorder {
+	return m.recorder
+}
+
+// Name mocks base method
+func (m *MockDriverDatabase) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name
+func (mr *MockDriverDatabaseMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockDriverDatabase)(nil).Name))
+}
+
 // MockCollectionAdapter is a mock of CollectionAdapter interface
 type MockCollectionAdapter struct {
 	ctrl     *gomock.Controller
@@ -35,14 +72,14 @@ func (m *MockCollectionAdapter) EXPECT() *MockCollectionAdapterMockRecorder {
 }
 
 // Aggregate mocks base method
-func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (MongoDriverCursor, error) {
+func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (DriverCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Aggregate", varargs...)
-	ret0, _ := ret[0].(MongoDriverCursor)
+	ret0, _ := ret[0].(DriverCursor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -54,15 +91,29 @@ func (mr *MockCollectionAdapterMockRecorder) Aggregate(ctx, pipeline interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Aggregate", reflect.TypeOf((*MockCollectionAdapter)(nil).Aggregate), varargs...)
 }
 
+// Database mocks base method
+func (m *MockCollectionAdapter) Database() DriverDatabase {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Database")
+	ret0, _ := ret[0].(DriverDatabase)
+	return ret0
+}
+
+// Database indicates an expected call of Database
+func (mr *MockCollectionAdapterMockRecorder) Database() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Database", reflect.TypeOf((*MockCollectionAdapter)(nil).Database))
+}
+
 // Watch mocks base method
-func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (MongoDriverCursor, error) {
+func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (DriverCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Watch", varargs...)
-	ret0, _ := ret[0].(MongoDriverCursor)
+	ret0, _ := ret[0].(DriverCursor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

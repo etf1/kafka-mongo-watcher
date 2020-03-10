@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type MongoDriverCursor interface {
+type DriverCursor interface {
 	Decode(val interface{}) error
 	Next(ctx context.Context) bool
 	Close(ctx context.Context) error
@@ -18,8 +18,8 @@ type MongoDriverCursor interface {
 type Option func(*client)
 
 type Client interface {
-	Replay(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error
-	Watch(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error
+	Replay(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error)
+	Watch(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error)
 }
 
 type client struct {
@@ -60,8 +60,8 @@ func WithMaxAwaitTime(maxAwaitTime time.Duration) Option {
 	}
 }
 
-func (c *client) Replay(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
-	pipeline := bson.A{
+func (c *client) Replay(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
+	var pipeline = bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
 				Key: "newRoot",
@@ -72,8 +72,8 @@ func (c *client) Replay(ctx context.Context, collection CollectionAdapter, items
 					},
 					"operationType": "insert",
 					"ns": bson.M{
-						"db":   "intref001",
-						"coll": "video",
+						"db":   collection.Database().Name(),
+						"coll": collection.Name(),
 					},
 					"documentKey": bson.M{
 						"_id": "$_id",
@@ -86,18 +86,18 @@ func (c *client) Replay(ctx context.Context, collection CollectionAdapter, items
 
 	cursor, err := collection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer cursor.Close(ctx)
 
-	c.watchCursor(ctx, cursor, itemsChan)
-	return nil
+	var itemsChan = make(chan *WatchItem)
+
+	go c.watchCursor(ctx, cursor, itemsChan)
+	return itemsChan, nil
 }
 
-func (c *client) Watch(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
+func (c *client) Watch(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
 	var emptyPipeline = []bson.M{}
 
-	println(c.maxAwaitTime)
 	opts := &options.ChangeStreamOptions{
 		BatchSize:    &c.batchSize,
 		MaxAwaitTime: &c.maxAwaitTime,
@@ -109,16 +109,21 @@ func (c *client) Watch(ctx context.Context, collection CollectionAdapter, itemsC
 	cursor, err := collection.Watch(ctx, emptyPipeline, opts)
 	if err != nil {
 		c.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", collection.Name()), logger.Error("error", err))
-		return err
+		return nil, err
 	}
-	defer cursor.Close(ctx)
 
-	for {
-		c.watchCursor(ctx, cursor, itemsChan)
-	}
+	var itemsChan = make(chan *WatchItem)
+
+	go func() {
+		for {
+			c.watchCursor(ctx, cursor, itemsChan)
+		}
+	}()
+
+	return itemsChan, nil
 }
 
-func (c *client) watchCursor(ctx context.Context, cursor MongoDriverCursor, itemsChan chan *WatchItem) {
+func (c *client) watchCursor(ctx context.Context, cursor DriverCursor, itemsChan chan *WatchItem) {
 	for cursor.Next(ctx) {
 		var event changeEvent
 		if err := cursor.Decode(&event); err != nil {

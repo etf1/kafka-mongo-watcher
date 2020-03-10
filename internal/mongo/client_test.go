@@ -30,7 +30,13 @@ func TestReplay(t *testing.T) {
 	defer ctrl.Finish()
 
 	mongoClient := NewClient(logger.NewNopLogger())
+
+	mongoDatabase := NewMockDriverDatabase(ctrl)
+	mongoDatabase.EXPECT().Name().Return("test-db")
+
 	mongoCollection := NewMockCollectionAdapter(ctrl)
+	mongoCollection.EXPECT().Database().Return(mongoDatabase)
+	mongoCollection.EXPECT().Name().Return("test-collection")
 
 	pipeline := bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
@@ -43,8 +49,8 @@ func TestReplay(t *testing.T) {
 					},
 					"operationType": "insert",
 					"ns": bson.M{
-						"db":   "intref001",
-						"coll": "video",
+						"db":   "test-db",
+						"coll": "test-collection",
 					},
 					"documentKey": bson.M{
 						"_id": "$_id",
@@ -55,14 +61,18 @@ func TestReplay(t *testing.T) {
 		}}},
 	}
 
-	mongoCursor := NewMockMongoDriverCursor(ctrl)
-	mongoCursor.EXPECT().Next(ctx)
-	mongoCursor.EXPECT().Close(ctx)
+	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor.EXPECT().Next(ctx).Return(false)
 
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
-	itemsChan := make(chan *WatchItem)
+	// When
+	itemsChan, err := mongoClient.Replay(ctx, mongoCollection)
 
-	// When - Then
-	mongoClient.Replay(ctx, mongoCollection, itemsChan)
+	// Then
+	assert := assert.New(t)
+
+	assert.Nil(err)
+	assert.Equal(cap(itemsChan), 0)
+	assert.Equal(len(itemsChan), 0)
 }

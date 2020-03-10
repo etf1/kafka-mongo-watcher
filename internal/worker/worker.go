@@ -22,7 +22,6 @@ type worker struct {
 	logger        logger.LoggerInterface
 	mongoClient   mongo.Client
 	kafkaClient   kafka.Client
-	itemsChan     chan *mongo.WatchItem
 	number        int
 	numberRunning int32
 	timeout       time.Duration
@@ -34,7 +33,6 @@ func New(logger logger.LoggerInterface, mongoClient mongo.Client, kafkaClient ka
 		logger:        logger,
 		mongoClient:   mongoClient,
 		kafkaClient:   kafkaClient,
-		itemsChan:     make(chan *mongo.WatchItem),
 		number:        number,
 		numberRunning: 0,
 		timeout:       timeout,
@@ -46,31 +44,41 @@ func (w *worker) Close() {
 	for i := int32(0); i < w.numberRunning; i++ {
 		w.waitGroup.Done()
 	}
-
-	close(w.itemsChan)
 }
 
 func (w *worker) Replay(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
-	go w.mongoClient.Replay(ctx, collection, w.itemsChan)
-	w.work(ctx, topic, true)
+	itemsChan, err := w.mongoClient.Replay(ctx, collection)
+	if err != nil {
+		w.logger.Error("An error occured while trying to replay mongodb collection", logger.Error("error", err))
+		return
+	}
+
+	w.work(ctx, topic, itemsChan, true)
+	close(itemsChan)
 }
 
 func (w *worker) WatchAndProduce(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
-	go w.mongoClient.Watch(ctx, collection, w.itemsChan)
-	w.work(ctx, topic, false)
+	itemsChan, err := w.mongoClient.Watch(ctx, collection)
+	if err != nil {
+		w.logger.Error("An error occured while watching mongodb collection", logger.Error("error", err))
+		return
+	}
+
+	w.work(ctx, topic, itemsChan, false)
+	close(itemsChan)
 }
 
-func (w *worker) work(ctx context.Context, topic string, canTimeout bool) {
+func (w *worker) work(ctx context.Context, topic string, itemsChan chan *mongo.WatchItem, canTimeout bool) {
 	for i := 0; i < w.number; i++ {
 		w.waitGroup.Add(1)
 		atomic.AddInt32(&w.numberRunning, 1)
-		go w.produce(ctx, topic, canTimeout)
+		go w.produce(ctx, topic, itemsChan, canTimeout)
 	}
 
 	w.waitGroup.Wait()
 }
 
-func (w *worker) produce(ctx context.Context, topic string, canTimeout bool) {
+func (w *worker) produce(ctx context.Context, topic string, itemsChan chan *mongo.WatchItem, canTimeout bool) {
 	defer w.waitGroup.Done()
 
 	for {
@@ -83,7 +91,7 @@ func (w *worker) produce(ctx context.Context, topic string, canTimeout bool) {
 				atomic.AddInt32(&w.numberRunning, -1)
 				return
 			}
-		case item := <-w.itemsChan:
+		case item := <-itemsChan:
 			w.kafkaClient.Produce(&kafkaconfluent.Message{
 				TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic, Partition: kafkaconfluent.PartitionAny},
 				Key:            item.Key,
