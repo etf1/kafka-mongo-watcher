@@ -83,7 +83,7 @@ func NewBase() *Base {
 			},
 		},
 		Kafka: Kafka{
-			BootstrapServers: "localhost",
+			BootstrapServers: "127.0.0.1:9092",
 			Topic:            "kafka-mongo-watcher",
 		},
 	}
