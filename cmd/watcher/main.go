@@ -17,19 +17,20 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.NewBase()
 
-	container := service.NewContainer(ctx, cfg)
+	container := service.NewContainer(cfg)
 
-	go container.GetTechServer().Start()
+	go container.GetTechServer().Start(ctx)
 
+	collection := container.GetMongoCollection(ctx)
 	worker := container.GetWorker()
 
 	if container.Cfg.Replay {
-		worker.Replay(container.GetMongoCollection(), container.Cfg.Kafka.Topic)
+		worker.Replay(ctx, collection, container.Cfg.Kafka.Topic)
 	} else {
 		go notifyOnExitSignal(cancel)
 		defer handleExitSignal(ctx, container)()
 
-		worker.WatchAndProduce(container.GetMongoCollection(), container.Cfg.Kafka.Topic)
+		worker.WatchAndProduce(ctx, collection, container.Cfg.Kafka.Topic)
 	}
 }
 
@@ -40,7 +41,7 @@ func handleExitSignal(ctx context.Context, container *service.Container) func() 
 		log.Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
 
 		container.GetWorker().Close()
-		container.GetMongoConnection().Client().Disconnect(ctx)
+		container.GetMongoConnection(ctx).Client().Disconnect(ctx)
 		container.GetKafkaClient().Close()
 		container.GetTechServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)

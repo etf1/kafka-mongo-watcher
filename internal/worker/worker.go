@@ -14,12 +14,11 @@ import (
 
 type Worker interface {
 	Close()
-	Replay(collection mongo.CollectionAdapter, topic string)
-	WatchAndProduce(collection mongo.CollectionAdapter, topic string)
+	Replay(ctx context.Context, collection mongo.CollectionAdapter, topic string)
+	WatchAndProduce(ctx context.Context, collection mongo.CollectionAdapter, topic string)
 }
 
 type worker struct {
-	ctx           context.Context
 	logger        logger.LoggerInterface
 	mongoClient   mongo.Client
 	kafkaClient   kafka.Client
@@ -30,9 +29,8 @@ type worker struct {
 	waitGroup     sync.WaitGroup
 }
 
-func New(ctx context.Context, logger logger.LoggerInterface, mongoClient mongo.Client, kafkaClient kafka.Client, number int, timeout time.Duration) *worker {
+func New(logger logger.LoggerInterface, mongoClient mongo.Client, kafkaClient kafka.Client, number int, timeout time.Duration) *worker {
 	return &worker{
-		ctx:           ctx,
 		logger:        logger,
 		mongoClient:   mongoClient,
 		kafkaClient:   kafkaClient,
@@ -52,32 +50,32 @@ func (w *worker) Close() {
 	close(w.itemsChan)
 }
 
-func (w *worker) Replay(collection mongo.CollectionAdapter, topic string) {
-	go w.mongoClient.Replay(collection, w.itemsChan)
-	w.work(topic, true)
+func (w *worker) Replay(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
+	go w.mongoClient.Replay(ctx, collection, w.itemsChan)
+	w.work(ctx, topic, true)
 }
 
-func (w *worker) WatchAndProduce(collection mongo.CollectionAdapter, topic string) {
-	go w.mongoClient.Watch(collection, w.itemsChan)
-	w.work(topic, false)
+func (w *worker) WatchAndProduce(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
+	go w.mongoClient.Watch(ctx, collection, w.itemsChan)
+	w.work(ctx, topic, false)
 }
 
-func (w *worker) work(topic string, canTimeout bool) {
+func (w *worker) work(ctx context.Context, topic string, canTimeout bool) {
 	for i := 0; i < w.number; i++ {
 		w.waitGroup.Add(1)
 		atomic.AddInt32(&w.numberRunning, 1)
-		go w.produce(topic, canTimeout)
+		go w.produce(ctx, topic, canTimeout)
 	}
 
 	w.waitGroup.Wait()
 }
 
-func (w *worker) produce(topic string, canTimeout bool) {
+func (w *worker) produce(ctx context.Context, topic string, canTimeout bool) {
 	defer w.waitGroup.Done()
 
 	for {
 		select {
-		case <-w.ctx.Done():
+		case <-ctx.Done():
 			atomic.AddInt32(&w.numberRunning, -1)
 			return
 		case <-time.After(w.timeout):

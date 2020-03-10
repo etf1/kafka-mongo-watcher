@@ -1,8 +1,6 @@
 package service
 
 import (
-	"context"
-
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
@@ -15,7 +13,6 @@ import (
 )
 
 type Container struct {
-	Ctx context.Context
 	Cfg *config.Base
 
 	logger logger.LoggerInterface
@@ -35,9 +32,8 @@ type Container struct {
 	worker worker.Worker
 }
 
-func NewContainer(ctx context.Context, cfg *config.Base) *Container {
+func NewContainer(cfg *config.Base) *Container {
 	return &Container{
-		Ctx: ctx,
 		Cfg: cfg,
 	}
 }

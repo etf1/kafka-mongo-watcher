@@ -19,7 +19,6 @@ type TechServer struct {
 }
 
 func NewTechServer(
-	ctx context.Context,
 	logger logger.LoggerInterface,
 	httpTechAddr string,
 	readHeaderTimeout, writeTimeout, idleTimeout time.Duration,
@@ -34,15 +33,16 @@ func NewTechServer(
 			WriteTimeout:      writeTimeout,
 			IdleTimeout:       idleTimeout,
 			MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
-			BaseContext: func(_ net.Listener) context.Context {
-				return ctx
-			},
 		},
 	}
 }
 
-func (s *TechServer) Start() error {
+func (s *TechServer) Start(ctx context.Context) error {
 	s.logger.Info("Tech HTTP server started", logger.String("addr", s.httpServer.Addr))
+	s.httpServer.BaseContext = func(_ net.Listener) context.Context {
+		return ctx
+	}
+
 	return s.httpServer.ListenAndServe()
 }
 

@@ -21,7 +21,6 @@ func (container *Container) GetMongoClient() mongo.Client {
 		}
 
 		container.mongoClient = mongo.NewClient(
-			container.Ctx,
 			container.GetLogger(),
 			options...,
 		)
@@ -30,11 +29,11 @@ func (container *Container) GetMongoClient() mongo.Client {
 	return container.mongoClient
 }
 
-func (container *Container) GetMongoConnection() *mongodriver.Database {
+func (container *Container) GetMongoConnection(ctx context.Context) *mongodriver.Database {
 	if container.mongoDB == nil {
 		mongoCfg := container.Cfg.MongoDB
 
-		if db, err := newMongoClient(container.Ctx, container.GetLogger(), mongoCfg.URI, mongoCfg.DatabaseName); err != nil {
+		if db, err := newMongoClient(ctx, container.GetLogger(), mongoCfg.URI, mongoCfg.DatabaseName); err != nil {
 			panic(err)
 		} else {
 			container.mongoDB = db
@@ -44,9 +43,9 @@ func (container *Container) GetMongoConnection() *mongodriver.Database {
 	return container.mongoDB
 }
 
-func (container *Container) GetMongoCollection() mongo.CollectionAdapter {
+func (container *Container) GetMongoCollection(ctx context.Context) mongo.CollectionAdapter {
 	if container.mongoCollection == nil {
-		container.mongoCollection = mongo.NewCollectionAdapter(container.GetMongoConnection().Collection(container.Cfg.MongoDB.CollectionName))
+		container.mongoCollection = mongo.NewCollectionAdapter(container.GetMongoConnection(ctx).Collection(container.Cfg.MongoDB.CollectionName))
 	}
 
 	return container.mongoCollection

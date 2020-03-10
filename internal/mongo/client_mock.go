@@ -99,29 +99,29 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Replay mocks base method
-func (m *MockClient) Replay(collection CollectionAdapter, itemsChan chan *WatchItem) error {
+func (m *MockClient) Replay(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Replay", collection, itemsChan)
+	ret := m.ctrl.Call(m, "Replay", ctx, collection, itemsChan)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Replay indicates an expected call of Replay
-func (mr *MockClientMockRecorder) Replay(collection, itemsChan interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) Replay(ctx, collection, itemsChan interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Replay", reflect.TypeOf((*MockClient)(nil).Replay), collection, itemsChan)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Replay", reflect.TypeOf((*MockClient)(nil).Replay), ctx, collection, itemsChan)
 }
 
 // Watch mocks base method
-func (m *MockClient) Watch(collection CollectionAdapter, itemsChan chan *WatchItem) error {
+func (m *MockClient) Watch(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Watch", collection, itemsChan)
+	ret := m.ctrl.Call(m, "Watch", ctx, collection, itemsChan)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Watch indicates an expected call of Watch
-func (mr *MockClientMockRecorder) Watch(collection, itemsChan interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) Watch(ctx, collection, itemsChan interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockClient)(nil).Watch), collection, itemsChan)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockClient)(nil).Watch), ctx, collection, itemsChan)
 }

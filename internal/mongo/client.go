@@ -18,21 +18,19 @@ type MongoDriverCursor interface {
 type Option func(*client)
 
 type Client interface {
-	Replay(collection CollectionAdapter, itemsChan chan *WatchItem) error
-	Watch(collection CollectionAdapter, itemsChan chan *WatchItem) error
+	Replay(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error
+	Watch(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error
 }
 
 type client struct {
-	ctx                 context.Context
 	logger              logger.LoggerInterface
 	fullDocumentEnabled bool
 	batchSize           int32
 	maxAwaitTime        time.Duration
 }
 
-func NewClient(ctx context.Context, logger logger.LoggerInterface, options ...Option) *client {
+func NewClient(logger logger.LoggerInterface, options ...Option) *client {
 	client := &client{
-		ctx:                 ctx,
 		logger:              logger,
 		fullDocumentEnabled: false,
 	}
@@ -62,7 +60,7 @@ func WithMaxAwaitTime(maxAwaitTime time.Duration) Option {
 	}
 }
 
-func (c *client) Replay(collection CollectionAdapter, itemsChan chan *WatchItem) error {
+func (c *client) Replay(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	pipeline := bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
@@ -86,17 +84,17 @@ func (c *client) Replay(collection CollectionAdapter, itemsChan chan *WatchItem)
 		}}},
 	}
 
-	cursor, err := collection.Aggregate(c.ctx, pipeline)
+	cursor, err := collection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return err
 	}
-	defer cursor.Close(c.ctx)
+	defer cursor.Close(ctx)
 
-	c.watchCursor(cursor, itemsChan)
+	c.watchCursor(ctx, cursor, itemsChan)
 	return nil
 }
 
-func (c *client) Watch(collection CollectionAdapter, itemsChan chan *WatchItem) error {
+func (c *client) Watch(ctx context.Context, collection CollectionAdapter, itemsChan chan *WatchItem) error {
 	var emptyPipeline = []bson.M{}
 
 	println(c.maxAwaitTime)
@@ -108,22 +106,20 @@ func (c *client) Watch(collection CollectionAdapter, itemsChan chan *WatchItem) 
 		opts.SetFullDocument(options.UpdateLookup)
 	}
 
-	cursor, err := collection.Watch(c.ctx, emptyPipeline, opts)
+	cursor, err := collection.Watch(ctx, emptyPipeline, opts)
 	if err != nil {
 		c.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", collection.Name()), logger.Error("error", err))
 		return err
 	}
-	defer cursor.Close(c.ctx)
+	defer cursor.Close(ctx)
 
 	for {
-		c.watchCursor(cursor, itemsChan)
+		c.watchCursor(ctx, cursor, itemsChan)
 	}
-
-	return nil
 }
 
-func (c *client) watchCursor(cursor MongoDriverCursor, itemsChan chan *WatchItem) {
-	for cursor.Next(c.ctx) {
+func (c *client) watchCursor(ctx context.Context, cursor MongoDriverCursor, itemsChan chan *WatchItem) {
+	for cursor.Next(ctx) {
 		var event changeEvent
 		if err := cursor.Decode(&event); err != nil {
 			c.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))

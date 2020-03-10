@@ -17,12 +17,10 @@ import (
 var mongoCollection *mongodriver.Collection
 
 func TestNewClient(t *testing.T) {
-	context := context.Background()
 	logger := logger.NewLogger(handler.Stream(os.Stdout, formatter.NewDefaultFormatter()))
-	clientTest := NewClient(context, logger)
+	clientTest := NewClient(logger)
 
 	assert.Equal(t, logger, clientTest.logger)
-	assert.Equal(t, context, clientTest.ctx)
 }
 
 func TestReplay(t *testing.T) {
@@ -31,7 +29,7 @@ func TestReplay(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mongoClient := newClient()
+	mongoClient := NewClient(logger.NewNopLogger())
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 
 	pipeline := bson.A{
@@ -61,16 +59,10 @@ func TestReplay(t *testing.T) {
 	mongoCursor.EXPECT().Next(ctx)
 	mongoCursor.EXPECT().Close(ctx)
 
-	mongoCollection.EXPECT().Aggregate(mongoClient.ctx, pipeline).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
 	itemsChan := make(chan *WatchItem)
 
 	// When - Then
-	mongoClient.Replay(mongoCollection, itemsChan)
-}
-
-func newClient() *client {
-	context := context.Background()
-	logger := logger.NewLogger(handler.Stream(os.Stdout, formatter.NewDefaultFormatter()))
-	return NewClient(context, logger)
+	mongoClient.Replay(ctx, mongoCollection, itemsChan)
 }
