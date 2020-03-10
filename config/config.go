@@ -59,7 +59,7 @@ type Kafka struct {
 }
 
 // NewBase returns a new base configuration
-func NewBase() *Base {
+func NewBase(ctx context.Context) *Base {
 	cfg := &Base{
 		LogCliVerbose: true,
 		LogLevel:      logger.LevelString(logger.InfoLevel.String()),
@@ -88,7 +88,7 @@ func NewBase() *Base {
 		},
 	}
 
-	config.LoadOrFatal(context.Background(), cfg)
+	config.LoadOrFatal(ctx, cfg)
 	fmt.Println(config.TableString(cfg))
 
 	return cfg

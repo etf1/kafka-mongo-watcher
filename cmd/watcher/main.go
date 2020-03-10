@@ -15,7 +15,7 @@ import (
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
-	cfg := config.NewBase()
+	cfg := config.NewBase(ctx)
 
 	container := service.NewContainer(cfg)
 
