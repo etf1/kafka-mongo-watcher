@@ -19,7 +19,7 @@ install:
 
 script:
   - go test -mod=vendor -v -race ./...
-  - if [ "${LATEST}" = "true" ]; then gox -ldflags "-s -w" -os="linux darwin windows" -arch="386 amd64" -osarch="linux/arm" -output="kafka-mongo-watcher-{{.OS}}-{{.Arch}}"  -verbose ./...; fi
+  - if [ "${LATEST}" = "true" ]; then gox -ldflags "-s -w -X github.com/etf1/kafka-mongo-watcher/config.AppVersion=$TRAVIS_TAG" -os="linux darwin windows" -arch="386 amd64" -osarch="linux/amd64" -output="kafka-mongo-watcher-{{.OS}}-{{.Arch}}"  -verbose ./...; fi
 
 deploy:
   provider: releases
@@ -33,7 +33,6 @@ deploy:
     - kafka-mongo-watcher-darwin-amd64
     - kafka-mongo-watcher-linux-386
     - kafka-mongo-watcher-linux-amd64
-    - kafka-mongo-watcher-linux-arm
   on:
     repo: etf1/kafka-mongo-watcher
     tags: true
