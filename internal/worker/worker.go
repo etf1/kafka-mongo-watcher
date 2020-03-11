@@ -40,8 +40,10 @@ func New(logger logger.LoggerInterface, mongoClient mongo.Client, kafkaClient ka
 
 // Close stops the worker and its goroutines
 func (w *worker) Close() {
-	for i := int32(0); i < w.numberRunning; i++ {
+	numberRunningToStop := w.numberRunning
+	for i := int32(0); i < numberRunningToStop; i++ {
 		w.waitGroup.Done()
+		w.numberRunning--
 	}
 }
 

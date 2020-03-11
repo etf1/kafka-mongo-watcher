@@ -2,7 +2,10 @@ package worker
 
 import (
 	"context"
+	"errors"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
@@ -49,8 +52,14 @@ func TestClose(t *testing.T) {
 	kafkaClient := kafka.NewMockClient(ctrl)
 
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
+	atomic.AddInt32(&workerInstance.numberRunning, 1)
+	workerInstance.waitGroup.Add(1)
+	go func() {
+		workerInstance.waitGroup.Wait()
+	}()
 
 	// When
+	time.Sleep(10 * time.Millisecond)
 	workerInstance.Close()
 
 	// Then
@@ -135,6 +144,38 @@ func TestReplayWhenNoMongoEvent(t *testing.T) {
 	assert.Equal(len(itemsChan), 0)
 }
 
+func TestReplayWhenError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Given
+	ctx := context.Background()
+	number := 5
+
+	logger := logger.NewNopLogger()
+
+	collection := mongo.NewMockCollectionAdapter(ctrl)
+
+	itemsChan := make(chan *mongo.WatchItem)
+	close(itemsChan)
+
+	mongoClient := mongo.NewMockClient(ctrl)
+	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, errors.New("replay error"))
+
+	kafkaClient := kafka.NewMockClient(ctrl)
+
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
+
+	// When - Then
+	workerInstance.Replay(ctx, collection, "my-test-topic")
+
+	// Then
+	assert := assert.New(t)
+	assert.Equal(workerInstance.numberRunning, int32(0))
+	assert.Equal(cap(itemsChan), 0)
+	assert.Equal(len(itemsChan), 0)
+}
+
 func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -196,6 +237,38 @@ func TestWatchAndProduceWhenNoMongoEvent(t *testing.T) {
 
 	mongoClient := mongo.NewMockClient(ctrl)
 	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, nil)
+
+	kafkaClient := kafka.NewMockClient(ctrl)
+
+	workerInstance := New(logger, mongoClient, kafkaClient, number)
+
+	// When - Then
+	workerInstance.WatchAndProduce(ctx, collection, "my-test-topic")
+
+	// Then
+	assert := assert.New(t)
+	assert.Equal(workerInstance.numberRunning, int32(0))
+	assert.Equal(cap(itemsChan), 0)
+	assert.Equal(len(itemsChan), 0)
+}
+
+func TestWatchAndProduceWhenError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Given
+	ctx := context.Background()
+	number := 5
+
+	logger := logger.NewNopLogger()
+
+	collection := mongo.NewMockCollectionAdapter(ctrl)
+
+	itemsChan := make(chan *mongo.WatchItem)
+	close(itemsChan)
+
+	mongoClient := mongo.NewMockClient(ctrl)
+	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, errors.New("watch error"))
 
 	kafkaClient := kafka.NewMockClient(ctrl)
 
