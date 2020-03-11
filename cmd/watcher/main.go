@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"os/signal"
 	"syscall"
 
 	"github.com/etf1/kafka-mongo-watcher/config"
@@ -19,6 +17,7 @@ func main() {
 
 	container := service.NewContainer(cfg)
 
+	defer handleExitSignal(ctx, cancel, container)()
 	go container.GetTechServer().Start(ctx)
 
 	collection := container.GetMongoCollection(ctx)
@@ -27,31 +26,20 @@ func main() {
 	if container.Cfg.Replay {
 		worker.Replay(ctx, collection, container.Cfg.Kafka.Topic)
 	} else {
-		go notifyOnExitSignal(cancel)
-		defer handleExitSignal(ctx, container)()
-
 		worker.WatchAndProduce(ctx, collection, container.Cfg.Kafka.Topic)
 	}
 }
 
 // Handle for an exit signal in order to quit application on a proper way (shutting down connections and servers)
-func handleExitSignal(ctx context.Context, container *service.Container) func() {
+func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container *service.Container) func() {
 	return signal_subscriber.SubscribeWithKiller(func(signal os.Signal) {
 		log := container.GetLogger()
 		log.Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
 
+		cancel()
 		container.GetWorker().Close()
 		container.GetMongoConnection(ctx).Client().Disconnect(ctx)
 		container.GetKafkaClient().Close()
 		container.GetTechServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)
-}
-
-// Notifies for an exit signal in order to quit application on a proper way (shutting down connections and servers)
-func notifyOnExitSignal(cancel context.CancelFunc) {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
-	fmt.Println("Shutting down.")
-	cancel()
 }
