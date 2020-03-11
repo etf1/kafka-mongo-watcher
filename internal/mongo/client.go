@@ -29,6 +29,7 @@ type client struct {
 	maxAwaitTime        time.Duration
 }
 
+// NewClient returns a new mongodb client
 func NewClient(logger logger.LoggerInterface, options ...Option) *client {
 	client := &client{
 		logger:              logger,
@@ -42,24 +43,31 @@ func NewClient(logger logger.LoggerInterface, options ...Option) *client {
 	return client
 }
 
+// WithBatchSize allows to specify a batch size when using changestream event
 func WithBatchSize(batchSize int32) Option {
 	return func(c *client) {
 		c.batchSize = batchSize
 	}
 }
 
+// WithFullDocument allows to returns the full document in oplogs when using
+// changestream event
 func WithFullDocument(enabled bool) Option {
 	return func(c *client) {
 		c.fullDocumentEnabled = enabled
 	}
 }
 
+// WithMaxAwaitTime allows to specify the maximum await for new oplogs when using
+// changestream event
 func WithMaxAwaitTime(maxAwaitTime time.Duration) Option {
 	return func(c *client) {
 		c.maxAwaitTime = maxAwaitTime
 	}
 }
 
+// Replay sends an aggregate query into mongodb to generate "oplogs-like" result of all the records
+// in the collection
 func (c *client) Replay(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
 	var pipeline = bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
@@ -99,6 +107,7 @@ func (c *client) Replay(ctx context.Context, collection CollectionAdapter) (chan
 	return itemsChan, nil
 }
 
+// Watch is using the mongodb changestream feature to watch for oplogs of the specified collection
 func (c *client) Watch(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
 	var emptyPipeline = []bson.M{}
 
@@ -131,7 +140,7 @@ func (c *client) Watch(ctx context.Context, collection CollectionAdapter) (chan 
 
 func (c *client) watchCursor(ctx context.Context, cursor DriverCursor, itemsChan chan *WatchItem) {
 	for cursor.Next(ctx) {
-		var event changeEvent
+		var event ChangeEvent
 		if err := cursor.Decode(&event); err != nil {
 			c.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
 		}
@@ -142,7 +151,7 @@ func (c *client) watchCursor(ctx context.Context, cursor DriverCursor, itemsChan
 	}
 }
 
-func (c *client) sendIntoChannel(event changeEvent, itemsChan chan *WatchItem) error {
+func (c *client) sendIntoChannel(event ChangeEvent, itemsChan chan *WatchItem) error {
 	docID, err := event.documentID()
 	if err != nil {
 		c.logger.Error("Mongo client: Unable to extract document id from event", logger.Error("error", err))

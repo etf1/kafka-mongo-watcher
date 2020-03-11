@@ -18,6 +18,8 @@ type TechServer struct {
 	logger     logger.LoggerInterface
 }
 
+// NewTechServer returns a technical HTTP server that is used for liveness/readiness
+// and serving Prometheus metrics for instance
 func NewTechServer(
 	logger logger.LoggerInterface,
 	httpTechAddr string,
@@ -37,6 +39,7 @@ func NewTechServer(
 	}
 }
 
+// Start starts serving HTTP requests
 func (s *TechServer) Start(ctx context.Context) error {
 	s.logger.Info("Tech HTTP server started", logger.String("addr", s.httpServer.Addr))
 	s.httpServer.BaseContext = func(_ net.Listener) context.Context {
@@ -46,6 +49,7 @@ func (s *TechServer) Start(ctx context.Context) error {
 	return s.httpServer.ListenAndServe()
 }
 
+// Close shutdowns the HTTP server
 func (s *TechServer) Close(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }

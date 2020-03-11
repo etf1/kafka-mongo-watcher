@@ -6,11 +6,14 @@ import (
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
+var metricsRegistered = false
+
 type KafkaRecorder struct {
 	producerSuccessCounter *prometheus.CounterVec
 	producerErrorCounter   *prometheus.CounterVec
 }
 
+// NewKafkaRecorder returns a kafka recorder that is used to send metrics
 func NewKafkaRecorder() *KafkaRecorder {
 	return &KafkaRecorder{
 		// Kafka producer metrics
@@ -33,19 +36,27 @@ func NewKafkaRecorder() *KafkaRecorder {
 	}
 }
 
+// RegisterOn allows to specify a specific Prometheus registry
 func (r *KafkaRecorder) RegisterOn(registry prometheus.Registerer) *KafkaRecorder {
 	if registry == nil {
 		registry = prometheus.DefaultRegisterer
 	}
 
-	registry.MustRegister(
-		r.producerSuccessCounter,
-		r.producerErrorCounter,
-	)
+	if !metricsRegistered {
+		registry.MustRegister(
+			r.producerSuccessCounter,
+			r.producerErrorCounter,
+		)
+	}
+
+	metricsRegistered = true
+
 	return r
 }
 
-func (r *KafkaRecorder) Record(producer kafka.KafkaProducer) {
+// RecordProducer listens for events from the kafka producer and sends metrics
+// into Prometheus registry
+func (r *KafkaRecorder) RecordProducer(producer kafka.KafkaProducer) {
 	for e := range producer.Events() {
 		switch ev := e.(type) {
 		case *kafkaconfluent.Message:
@@ -58,10 +69,12 @@ func (r *KafkaRecorder) Record(producer kafka.KafkaProducer) {
 	}
 }
 
+// IncKafkaProducerSuccessCounter increments the producer success counter
 func (r *KafkaRecorder) IncKafkaProducerSuccessCounter(topic string) {
 	r.producerSuccessCounter.WithLabelValues(topic).Inc()
 }
 
+// IncKafkaProducerErrorCounter increments the producer error counter
 func (r *KafkaRecorder) IncKafkaProducerErrorCounter(topic string) {
 	r.producerErrorCounter.WithLabelValues(topic).Inc()
 }

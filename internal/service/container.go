@@ -12,6 +12,7 @@ import (
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
+// Container stores all the application services references
 type Container struct {
 	Cfg *config.Base
 
@@ -32,6 +33,8 @@ type Container struct {
 	worker worker.Worker
 }
 
+// NewContainer returns a dependency injection container that allows
+// to retrieve services
 func NewContainer(cfg *config.Base) *Container {
 	return &Container{
 		Cfg: cfg,

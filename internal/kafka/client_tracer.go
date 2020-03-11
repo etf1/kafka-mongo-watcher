@@ -12,6 +12,8 @@ import (
 // with some tracing information
 const xTracingHeaderName = "x-tracing"
 
+// AddTracingHeader simply adds a tracing header with application name and a timestamp
+// to enable simple debugging
 func AddTracingHeader(message *kafka.Message) {
 	now := time.Now()
 
@@ -28,6 +30,7 @@ type clientTracer struct {
 	fn     tracerFunc
 }
 
+// NewClientTracer returns a kafka client that allows adding trace information from an original client
 func NewClientTracer(cli Client, fn tracerFunc) *clientTracer {
 	return &clientTracer{
 		client: cli,
@@ -35,6 +38,7 @@ func NewClientTracer(cli Client, fn tracerFunc) *clientTracer {
 	}
 }
 
+// Produce adds tracing information on the message and then produces it
 func (c *clientTracer) Produce(message *kafka.Message) error {
 	c.fn(message)
 	return c.client.Produce(message)

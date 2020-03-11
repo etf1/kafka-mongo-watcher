@@ -10,10 +10,12 @@ type Liveness struct {
 	logger logger.LoggerInterface
 }
 
+// NewLiveness returns a liveness HTTP request handler
 func NewLiveness(logger logger.LoggerInterface) http.Handler {
 	return Liveness{logger: logger}
 }
 
+// ServeHTTP handles an HTTP request
 func (h Liveness) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		respond(w, errorJSON("only GET requests are supported"), http.StatusMethodNotAllowed)
