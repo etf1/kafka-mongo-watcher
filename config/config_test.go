@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 var cfg = &Base{
-	PrintConfig:   true,
+	PrintConfig:   false,
 	LogCliVerbose: true,
 	LogLevel:      logger.LevelString(logger.InfoLevel.String()),
 	Replay:        false,
@@ -39,6 +40,8 @@ var cfg = &Base{
 
 // NewBase returns a new base configuration
 func TestNewBase(t *testing.T) {
+	os.Setenv("KAFKA_MONGO_WATCHER_PRINT_CONFIG", "false")
+
 	ctx := context.Background()
 	base := NewBase(ctx)
 
