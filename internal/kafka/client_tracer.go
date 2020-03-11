@@ -8,9 +8,9 @@ import (
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
-// xTracingHeaderName corresponds to the X-Tracing header to is sent in Kafka messages
+// XTracingHeaderName corresponds to the X-Tracing header to is sent in Kafka messages
 // with some tracing information
-const xTracingHeaderName = "x-tracing"
+const XTracingHeaderName = "x-tracing"
 
 // AddTracingHeader simply adds a tracing header with application name and a timestamp
 // to enable simple debugging
@@ -18,7 +18,7 @@ func AddTracingHeader(message *kafka.Message) {
 	now := time.Now()
 
 	message.Headers = append(message.Headers, kafka.Header{
-		Key:   xTracingHeaderName,
+		Key:   XTracingHeaderName,
 		Value: []byte(fmt.Sprintf(`%s,%d`, config.AppName, now.Unix())),
 	})
 }

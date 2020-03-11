@@ -89,7 +89,7 @@ func TestReplayWithResults(t *testing.T) {
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
 	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
-	var event changeEvent
+	var event ChangeEvent
 	mongoCursor.EXPECT().Decode(&event).Return(nil)
 	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
 
@@ -163,7 +163,7 @@ func TestWatchWithResults(t *testing.T) {
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
 
 	mongoCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
-	var event changeEvent
+	var event ChangeEvent
 	mongoCursor.EXPECT().Decode(&event).Return(nil).AnyTimes()
 
 	// When

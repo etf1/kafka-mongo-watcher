@@ -7,8 +7,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func giveValidEvent(docKey primitive.ObjectID) changeEvent {
-	e := changeEvent{
+func giveValidEvent(docKey primitive.ObjectID) ChangeEvent {
+	e := ChangeEvent{
 		DocumentKey: documentKey{
 			ID: docKey,
 		},
@@ -16,8 +16,8 @@ func giveValidEvent(docKey primitive.ObjectID) changeEvent {
 	return e
 }
 
-func giveInvalidEvent() changeEvent {
-	return changeEvent{}
+func giveInvalidEvent() ChangeEvent {
+	return ChangeEvent{}
 }
 
 func Test_documentID(t *testing.T) {

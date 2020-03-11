@@ -10,6 +10,7 @@ import (
 )
 
 var cfg = &Base{
+	PrintConfig:   true,
 	LogCliVerbose: true,
 	LogLevel:      logger.LevelString(logger.InfoLevel.String()),
 	Replay:        false,

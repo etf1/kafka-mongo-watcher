@@ -12,9 +12,9 @@ type documentKey struct {
 	ID primitive.ObjectID `bson:"_id"`
 }
 
-// change event document according
+// ChangeEvent document according
 // https://docs.mongodb.com/manual/reference/change-events/#change-stream-output
-type changeEvent struct {
+type ChangeEvent struct {
 	ID                interface{} `bson:"_id"`
 	Operation         string      `bson:"operationType"`
 	Document          bson.M      `bson:"fullDocument"`
@@ -28,12 +28,12 @@ type changeEvent struct {
 }
 
 // marshall event to an array of bytes
-func (e changeEvent) marshal() ([]byte, error) {
+func (e ChangeEvent) marshal() ([]byte, error) {
 	return bson.MarshalExtJSON(e, true, true)
 }
 
 // return the document id of the event
-func (e changeEvent) documentID() (string, error) {
+func (e ChangeEvent) documentID() (string, error) {
 	id := e.DocumentKey.ID
 	if id.IsZero() {
 		return "", fmt.Errorf("documentKey should not be empty")

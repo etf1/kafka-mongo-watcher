@@ -23,7 +23,7 @@ func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 		container.kafkaProducer = producer
 
 		recorder := metrics.NewKafkaRecorder().RegisterOn(container.GetMetricsRegistry())
-		go recorder.Record(container.kafkaProducer)
+		go recorder.RecordProducer(container.kafkaProducer)
 	}
 
 	return container.kafkaProducer

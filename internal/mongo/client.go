@@ -163,6 +163,8 @@ func (c *client) sendIntoChannel(event ChangeEvent, itemsChan chan *WatchItem) e
 		return err
 	}
 
+	c.logger.Info("Mongo client: Retrieve event", logger.String("document_id", docID), logger.ByteString("event", jsonBytes))
+
 	itemsChan <- &WatchItem{
 		Key:   []byte(docID),
 		Value: jsonBytes,

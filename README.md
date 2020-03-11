@@ -34,7 +34,7 @@ You can download the latest version of the binary built for your architecture he
 The watcher is also available as a [Docker image](https://hub.docker.com/r/etf1/kafka-mongo-watcher).
 You can run it using the following example and pass configuration environment variables:
 
-```
+```bash
 $ docker run \
   -e 'KAFKA_MONGO_WATCHER_REPLAY=true' \
   etf1/kafka-mongo-watcher:latest
@@ -157,6 +157,11 @@ $ ./kafka-mongo-watcher -KAFKA_MONGO_WATCHER_REPLAY=true
 
 *Description*: A specified address for HTTP technical server to listen (default: ":8001")
 
+#### KAFKA_MONGO_WATCHER_PRINT_CONFIG
+*Type*: boolean
+
+*Description*: Used to enable/disable the configuration print at startup (default: true)
+
 #### KAFKA_MONGO_WATCHER_PPROF_ENABLED
 *Type*: boolean
 
@@ -167,3 +172,19 @@ $ ./kafka-mongo-watcher -KAFKA_MONGO_WATCHER_REPLAY=true
 The watcher also exposes metrics about Go process and Watcher application.
 
 These metrics can be scraped by Prometheus by browsing the following technical HTTP server endpoint: http://127.0.0.1:8001/metrics
+
+## Run tests
+
+Unit tests can be run with the following command:
+
+```bash
+$ go test -v -mod vendor ./...
+```
+
+And integration tests can be run with:
+
+```bash
+$ make test-integration
+```
+
+This will load needed mongodb and kafka containers and run the tests suite

@@ -33,7 +33,12 @@ func TestClientLoggerProduceWhenSuccess(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Given
-	message := &kafkaconfluent.Message{}
+	var topicName = "test-topic"
+	message := &kafkaconfluent.Message{
+		TopicPartition: kafkaconfluent.TopicPartition{
+			Topic: &topicName,
+		},
+	}
 
 	client := NewMockClient(ctrl)
 	client.EXPECT().Produce(message)
@@ -55,7 +60,12 @@ func TestClientLoggerProduceWhenError(t *testing.T) {
 	// Given
 	expectedErr := errors.New("an unexpected error occurred")
 
-	message := &kafkaconfluent.Message{}
+	var topicName = "test-topic"
+	message := &kafkaconfluent.Message{
+		TopicPartition: kafkaconfluent.TopicPartition{
+			Topic: &topicName,
+		},
+	}
 
 	client := NewMockClient(ctrl)
 	client.EXPECT().Produce(message).Return(expectedErr)
