@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/gol4ng/logger"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
@@ -63,7 +64,11 @@ func (container *Container) GetMongoCollection(ctx context.Context) mongo.Collec
 }
 
 func newMongoClient(ctx context.Context, log logger.LoggerInterface, uri, database string) (*mongodriver.Database, error) {
-	opts := options.Client().ApplyURI(uri).SetReadPreference(readpref.Primary()).SetServerSelectionTimeout(2 * time.Second)
+	opts := options.Client().
+		ApplyURI(uri).
+		SetReadPreference(readpref.Primary()).
+		SetServerSelectionTimeout(2 * time.Second).
+		SetAppName(config.AppName)
 	mongoClient, err := mongodriver.NewClient(opts)
 	if err != nil {
 		log.Error("Failed to create mongodb client", logger.String("uri", uri), logger.Error("error", err))
