@@ -24,7 +24,13 @@ func (r *prometheusRegistererMock) MustRegister(collectors ...prometheus.Collect
 	r.collectors = append(r.collectors, collectors...)
 }
 
-func (r *prometheusRegistererMock) Unregister(prometheus.Collector) bool {
+func (r *prometheusRegistererMock) Unregister(collector prometheus.Collector) bool {
+	for i, c := range r.collectors {
+		if c == collector {
+			r.collectors = append(r.collectors[:i], r.collectors[i+1:]...)
+		}
+	}
+
 	return true
 }
 
@@ -41,8 +47,6 @@ func TestNewKafkaRecorder(t *testing.T) {
 
 func TestRegisterOn(t *testing.T) {
 	// Given
-	metricsRegistered = false
-
 	testRegistry := &prometheusRegistererMock{}
 
 	recorder := NewKafkaRecorder()
@@ -55,21 +59,23 @@ func TestRegisterOn(t *testing.T) {
 	assert.Len(testRegistry.collectors, 2)
 }
 
-func TestRegisterOnWhenAlreadyRegistered(t *testing.T) {
+func TestUnregister(t *testing.T) {
 	// Given
-	metricsRegistered = false
+	assert := assert.New(t)
 
 	testRegistry := &prometheusRegistererMock{}
 
+	// When registering metrics
 	recorder := NewKafkaRecorder()
+	recorder.RegisterOn(testRegistry)
 
-	// When registering twice...
-	recorder.RegisterOn(testRegistry)
-	recorder.RegisterOn(testRegistry)
+	assert.Len(testRegistry.collectors, 2)
+
+	// And unregistering metrics
+	recorder.Unregister(testRegistry)
 
 	// Then
-	assert := assert.New(t)
-	assert.Len(testRegistry.collectors, 2)
+	assert.Len(testRegistry.collectors, 0)
 }
 
 func TestRecordProducer(t *testing.T) {
@@ -112,7 +118,9 @@ func TestRecordProducer(t *testing.T) {
 func TestIncKafkaProducerSuccessCounter(t *testing.T) {
 	// Given
 	recorder := NewKafkaRecorder()
-	recorder.RegisterOn(prometheus.DefaultRegisterer)
+
+	testRegistry := &prometheusRegistererMock{}
+	recorder.RegisterOn(testRegistry)
 
 	// When
 	recorder.IncKafkaProducerSuccessCounter("test-topic")
@@ -128,7 +136,9 @@ func TestIncKafkaProducerSuccessCounter(t *testing.T) {
 func TestIncKafkaProducerErrorCounter(t *testing.T) {
 	// Given
 	recorder := NewKafkaRecorder()
-	recorder.RegisterOn(prometheus.DefaultRegisterer)
+
+	testRegistry := &prometheusRegistererMock{}
+	recorder.RegisterOn(testRegistry)
 
 	// When
 	recorder.IncKafkaProducerErrorCounter("test-topic")

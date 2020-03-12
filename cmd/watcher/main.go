@@ -17,11 +17,12 @@ func main() {
 
 	container := service.NewContainer(cfg)
 
-	defer handleExitSignal(ctx, cancel, container)()
 	go container.GetTechServer().Start(ctx)
 
 	collection := container.GetMongoCollection(ctx)
 	worker := container.GetWorker()
+
+	defer handleExitSignal(ctx, cancel, container)()
 
 	if container.Cfg.Replay {
 		worker.Replay(ctx, collection, container.Cfg.Kafka.Topic)

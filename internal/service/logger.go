@@ -49,7 +49,7 @@ func (container *Container) getLoggerHandlerMiddleware() logger.Middlewares {
 		middleware.Placeholder(),
 		middleware.Context(logger.Ctx("facility", config.AppName).Add("version", config.AppVersion)),
 		middleware.MinLevelFilter(logger.LevelString(container.Cfg.LogLevel).Level()),
-		middleware.Caller(4),
+		middleware.Caller(3),
 	)
 }
 

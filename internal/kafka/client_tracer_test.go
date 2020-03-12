@@ -6,7 +6,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
@@ -119,13 +118,13 @@ func TestClientTracerClose(t *testing.T) {
 }
 
 func TestAddTracingHeader(t *testing.T) {
-	messageTest := &kafka.Message{
-		Headers: []kafka.Header{
+	messageTest := &kafkaconfluent.Message{
+		Headers: []kafkaconfluent.Header{
 			kafkaconfluent.Header{Key: "test-key1", Value: []byte(`my-test-value1`)},
 			kafkaconfluent.Header{Key: "test-key2", Value: []byte(`my-test-value2`)},
 		},
 	}
 	AddTracingHeader(messageTest)
 	assert.Equal(t, "x-tracing", messageTest.Headers[2].Key)
-	assert.Regexp(t, `kafka-mongo-watcher,[-]?\d[\d,]*[\.]?[\d{2}]*`, string(messageTest.Headers[2].Value))
+	assert.Regexp(t, `kafka-mongo-watcher,\d*`, string(messageTest.Headers[2].Value))
 }

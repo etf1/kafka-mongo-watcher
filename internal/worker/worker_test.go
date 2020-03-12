@@ -54,9 +54,6 @@ func TestClose(t *testing.T) {
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
 	atomic.AddInt32(&workerInstance.numberRunning, 1)
 	workerInstance.waitGroup.Add(1)
-	go func() {
-		workerInstance.waitGroup.Wait()
-	}()
 
 	// When
 	time.Sleep(10 * time.Millisecond)

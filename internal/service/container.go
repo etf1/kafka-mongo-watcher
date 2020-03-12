@@ -26,6 +26,7 @@ type Container struct {
 	mongoCollection mongo.CollectionAdapter
 
 	kafkaProducer *kafkaconfluent.Producer
+	kafkaRecorder *metrics.KafkaRecorder
 
 	kafkaClient kafka.Client
 	mongoClient mongo.Client

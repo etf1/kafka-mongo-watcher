@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
@@ -27,7 +28,7 @@ type fixture struct {
 
 var cfg *config.Base
 
-func setupConfigAndContainer(ctx context.Context) {
+func setupConfig(ctx context.Context) {
 	if cfg == nil {
 		os.Setenv("KAFKA_MONGO_WATCHER_PRINT_CONFIG", "false")
 
@@ -40,13 +41,16 @@ func setupConfigAndContainer(ctx context.Context) {
 func TestMainReplay(t *testing.T) {
 	// Setup application
 	ctx := context.Background()
-	setupConfigAndContainer(ctx)
+	setupConfig(ctx)
 
 	cfg.Replay = true
 	cfg.MongoDB.CollectionName = "testreplay"
 	cfg.Kafka.Topic = "integration-test-replay"
 
 	container := service.NewContainer(cfg)
+	defer container.GetKafkaRecorder().Unregister(
+		container.GetMetricsRegistry(),
+	)
 
 	// Given fixtures are inserted into MongoDB collection first
 	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))
@@ -65,13 +69,16 @@ func TestMainReplay(t *testing.T) {
 func TestMainWatchAndProduce(t *testing.T) {
 	// Setup application
 	ctx := context.Background()
-	setupConfigAndContainer(ctx)
+	setupConfig(ctx)
 
 	cfg.Replay = false
 	cfg.MongoDB.CollectionName = "testwatch"
 	cfg.Kafka.Topic = "integration-test-watch"
 
 	container := service.NewContainer(cfg)
+	defer container.GetKafkaRecorder().Unregister(
+		container.GetMetricsRegistry(),
+	)
 
 	// Given
 	collection := container.GetMongoCollection(ctx)
@@ -145,12 +152,13 @@ func updateFixturesDocumentsInMongoDB(ctx context.Context, t *testing.T, fixture
 }
 
 func assertFixturesAreInKafkaTopic(assert *assert.Assertions, cfg *config.Base, fixtures []*fixture) {
+	defer time.Sleep(1 * time.Second) // Ensure consumer is closed
+
 	consumer, err := kafkaconfluent.NewConsumer(&kafkaconfluent.ConfigMap{
 		"bootstrap.servers": cfg.Kafka.BootstrapServers,
 		"group.id":          cfg.Kafka.Topic,
 		"auto.offset.reset": "earliest",
 	})
-	defer consumer.Close()
 
 	assert.Nil(err)
 
@@ -170,4 +178,6 @@ func assertFixturesAreInKafkaTopic(assert *assert.Assertions, cfg *config.Base, 
 		assert.Equal(fixtures[i].mongoID, string(msg.Key))
 		assert.Equal(msg.Headers[0].Key, kafka.XTracingHeaderName)
 	}
+
+	consumer.Close()
 }

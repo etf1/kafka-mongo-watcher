@@ -39,13 +39,14 @@ var pipeline = bson.A{
 
 func TestNewClient(t *testing.T) {
 	logger := logger.NewNopLogger()
-	clientTest := NewClient(logger)
+	clientTest := NewClient(WithLogger(logger))
+
 	assert.Equal(t, logger, clientTest.logger)
 }
 
 func TestReplay(t *testing.T) {
 	ctx := context.Background()
-	mongoClient := NewClient(logger.NewNopLogger())
+	mongoClient := NewClient()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -75,7 +76,7 @@ func TestReplay(t *testing.T) {
 
 func TestReplayWithAggregateError(t *testing.T) {
 	ctx := context.Background()
-	mongoClient := NewClient(logger.NewNopLogger())
+	mongoClient := NewClient()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -104,7 +105,7 @@ func TestReplayWithAggregateError(t *testing.T) {
 
 func TestReplayWithResults(t *testing.T) {
 	ctx := context.Background()
-	mongoClient := NewClient(logger.NewNopLogger())
+	mongoClient := NewClient()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -140,7 +141,7 @@ func TestReplayWithResults(t *testing.T) {
 
 func TestReplayWithResultsWithDecodeError(t *testing.T) {
 	ctx := context.Background()
-	mongoClient := NewClient(logger.NewNopLogger())
+	mongoClient := NewClient()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -176,8 +177,7 @@ func TestReplayWithResultsWithDecodeError(t *testing.T) {
 
 func TestWatch(t *testing.T) {
 	ctx := context.Background()
-	logger := logger.NewNopLogger()
-	mongoClient := NewClient(logger, WithBatchSize(int32(10)), WithFullDocument(true), WithMaxAwaitTime(time.Duration(10)))
+	mongoClient := NewClient(WithBatchSize(int32(10)), WithFullDocument(true), WithMaxAwaitTime(time.Duration(10)))
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 	opts := &options.ChangeStreamOptions{
@@ -210,8 +210,7 @@ func TestWatch(t *testing.T) {
 
 func TestWatchWithWatchError(t *testing.T) {
 	ctx := context.Background()
-	logger := logger.NewNopLogger()
-	mongoClient := NewClient(logger, WithBatchSize(int32(10)), WithFullDocument(true), WithMaxAwaitTime(time.Duration(10)))
+	mongoClient := NewClient(WithBatchSize(int32(10)), WithFullDocument(true), WithMaxAwaitTime(time.Duration(10)))
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 	opts := &options.ChangeStreamOptions{
@@ -246,8 +245,7 @@ func TestWatchWithResults(t *testing.T) {
 	defer ctrl.Finish()
 
 	ctx := context.Background()
-	logger := logger.NewNopLogger()
-	mongoClient := NewClient(logger, WithBatchSize(int32(10)), WithFullDocument(true), WithMaxAwaitTime(time.Duration(10)))
+	mongoClient := NewClient(WithBatchSize(int32(10)), WithFullDocument(true), WithMaxAwaitTime(time.Duration(10)))
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 	opts := &options.ChangeStreamOptions{

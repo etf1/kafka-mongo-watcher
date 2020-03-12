@@ -30,9 +30,9 @@ type client struct {
 }
 
 // NewClient returns a new mongodb client
-func NewClient(logger logger.LoggerInterface, options ...Option) *client {
+func NewClient(options ...Option) *client {
 	client := &client{
-		logger:              logger,
+		logger:              logger.NewNopLogger(),
 		fullDocumentEnabled: false,
 	}
 
@@ -41,6 +41,13 @@ func NewClient(logger logger.LoggerInterface, options ...Option) *client {
 	}
 
 	return client
+}
+
+// WithLogger allows to specify a logger
+func WithLogger(logger logger.LoggerInterface) Option {
+	return func(c *client) {
+		c.logger = logger
+	}
 }
 
 // WithBatchSize allows to specify a batch size when using changestream event

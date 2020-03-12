@@ -6,8 +6,6 @@ import (
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
-var metricsRegistered = false
-
 type KafkaRecorder struct {
 	producerSuccessCounter *prometheus.CounterVec
 	producerErrorCounter   *prometheus.CounterVec
@@ -42,14 +40,18 @@ func (r *KafkaRecorder) RegisterOn(registry prometheus.Registerer) *KafkaRecorde
 		registry = prometheus.DefaultRegisterer
 	}
 
-	if !metricsRegistered {
-		registry.MustRegister(
-			r.producerSuccessCounter,
-			r.producerErrorCounter,
-		)
-	}
+	registry.MustRegister(
+		r.producerSuccessCounter,
+		r.producerErrorCounter,
+	)
 
-	metricsRegistered = true
+	return r
+}
+
+// Unregister allows to unregister kafka metrics from current Prometheus register
+func (r *KafkaRecorder) Unregister(registry prometheus.Registerer) *KafkaRecorder {
+	registry.Unregister(r.producerSuccessCounter)
+	registry.Unregister(r.producerErrorCounter)
 
 	return r
 }
