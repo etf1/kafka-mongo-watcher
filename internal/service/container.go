@@ -29,7 +29,9 @@ type Container struct {
 	kafkaRecorder *metrics.KafkaRecorder
 
 	kafkaClient kafka.Client
-	mongoClient mongo.Client
+
+	mongoReplayerClient mongo.Client
+	mongoWatcherClient  mongo.Client
 
 	worker worker.Worker
 }

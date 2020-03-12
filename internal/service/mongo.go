@@ -11,20 +11,33 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-func (container *Container) GetMongoClient() mongo.Client {
-	if container.mongoClient == nil {
+func (container *Container) GetMongoReplayerClient() mongo.Client {
+	if container.mongoReplayerClient == nil {
+		var options = []mongo.Option{
+			mongo.WithLogger(container.GetLogger()),
+		}
+
+		container.mongoReplayerClient = mongo.NewReplayer(options...)
+	}
+
+	return container.mongoReplayerClient
+}
+
+func (container *Container) GetMongoWatcherClient() mongo.Client {
+	if container.mongoWatcherClient == nil {
 		var configOptions = container.Cfg.MongoDB.Options
 		var options = []mongo.Option{
 			mongo.WithLogger(container.GetLogger()),
+		}
+
+		container.mongoWatcherClient = mongo.NewWatcher(options...).WithOptions(
 			mongo.WithBatchSize(configOptions.BatchSize),
 			mongo.WithFullDocument(configOptions.FullDocument),
 			mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
-		}
-
-		container.mongoClient = mongo.NewClient(options...)
+		)
 	}
 
-	return container.mongoClient
+	return container.mongoWatcherClient
 }
 
 func (container *Container) GetMongoConnection(ctx context.Context) *mongodriver.Database {

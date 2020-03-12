@@ -2,38 +2,23 @@ package mongo
 
 import (
 	"context"
-	"time"
 
 	"github.com/gol4ng/logger"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-type DriverCursor interface {
-	Decode(val interface{}) error
-	Next(ctx context.Context) bool
-	Close(ctx context.Context) error
-}
 
 type Option func(*client)
 
 type Client interface {
-	Replay(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error)
-	Watch(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error)
+	Oplogs(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error)
 }
 
 type client struct {
-	logger              logger.LoggerInterface
-	fullDocumentEnabled bool
-	batchSize           int32
-	maxAwaitTime        time.Duration
+	logger logger.LoggerInterface
 }
 
-// NewClient returns a new mongodb client
-func NewClient(options ...Option) *client {
+func newClient(options ...Option) *client {
 	client := &client{
-		logger:              logger.NewNopLogger(),
-		fullDocumentEnabled: false,
+		logger: logger.NewNopLogger(),
 	}
 
 	for _, option := range options {
@@ -50,102 +35,7 @@ func WithLogger(logger logger.LoggerInterface) Option {
 	}
 }
 
-// WithBatchSize allows to specify a batch size when using changestream event
-func WithBatchSize(batchSize int32) Option {
-	return func(c *client) {
-		c.batchSize = batchSize
-	}
-}
-
-// WithFullDocument allows to returns the full document in oplogs when using
-// changestream event
-func WithFullDocument(enabled bool) Option {
-	return func(c *client) {
-		c.fullDocumentEnabled = enabled
-	}
-}
-
-// WithMaxAwaitTime allows to specify the maximum await for new oplogs when using
-// changestream event
-func WithMaxAwaitTime(maxAwaitTime time.Duration) Option {
-	return func(c *client) {
-		c.maxAwaitTime = maxAwaitTime
-	}
-}
-
-// Replay sends an aggregate query into mongodb to generate "oplogs-like" result of all the records
-// in the collection
-func (c *client) Replay(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
-	var pipeline = bson.A{
-		bson.D{{Key: "$replaceRoot", Value: bson.D{
-			{
-				Key: "newRoot",
-				Value: bson.M{
-					"_id": bson.M{
-						"_id":         "$_id",
-						"copyingData": true,
-					},
-					"operationType": "insert",
-					"ns": bson.M{
-						"db":   collection.Database().Name(),
-						"coll": collection.Name(),
-					},
-					"documentKey": bson.M{
-						"_id": "$_id",
-					},
-					"fullDocument": "$$ROOT",
-				},
-			},
-		}}},
-	}
-
-	cursor, err := collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, err
-	}
-
-	var itemsChan = make(chan *WatchItem)
-
-	go func() {
-		defer close(itemsChan)
-		c.watchCursor(ctx, cursor, itemsChan)
-	}()
-
-	return itemsChan, nil
-}
-
-// Watch is using the mongodb changestream feature to watch for oplogs of the specified collection
-func (c *client) Watch(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
-	var emptyPipeline = []bson.M{}
-
-	opts := &options.ChangeStreamOptions{
-		BatchSize:    &c.batchSize,
-		MaxAwaitTime: &c.maxAwaitTime,
-	}
-	if c.fullDocumentEnabled {
-		opts.SetFullDocument(options.UpdateLookup)
-	}
-
-	cursor, err := collection.Watch(ctx, emptyPipeline, opts)
-	if err != nil {
-		c.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", collection.Name()), logger.Error("error", err))
-		return nil, err
-	}
-
-	var itemsChan = make(chan *WatchItem)
-
-	go func() {
-		defer close(itemsChan)
-
-		for {
-			c.watchCursor(ctx, cursor, itemsChan)
-		}
-	}()
-
-	return itemsChan, nil
-}
-
-func (c *client) watchCursor(ctx context.Context, cursor DriverCursor, itemsChan chan *WatchItem) {
+func (c *client) loop(ctx context.Context, cursor DriverCursor, itemsChan chan *WatchItem) {
 	for cursor.Next(ctx) {
 		var event ChangeEvent
 		if err := cursor.Decode(&event); err != nil {

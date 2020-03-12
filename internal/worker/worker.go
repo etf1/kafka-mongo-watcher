@@ -13,8 +13,7 @@ import (
 
 type Worker interface {
 	Close()
-	Replay(ctx context.Context, collection mongo.CollectionAdapter, topic string)
-	WatchAndProduce(ctx context.Context, collection mongo.CollectionAdapter, topic string)
+	Work(ctx context.Context, collection mongo.CollectionAdapter, topic string)
 }
 
 type worker struct {
@@ -47,23 +46,11 @@ func (w *worker) Close() {
 	}
 }
 
-// Replay allows to send a mongodb aggregation query to generate "oplogs-like" results and send them
-// using the kafka client
-func (w *worker) Replay(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
-	itemsChan, err := w.mongoClient.Replay(ctx, collection)
+// Work allows to retrieve a mongodb oplogs results and send them using the kafka client
+func (w *worker) Work(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
+	itemsChan, err := w.mongoClient.Oplogs(ctx, collection)
 	if err != nil {
 		w.logger.Error("An error occured while trying to replay mongodb collection", logger.Error("error", err))
-		return
-	}
-
-	w.work(ctx, topic, itemsChan)
-}
-
-// WatchAndProduce watches for a collection oplogs and send them using the kafka client
-func (w *worker) WatchAndProduce(ctx context.Context, collection mongo.CollectionAdapter, topic string) {
-	itemsChan, err := w.mongoClient.Watch(ctx, collection)
-	if err != nil {
-		w.logger.Error("An error occured while watching mongodb collection", logger.Error("error", err))
 		return
 	}
 

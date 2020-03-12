@@ -21,7 +21,7 @@ func NewClientLogger(cli Client, logger logger.LoggerInterface) *clientLogger {
 // Produce logs the message production information and then produces it
 func (c *clientLogger) Produce(message *kafka.Message) error {
 	if err := c.client.Produce(message); err != nil {
-		c.logger.Error("Kafka client: Cannot produce message", logger.String("topic", *message.TopicPartition.Topic), logger.ByteString("key", message.Key), logger.ByteString("value", message.Value), logger.Error("error", err))
+		c.logger.Error("Kafka client: Error during message produce", logger.String("topic", *message.TopicPartition.Topic), logger.ByteString("key", message.Key), logger.ByteString("value", message.Value), logger.Error("error", err))
 		return err
 	}
 

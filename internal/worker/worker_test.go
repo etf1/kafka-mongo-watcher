@@ -87,7 +87,7 @@ func TestReplayWhenMongoEvents(t *testing.T) {
 	}()
 
 	mongoClient := mongo.NewMockClient(ctrl)
-	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, nil)
+	mongoClient.EXPECT().Oplogs(ctx, collection).Return(itemsChan, nil)
 
 	topic := "my-test-topic"
 	kafkaClient := kafka.NewMockClient(ctrl)
@@ -100,7 +100,7 @@ func TestReplayWhenMongoEvents(t *testing.T) {
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
-	workerInstance.Replay(ctx, collection, topic)
+	workerInstance.Work(ctx, collection, topic)
 
 	// Then
 	assert := assert.New(t)
@@ -125,14 +125,14 @@ func TestReplayWhenNoMongoEvent(t *testing.T) {
 	close(itemsChan)
 
 	mongoClient := mongo.NewMockClient(ctrl)
-	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, nil)
+	mongoClient.EXPECT().Oplogs(ctx, collection).Return(itemsChan, nil)
 
 	kafkaClient := kafka.NewMockClient(ctrl)
 
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
-	workerInstance.Replay(ctx, collection, "my-test-topic")
+	workerInstance.Work(ctx, collection, "my-test-topic")
 
 	// Then
 	assert := assert.New(t)
@@ -157,14 +157,14 @@ func TestReplayWhenError(t *testing.T) {
 	close(itemsChan)
 
 	mongoClient := mongo.NewMockClient(ctrl)
-	mongoClient.EXPECT().Replay(ctx, collection).Return(itemsChan, errors.New("replay error"))
+	mongoClient.EXPECT().Oplogs(ctx, collection).Return(itemsChan, errors.New("replay error"))
 
 	kafkaClient := kafka.NewMockClient(ctrl)
 
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
-	workerInstance.Replay(ctx, collection, "my-test-topic")
+	workerInstance.Work(ctx, collection, "my-test-topic")
 
 	// Then
 	assert := assert.New(t)
@@ -195,7 +195,7 @@ func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 	}()
 
 	mongoClient := mongo.NewMockClient(ctrl)
-	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, nil)
+	mongoClient.EXPECT().Oplogs(ctx, collection).Return(itemsChan, nil)
 
 	topic := "my-test-topic"
 	kafkaClient := kafka.NewMockClient(ctrl)
@@ -208,7 +208,7 @@ func TestWatchAndProduceWhenMongoEvents(t *testing.T) {
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
-	workerInstance.WatchAndProduce(ctx, collection, topic)
+	workerInstance.Work(ctx, collection, topic)
 
 	// Then
 	assert := assert.New(t)
@@ -233,14 +233,14 @@ func TestWatchAndProduceWhenNoMongoEvent(t *testing.T) {
 	close(itemsChan)
 
 	mongoClient := mongo.NewMockClient(ctrl)
-	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, nil)
+	mongoClient.EXPECT().Oplogs(ctx, collection).Return(itemsChan, nil)
 
 	kafkaClient := kafka.NewMockClient(ctrl)
 
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
-	workerInstance.WatchAndProduce(ctx, collection, "my-test-topic")
+	workerInstance.Work(ctx, collection, "my-test-topic")
 
 	// Then
 	assert := assert.New(t)
@@ -265,14 +265,14 @@ func TestWatchAndProduceWhenError(t *testing.T) {
 	close(itemsChan)
 
 	mongoClient := mongo.NewMockClient(ctrl)
-	mongoClient.EXPECT().Watch(ctx, collection).Return(itemsChan, errors.New("watch error"))
+	mongoClient.EXPECT().Oplogs(ctx, collection).Return(itemsChan, errors.New("watch error"))
 
 	kafkaClient := kafka.NewMockClient(ctrl)
 
 	workerInstance := New(logger, mongoClient, kafkaClient, number)
 
 	// When - Then
-	workerInstance.WatchAndProduce(ctx, collection, "my-test-topic")
+	workerInstance.Work(ctx, collection, "my-test-topic")
 
 	// Then
 	assert := assert.New(t)

@@ -58,8 +58,10 @@ func TestMainReplay(t *testing.T) {
 	collection := container.GetMongoCollection(ctx)
 
 	// When worker is running in replay mode
-	worker := container.GetWorker()
-	worker.Replay(ctx, collection, container.Cfg.Kafka.Topic)
+	worker := container.GetWorker(
+		container.GetMongoReplayerClient(),
+	)
+	worker.Work(ctx, collection, container.Cfg.Kafka.Topic)
 
 	// Then
 	assert := assert.New(t)
@@ -84,8 +86,10 @@ func TestMainWatchAndProduce(t *testing.T) {
 	collection := container.GetMongoCollection(ctx)
 
 	// When worker is running in watch mode
-	worker := container.GetWorker()
-	go worker.WatchAndProduce(ctx, collection, container.Cfg.Kafka.Topic)
+	worker := container.GetWorker(
+		container.GetMongoWatcherClient(),
+	)
+	go worker.Work(ctx, collection, container.Cfg.Kafka.Topic)
 
 	// And I insert fixtures in mongodb collection
 	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))

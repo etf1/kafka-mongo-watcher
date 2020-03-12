@@ -7,6 +7,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// DriverCursor represents a mongo-driver/mongo cursor object
+// it can be both a Cursor or a ChangeStream for instance
+type DriverCursor interface {
+	Decode(val interface{}) error
+	Next(ctx context.Context) bool
+	Close(ctx context.Context) error
+}
+
 // DriverDatabase represents the mongo-driver/mongo database object
 type DriverDatabase interface {
 	Name() string
