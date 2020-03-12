@@ -56,6 +56,8 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 		mongo.WithBatchSize(configOptions.BatchSize),
 		mongo.WithFullDocument(configOptions.FullDocument),
 		mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
+		mongo.WithResumeAfter(configOptions.ResumeAfter),
+		mongo.WithStartAtOperationTime(configOptions.StartAtOperationTime),
 	}
 }
 

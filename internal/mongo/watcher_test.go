@@ -10,6 +10,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -86,14 +87,21 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	defer ctrl.Finish()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
+	resumeAfter := bson.M{"_data": "1234567890987654321"}
+	startAtOperationTime := primitive.Timestamp{
+		I: uint32(10),
+		T: uint32(10),
+	}
 
 	ctx := context.Background()
 
 	opts := &options.ChangeStreamOptions{
-		BatchSize:    &batchSize,
-		MaxAwaitTime: &maxAwaitTime,
+		BatchSize:            &batchSize,
+		MaxAwaitTime:         &maxAwaitTime,
+		StartAtOperationTime: &startAtOperationTime,
 	}
 	opts.SetFullDocument(options.UpdateLookup)
+	opts.SetResumeAfter(resumeAfter)
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockDriverCursor(ctrl)
@@ -108,7 +116,13 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger())
 
 	// When
-	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+	events, err := watcher.GetProducer(
+		WithBatchSize(batchSize),
+		WithFullDocument(true),
+		WithMaxAwaitTime(maxAwaitTime),
+		WithResumeAfter(resumeAfter),
+		WithStartAtOperationTime(startAtOperationTime),
+	)(ctx)
 
 	// Then
 	assert := assert.New(t)

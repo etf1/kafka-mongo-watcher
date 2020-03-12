@@ -6,6 +6,7 @@ import (
 
 	"github.com/gol4ng/logger"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -21,11 +22,15 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		var emptyPipeline = []bson.M{}
 
 		opts := &options.ChangeStreamOptions{
-			BatchSize:    &config.batchSize,
-			MaxAwaitTime: &config.maxAwaitTime,
+			BatchSize:            &config.batchSize,
+			MaxAwaitTime:         &config.maxAwaitTime,
+			StartAtOperationTime: config.startAtOperationTime,
 		}
 		if config.fullDocumentEnabled {
 			opts.SetFullDocument(options.UpdateLookup)
+		}
+		if len(config.resumeAfter) != 0 {
+			opts.SetResumeAfter(config.resumeAfter)
 		}
 
 		cursor, err := w.collection.Watch(ctx, emptyPipeline, opts)
@@ -60,7 +65,7 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, eve
 	}
 }
 
-func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface)*WatchProducer{
+func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface) *WatchProducer {
 	return &WatchProducer{
 		collection: adapter,
 		logger:     logger,
@@ -70,9 +75,11 @@ func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface)*
 type WatchOption func(*WatchConfig)
 
 type WatchConfig struct {
-	batchSize           int32
-	fullDocumentEnabled bool
-	maxAwaitTime        time.Duration
+	batchSize            int32
+	fullDocumentEnabled  bool
+	maxAwaitTime         time.Duration
+	resumeAfter          bson.M
+	startAtOperationTime *primitive.Timestamp
 }
 
 func (o *WatchConfig) apply(options ...WatchOption) {
@@ -83,9 +90,11 @@ func (o *WatchConfig) apply(options ...WatchOption) {
 
 func NewWatchConfig(o ...WatchOption) *WatchConfig {
 	watchOptions := &WatchConfig{
-		batchSize:           0,
-		fullDocumentEnabled: false,
-		maxAwaitTime:        0,
+		batchSize:            0,
+		fullDocumentEnabled:  false,
+		maxAwaitTime:         0,
+		resumeAfter:          bson.M{},
+		startAtOperationTime: nil,
 	}
 	watchOptions.apply(o...)
 	return watchOptions
@@ -111,5 +120,21 @@ func WithFullDocument(enabled bool) WatchOption {
 func WithMaxAwaitTime(maxAwaitTime time.Duration) WatchOption {
 	return func(w *WatchConfig) {
 		w.maxAwaitTime = maxAwaitTime
+	}
+}
+
+// WithResumeAfter allows to specify the resume token for the change stream to resume
+// notifications after the operation specified in the resume token
+func WithResumeAfter(resumeAfter bson.M) WatchOption {
+	return func(w *WatchConfig) {
+		w.resumeAfter = resumeAfter
+	}
+}
+
+// WithStartAtOperationTime allows to specify the timestamp for the change stream to only
+// return changes that occurred at or after the given timestamp.
+func WithStartAtOperationTime(startAtOperationTime primitive.Timestamp) WatchOption {
+	return func(w *WatchConfig) {
+		w.startAtOperationTime = &startAtOperationTime
 	}
 }
