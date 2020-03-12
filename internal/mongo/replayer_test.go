@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/gol4ng/logger"
 	"github.com/golang/mock/gomock"
@@ -42,9 +41,8 @@ func TestNewReplayer(t *testing.T) {
 	assert.Equal(t, logger, replayer.logger)
 }
 
-func TestReplayerOplogs(t *testing.T) {
+func TestReplayerOplogsWhenNoResults(t *testing.T) {
 	ctx := context.Background()
-	replayer := NewReplayer()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -52,27 +50,31 @@ func TestReplayerOplogs(t *testing.T) {
 	mongoDatabase := NewMockDriverDatabase(ctrl)
 	mongoDatabase.EXPECT().Name().Return("test-db")
 
+	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor.EXPECT().Next(ctx).Return(false)
+
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
 	mongoCollection.EXPECT().Name().Return("test-collection")
-
-	mongoCursor := NewMockDriverCursor(ctrl)
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
-	mongoCursor.EXPECT().Next(ctx).Return(false)
+
+	replayer := NewReplayer()
 
 	// When
-	itemsChan, err := replayer.Oplogs(ctx, mongoCollection)
-	time.Sleep(100 * time.Millisecond) // Need to wait for the watchCursor goroutine to be executed
+	events, err := replayer.Oplogs(ctx, mongoCollection)
 
 	// Then
 	assert := assert.New(t)
 
+	event := <-events
+	assert.Nil(event)
+
 	assert.Nil(err)
-	assert.Equal(cap(itemsChan), 0)
-	assert.Equal(len(itemsChan), 0)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
 }
 
-func TestReplayerOplogsWithAggregateError(t *testing.T) {
+func TestReplayerOplogsWhenAggregateError(t *testing.T) {
 	ctx := context.Background()
 	replayer := NewReplayer()
 
@@ -90,17 +92,17 @@ func TestReplayerOplogsWithAggregateError(t *testing.T) {
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, errors.New("aggregate error"))
 
 	// When
-	itemsChan, err := replayer.Oplogs(ctx, mongoCollection)
+	events, err := replayer.Oplogs(ctx, mongoCollection)
 
 	// Then
 	assert := assert.New(t)
 	assert.NotNil(err)
-	assert.Equal(cap(itemsChan), 0)
-	assert.Equal(len(itemsChan), 0)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
 
 }
 
-func TestReplayerOplogsWithResults(t *testing.T) {
+func TestReplayerOplogsWhenHaveResults(t *testing.T) {
 	ctx := context.Background()
 	replayer := NewReplayer()
 
@@ -110,33 +112,33 @@ func TestReplayerOplogsWithResults(t *testing.T) {
 	mongoDatabase := NewMockDriverDatabase(ctrl)
 	mongoDatabase.EXPECT().Name().Return("test-db")
 
+	mongoCursor := NewMockDriverCursor(ctrl)
+	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
+	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
+
+	var e ChangeEvent
+	mongoCursor.EXPECT().Decode(&e).Return(nil)
+
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
 	mongoCollection.EXPECT().Name().Return("test-collection")
-
-	mongoCursor := NewMockDriverCursor(ctrl)
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
-	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
-	var event ChangeEvent
-	mongoCursor.EXPECT().Decode(&event).Return(nil)
-	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
-
-	itemsChan := make(chan *WatchItem)
-
 	// When
-	itemsChan, err := replayer.Oplogs(ctx, mongoCollection)
-	time.Sleep(100 * time.Millisecond) // Need to wait for the watchCursor goroutine to be executed
+	events, err := replayer.Oplogs(ctx, mongoCollection)
 
 	// Then
 	assert := assert.New(t)
 
+	event := <-events
+	assert.IsType(new(ChangeEvent), event)
+
 	assert.Nil(err)
-	assert.Equal(cap(itemsChan), 0)
-	assert.Equal(len(itemsChan), 0)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
 }
 
-func TestReplayerOplogsWithResultsWithDecodeError(t *testing.T) {
+func TestReplayerOplogsWhenResultsWithDecodeError(t *testing.T) {
 	ctx := context.Background()
 	replayer := NewReplayer()
 
@@ -146,28 +148,28 @@ func TestReplayerOplogsWithResultsWithDecodeError(t *testing.T) {
 	mongoDatabase := NewMockDriverDatabase(ctrl)
 	mongoDatabase.EXPECT().Name().Return("test-db")
 
+	mongoCursor := NewMockDriverCursor(ctrl)
+	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
+	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
+
+	var e ChangeEvent
+	mongoCursor.EXPECT().Decode(&e).Return(errors.New("decode error"))
+
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
 	mongoCollection.EXPECT().Name().Return("test-collection")
-
-	mongoCursor := NewMockDriverCursor(ctrl)
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
-	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
-	var event ChangeEvent
-	mongoCursor.EXPECT().Decode(&event).Return(errors.New("decode error"))
-	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
-
-	itemsChan := make(chan *WatchItem)
-
 	// When
-	itemsChan, err := replayer.Oplogs(ctx, mongoCollection)
-	time.Sleep(100 * time.Millisecond) // Need to wait for the watchCursor goroutine to be executed
+	events, err := replayer.Oplogs(ctx, mongoCollection)
 
 	// Then
 	assert := assert.New(t)
 
+	event := <-events
+	assert.Nil(event)
+
 	assert.Nil(err)
-	assert.Equal(cap(itemsChan), 0)
-	assert.Equal(len(itemsChan), 0)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
 }

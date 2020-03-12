@@ -16,12 +16,12 @@ var AppVersion = "wip"
 
 // Base is the base configuration provider
 type Base struct {
-	PrintConfig     bool               `config:"KAFKA_MONGO_WATCHER_PRINT_CONFIG"`
-	LogLevel        logger.LevelString `config:"KAFKA_MONGO_WATCHER_LOG_LEVEL"`
-	LogCliVerbose   bool               `config:"KAFKA_MONGO_WATCHER_LOG_CLI_VERBOSE"`
-	GraylogEndpoint string             `config:"KAFKA_MONGO_WATCHER_GRAYLOG_ENDPOINT"`
-	Replay          bool               `config:"KAFKA_MONGO_WATCHER_REPLAY"`
-	WorkerNumber    int                `config:"KAFKA_MONGO_WATCHER_WORKER_NUMBER"`
+	PrintConfig      bool               `config:"KAFKA_MONGO_WATCHER_PRINT_CONFIG"`
+	LogLevel         logger.LevelString `config:"KAFKA_MONGO_WATCHER_LOG_LEVEL"`
+	LogCliVerbose    bool               `config:"KAFKA_MONGO_WATCHER_LOG_CLI_VERBOSE"`
+	GraylogEndpoint  string             `config:"KAFKA_MONGO_WATCHER_GRAYLOG_ENDPOINT"`
+	Replay           bool               `config:"KAFKA_MONGO_WATCHER_REPLAY"`
+	ProducerPoolSize int                `config:"KAFKA_MONGO_WATCHER_PRODUCER_POOL_SIZE"`
 
 	TechServer
 	MongoDB
@@ -61,11 +61,11 @@ type Kafka struct {
 // NewBase returns a new base configuration
 func NewBase(ctx context.Context) *Base {
 	cfg := &Base{
-		PrintConfig:   true,
-		LogCliVerbose: true,
-		LogLevel:      logger.LevelString(logger.InfoLevel.String()),
-		Replay:        false,
-		WorkerNumber:  5,
+		PrintConfig:      true,
+		LogCliVerbose:    true,
+		LogLevel:         logger.LevelString(logger.InfoLevel.String()),
+		Replay:           false,
+		ProducerPoolSize: 5,
 		TechServer: TechServer{
 			PprofEnabled: true,
 			HTTPAddr:     ":8001",

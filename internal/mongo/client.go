@@ -9,7 +9,7 @@ import (
 type Option func(*client)
 
 type Client interface {
-	Oplogs(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error)
+	Oplogs(ctx context.Context, collection CollectionAdapter) (chan *ChangeEvent, error)
 }
 
 type client struct {
@@ -35,37 +35,14 @@ func WithLogger(logger logger.LoggerInterface) Option {
 	}
 }
 
-func (c *client) loop(ctx context.Context, cursor DriverCursor, itemsChan chan *WatchItem) {
+func (c *client) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) {
 	for cursor.Next(ctx) {
-		var event ChangeEvent
-		if err := cursor.Decode(&event); err != nil {
+		event := &ChangeEvent{}
+		if err := cursor.Decode(event); err != nil {
 			c.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
+			continue
 		}
 
-		if err := c.sendIntoChannel(event, itemsChan); err != nil {
-			c.logger.Error("Mongo client: Unable to send document", logger.Error("error", err))
-		}
+		events <- event
 	}
-}
-
-func (c *client) sendIntoChannel(event ChangeEvent, itemsChan chan *WatchItem) error {
-	docID, err := event.documentID()
-	if err != nil {
-		c.logger.Error("Mongo client: Unable to extract document id from event", logger.Error("error", err))
-		return err
-	}
-	jsonBytes, err := event.marshal()
-	if err != nil {
-		c.logger.Error("Mongo client: Unable to unmarshal change event to json", logger.Error("error", err))
-		return err
-	}
-
-	c.logger.Info("Mongo client: Retrieve event", logger.String("document_id", docID), logger.ByteString("event", jsonBytes))
-
-	itemsChan <- &WatchItem{
-		Key:   []byte(docID),
-		Value: jsonBytes,
-	}
-
-	return nil
 }

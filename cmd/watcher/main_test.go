@@ -34,11 +34,11 @@ func setupConfig(ctx context.Context) {
 
 		cfg = config.NewBase(ctx)
 		cfg.LogCliVerbose = false
-		cfg.WorkerNumber = 1
+		cfg.ProducerPoolSize = 1
 	}
 }
 
-func TestMainReplay(t *testing.T) {
+func TestMainModeReplay(t *testing.T) {
 	// Setup application
 	ctx := context.Background()
 	setupConfig(ctx)
@@ -51,24 +51,24 @@ func TestMainReplay(t *testing.T) {
 	defer container.GetKafkaRecorder().Unregister(
 		container.GetMetricsRegistry(),
 	)
+	logger := container.GetLogger()
 
 	// Given fixtures are inserted into MongoDB collection first
 	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))
 
-	collection := container.GetMongoCollection(ctx)
-
 	// When worker is running in replay mode
-	worker := container.GetWorker(
-		container.GetMongoReplayerClient(),
-	)
-	worker.Work(ctx, collection, container.Cfg.Kafka.Topic)
+	events := getMongoEvents(ctx, container)
+	messages := make(chan *kafka.Message)
+	go transformMongoEventsToKafkaMessages(logger, container.Cfg.Kafka.Topic, events, messages)
+
+	go container.GetKafkaProducerPool().Produce(ctx, messages)
 
 	// Then
 	assert := assert.New(t)
 	assertFixturesAreInKafkaTopic(assert, cfg, fixtures)
 }
 
-func TestMainWatchAndProduce(t *testing.T) {
+func TestMainModeWatch(t *testing.T) {
 	// Setup application
 	ctx := context.Background()
 	setupConfig(ctx)
@@ -81,15 +81,14 @@ func TestMainWatchAndProduce(t *testing.T) {
 	defer container.GetKafkaRecorder().Unregister(
 		container.GetMetricsRegistry(),
 	)
-
-	// Given
-	collection := container.GetMongoCollection(ctx)
+	logger := container.GetLogger()
 
 	// When worker is running in watch mode
-	worker := container.GetWorker(
-		container.GetMongoWatcherClient(),
-	)
-	go worker.Work(ctx, collection, container.Cfg.Kafka.Topic)
+	events := getMongoEvents(ctx, container)
+	messages := make(chan *kafka.Message)
+	go transformMongoEventsToKafkaMessages(logger, container.Cfg.Kafka.Topic, events, messages)
+
+	go container.GetKafkaProducerPool().Produce(ctx, messages)
 
 	// And I insert fixtures in mongodb collection
 	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))

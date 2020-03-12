@@ -77,10 +77,10 @@ $ ./kafka-mongo-watcher -KAFKA_MONGO_WATCHER_REPLAY=true
 
 *Description*: In case you want to send all collection's documents once (default: false)
 
-#### KAFKA_MONGO_WATCHER_WORKER_NUMBER
+#### KAFKA_MONGO_WATCHER_PRODUCER_POOL_SIZE
 *Type*: integer
 
-*Description*: The number of worker (goroutines) you want to use to produce into Kafka (default: 5)
+*Description*: The number of producer workers (goroutines) you want to use to produce into Kafka (default: 5)
 
 #### KAFKA_MONGO_WATCHER_MONGODB_URI
 *Type*: string

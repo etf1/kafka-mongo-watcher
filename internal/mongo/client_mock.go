@@ -34,10 +34,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Oplogs mocks base method
-func (m *MockClient) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
+func (m *MockClient) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *ChangeEvent, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Oplogs", ctx, collection)
-	ret0, _ := ret[0].(chan *WatchItem)
+	ret0, _ := ret[0].(chan *ChangeEvent)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -19,7 +19,7 @@ func NewReplayer(options ...Option) *replayer {
 
 // Do sends an aggregate query into mongodb to generate "oplogs-like" result of all the records
 // in the collection
-func (r *replayer) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
+func (r *replayer) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *ChangeEvent, error) {
 	var pipeline = bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
@@ -48,12 +48,12 @@ func (r *replayer) Oplogs(ctx context.Context, collection CollectionAdapter) (ch
 		return nil, err
 	}
 
-	var itemsChan = make(chan *WatchItem)
+	var events = make(chan *ChangeEvent)
 
 	go func() {
-		defer close(itemsChan)
-		r.loop(ctx, cursor, itemsChan)
+		defer close(events)
+		r.sendEvents(ctx, cursor, events)
 	}()
 
-	return itemsChan, nil
+	return events, nil
 }

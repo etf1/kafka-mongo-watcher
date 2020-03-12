@@ -10,7 +10,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -21,7 +20,7 @@ func TestNewWatcher(t *testing.T) {
 	assert.Equal(t, logger, watcher.logger)
 }
 
-func TestWatcherOplogs(t *testing.T) {
+func TestWatcherOplogsWhenNoResults(t *testing.T) {
 	ctx := context.Background()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
@@ -46,18 +45,17 @@ func TestWatcherOplogs(t *testing.T) {
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
 
 	// When
-	itemsChan, err := watcher.Oplogs(ctx, mongoCollection)
-	time.Sleep(100 * time.Millisecond) // Need to wait for the watchCursor goroutine to be executed
+	events, err := watcher.Oplogs(ctx, mongoCollection)
 
 	// Then
 	assert := assert.New(t)
 
 	assert.Nil(err)
-	assert.Equal(cap(itemsChan), 0)
-	assert.Equal(len(itemsChan), 0)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
 }
 
-func TestWatcherOplogsWithWatchError(t *testing.T) {
+func TestWatcherOplogsWhenWatchError(t *testing.T) {
 	ctx := context.Background()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
@@ -77,22 +75,22 @@ func TestWatcherOplogsWithWatchError(t *testing.T) {
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockDriverCursor(ctrl)
 
-	var emptyPipeline = []bson.M{}
-	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, errors.New("aggregate error"))
+	var expectedErr = errors.New("aggregate error")
+	mongoCollection.EXPECT().Watch(ctx, []bson.M{}, opts).Return(mongoCursor, expectedErr)
 	mongoCollection.EXPECT().Name()
 
 	// When
-	itemsChan, err := watcher.Oplogs(ctx, mongoCollection)
+	events, err := watcher.Oplogs(ctx, mongoCollection)
 
 	// Then
 	assert := assert.New(t)
 
-	assert.NotNil(err)
-	assert.Equal(cap(itemsChan), 0)
-	assert.Equal(len(itemsChan), 0)
+	assert.Equal(expectedErr, err)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
 }
 
-func TestWatcherOplogsWithResults(t *testing.T) {
+func TestWatcherOplogsWhenHaveResults(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	batchSize := int32(10)
@@ -115,21 +113,19 @@ func TestWatcherOplogsWithResults(t *testing.T) {
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
 
 	mongoCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
-	var event ChangeEvent
-	objID, _ := primitive.ObjectIDFromHex("507f1f77bcf86cd799439011")
-	mongoCursor.EXPECT().Decode(&event).Return(nil).SetArg(0, ChangeEvent{
-		Operation:   "insert",
-		DocumentKey: documentKey{ID: objID},
-	}).AnyTimes()
+	var e ChangeEvent
+	mongoCursor.EXPECT().Decode(&e).Return(nil).AnyTimes()
 
 	// When
-	itemsChan, err := watcher.Oplogs(ctx, mongoCollection)
-	time.Sleep(100 * time.Millisecond) // Need to wait for the watchCursor goroutine to be executed
+	events, err := watcher.Oplogs(ctx, mongoCollection)
 
 	// Then
 	assert := assert.New(t)
 
+	event := <-events
+	assert.IsType(new(ChangeEvent), event)
+
 	assert.Nil(err)
-	assert.Equal(cap(itemsChan), 0)
-	assert.Equal(len(itemsChan), 0)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
 }

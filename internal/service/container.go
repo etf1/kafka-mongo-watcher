@@ -6,7 +6,6 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/etf1/kafka-mongo-watcher/internal/server"
-	"github.com/etf1/kafka-mongo-watcher/internal/worker"
 	"github.com/gol4ng/logger"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
@@ -28,12 +27,11 @@ type Container struct {
 	kafkaProducer *kafkaconfluent.Producer
 	kafkaRecorder *metrics.KafkaRecorder
 
-	kafkaClient kafka.Client
+	kafkaClient       kafka.Client
+	kafkaProducerPool kafka.ProducerPool
 
 	mongoReplayerClient mongo.Client
 	mongoWatcherClient  mongo.Client
-
-	worker worker.Worker
 }
 
 // NewContainer returns a dependency injection container that allows

@@ -59,7 +59,7 @@ func WithMaxAwaitTime(maxAwaitTime time.Duration) WatcherOption {
 }
 
 // Do is using the mongodb changestream feature to watch for oplogs of the specified collection
-func (w *watcher) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *WatchItem, error) {
+func (w *watcher) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *ChangeEvent, error) {
 	var emptyPipeline = []bson.M{}
 
 	opts := &options.ChangeStreamOptions{
@@ -76,15 +76,15 @@ func (w *watcher) Oplogs(ctx context.Context, collection CollectionAdapter) (cha
 		return nil, err
 	}
 
-	var itemsChan = make(chan *WatchItem)
+	var events = make(chan *ChangeEvent)
 
 	go func() {
-		defer close(itemsChan)
+		defer close(events)
 
 		for {
-			w.loop(ctx, cursor, itemsChan)
+			w.sendEvents(ctx, cursor, events)
 		}
 	}()
 
-	return itemsChan, nil
+	return events, nil
 }
