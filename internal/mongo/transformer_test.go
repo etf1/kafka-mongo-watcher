@@ -3,7 +3,6 @@ package mongo
 import (
 	"testing"
 
-	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/gol4ng/logger"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,9 +11,7 @@ import (
 
 func TestTransformChangeEventToKafkaMessageWhenHaveEvents(t *testing.T) {
 	// Given
-	logger := logger.NewNopLogger()
 	topic := "my-test-topic"
-	messages := make(chan *kafka.Message)
 
 	events := make(chan *ChangeEvent)
 	go func() {
@@ -31,8 +28,10 @@ func TestTransformChangeEventToKafkaMessageWhenHaveEvents(t *testing.T) {
 		}
 	}()
 
+	transformer := NewChangeEventKafkaMessageTransformer(topic, logger.NewNopLogger())
+
 	// When
-	go TransformChangeEventToKafkaMessage(logger, topic, events, messages)
+	messages := transformer.Transform(events)
 
 	// Then
 	assert := assert.New(t)
@@ -56,9 +55,7 @@ func TestTransformChangeEventToKafkaMessageWhenHaveEvents(t *testing.T) {
 
 func TestTransformChangeEventToKafkaMessageWhenDocumentIDError(t *testing.T) {
 	// Given
-	logger := logger.NewNopLogger()
 	topic := "my-test-topic"
-	messages := make(chan *kafka.Message)
 
 	events := make(chan *ChangeEvent)
 	go func() {
@@ -75,8 +72,10 @@ func TestTransformChangeEventToKafkaMessageWhenDocumentIDError(t *testing.T) {
 		}
 	}()
 
+	transformer := NewChangeEventKafkaMessageTransformer(topic, logger.NewNopLogger())
+
 	// When
-	go TransformChangeEventToKafkaMessage(logger, topic, events, messages)
+	messages := transformer.Transform(events)
 
 	// Then
 	assert := assert.New(t)

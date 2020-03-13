@@ -11,6 +11,7 @@ type KafkaRecorder interface {
 	IncKafkaProducerSuccessCounter(topic string)
 	IncKafkaProducerErrorCounter(topic string)
 	RegisterOn(registry prometheus.Registerer) KafkaRecorder
+	Unregister(registry prometheus.Registerer) KafkaRecorder
 }
 
 type kafkaRecorder struct {
@@ -76,7 +77,7 @@ func (r *kafkaRecorder) RegisterOn(registry prometheus.Registerer) KafkaRecorder
 }
 
 // Unregister allows to unregister kafka metrics from current Prometheus register
-func (r *kafkaRecorder) Unregister(registry prometheus.Registerer) *kafkaRecorder {
+func (r *kafkaRecorder) Unregister(registry prometheus.Registerer) KafkaRecorder {
 	registry.Unregister(r.clientProduceSuccessCounter)
 	registry.Unregister(r.clientProduceErrorCounter)
 	registry.Unregister(r.producerSuccessCounter)

@@ -5,28 +5,45 @@ import (
 	"github.com/gol4ng/logger"
 )
 
-// TransformChangeEventToKafkaMessage transforms mongodb change events into a format that will be used by the kafka client
-func TransformChangeEventToKafkaMessage(l logger.LoggerInterface, topic string, events chan *ChangeEvent, messages chan *kafka.Message) {
-	for event := range events {
-		documentID, err := event.documentID()
-		if err != nil {
-			l.Error("Mongo transformer: Unable to extract document id from event", logger.Error("error", err))
-			continue
-		}
+// ChangeEventKafkaMessageTransformer transforms mongodb change events into a format that will be used by the kafka client
+type ChangeEventKafkaMessageTransformer struct {
+	topic  string
+	logger logger.LoggerInterface
+}
 
-		jsonBytes, err := event.marshal()
-		if err != nil {
-			println(err.Error())
-			l.Error("Mongo transformer: Unable to unmarshal change event to json", logger.Error("error", err))
-			continue
-		}
+func (t *ChangeEventKafkaMessageTransformer) Transform(changeEvents chan *ChangeEvent) chan *kafka.Message {
+	var messageChan = make(chan *kafka.Message, len(changeEvents))
+	go func() {
+		defer close(messageChan)
+		for event := range changeEvents {
+			documentID, err := event.documentID()
+			if err != nil {
+				t.logger.Error("Mongo transformer: Unable to extract document id from event", logger.Error("error", err))
+				continue
+			}
 
-		l.Info("Mongo transformer: Retrieve event", logger.String("document_id", documentID), logger.ByteString("event", jsonBytes))
+			jsonBytes, err := event.marshal()
+			if err != nil {
+				println(err.Error())
+				t.logger.Error("Mongo transformer: Unable to unmarshal change event to json", logger.Error("error", err))
+				continue
+			}
 
-		messages <- &kafka.Message{
-			Topic: topic,
-			Key:   []byte(documentID),
-			Value: jsonBytes,
+			t.logger.Info("Mongo transformer: Retrieve event", logger.String("document_id", documentID), logger.ByteString("event", jsonBytes))
+
+			messageChan <- &kafka.Message{
+				Topic: t.topic,
+				Key:   []byte(documentID),
+				Value: jsonBytes,
+			}
 		}
+	}()
+	return messageChan
+}
+
+func NewChangeEventKafkaMessageTransformer(topic string, logger logger.LoggerInterface) *ChangeEventKafkaMessageTransformer {
+	return &ChangeEventKafkaMessageTransformer{
+		topic:  topic,
+		logger: logger,
 	}
 }

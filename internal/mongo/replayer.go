@@ -3,23 +3,16 @@ package mongo
 import (
 	"context"
 
+	"github.com/gol4ng/logger"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-type replayer struct {
-	*client
+type ReplayProducer struct {
+	collection CollectionAdapter
+	logger     logger.LoggerInterface
 }
 
-// NewReplayer returns a new mongodb client
-func NewReplayer(options ...Option) *replayer {
-	return &replayer{
-		client: newClient(options...),
-	}
-}
-
-// Do sends an aggregate query into mongodb to generate "oplogs-like" result of all the records
-// in the collection
-func (r *replayer) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *ChangeEvent, error) {
+func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error) {
 	var pipeline = bson.A{
 		bson.D{{Key: "$replaceRoot", Value: bson.D{
 			{
@@ -31,8 +24,8 @@ func (r *replayer) Oplogs(ctx context.Context, collection CollectionAdapter) (ch
 					},
 					"operationType": "insert",
 					"ns": bson.M{
-						"db":   collection.Database().Name(),
-						"coll": collection.Name(),
+						"db":   r.collection.Database().Name(),
+						"coll": r.collection.Name(),
 					},
 					"documentKey": bson.M{
 						"_id": "$_id",
@@ -43,7 +36,7 @@ func (r *replayer) Oplogs(ctx context.Context, collection CollectionAdapter) (ch
 		}}},
 	}
 
-	cursor, err := collection.Aggregate(ctx, pipeline)
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -57,3 +50,23 @@ func (r *replayer) Oplogs(ctx context.Context, collection CollectionAdapter) (ch
 
 	return events, nil
 }
+
+func (r *ReplayProducer) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) {
+	for cursor.Next(ctx) {
+		event := &ChangeEvent{}
+		if err := cursor.Decode(event); err != nil {
+			r.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
+			continue
+		}
+
+		events <- event
+	}
+}
+
+func NewReplayProducer(adapter CollectionAdapter, logger logger.LoggerInterface)*ReplayProducer{
+	return &ReplayProducer{
+		collection: adapter,
+		logger:     logger,
+	}
+}
+

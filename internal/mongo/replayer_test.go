@@ -34,14 +34,7 @@ var pipeline = bson.A{
 	}}},
 }
 
-func TestNewReplayer(t *testing.T) {
-	logger := logger.NewNopLogger()
-	replayer := NewReplayer(WithLogger(logger))
-
-	assert.Equal(t, logger, replayer.logger)
-}
-
-func TestReplayerOplogsWhenNoResults(t *testing.T) {
+func TestReplayProduceWhenNoResults(t *testing.T) {
 	ctx := context.Background()
 
 	ctrl := gomock.NewController(t)
@@ -58,10 +51,10 @@ func TestReplayerOplogsWhenNoResults(t *testing.T) {
 	mongoCollection.EXPECT().Name().Return("test-collection")
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
-	replayer := NewReplayer()
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
 
 	// When
-	events, err := replayer.Oplogs(ctx, mongoCollection)
+	events, err := replayer.Produce(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -74,9 +67,8 @@ func TestReplayerOplogsWhenNoResults(t *testing.T) {
 	assert.Equal(len(events), 0)
 }
 
-func TestReplayerOplogsWhenAggregateError(t *testing.T) {
+func TestReplayProduceWhenAggregateError(t *testing.T) {
 	ctx := context.Background()
-	replayer := NewReplayer()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -91,8 +83,9 @@ func TestReplayerOplogsWhenAggregateError(t *testing.T) {
 	mongoCursor := NewMockDriverCursor(ctrl)
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, errors.New("aggregate error"))
 
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
 	// When
-	events, err := replayer.Oplogs(ctx, mongoCollection)
+	events, err := replayer.Produce(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -102,9 +95,8 @@ func TestReplayerOplogsWhenAggregateError(t *testing.T) {
 
 }
 
-func TestReplayerOplogsWhenHaveResults(t *testing.T) {
+func TestReplayProduceWhenHaveResults(t *testing.T) {
 	ctx := context.Background()
-	replayer := NewReplayer()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -124,8 +116,10 @@ func TestReplayerOplogsWhenHaveResults(t *testing.T) {
 	mongoCollection.EXPECT().Name().Return("test-collection")
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
+
 	// When
-	events, err := replayer.Oplogs(ctx, mongoCollection)
+	events, err := replayer.Produce(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -138,9 +132,8 @@ func TestReplayerOplogsWhenHaveResults(t *testing.T) {
 	assert.Equal(len(events), 0)
 }
 
-func TestReplayerOplogsWhenResultsWithDecodeError(t *testing.T) {
+func TestReplayProduceWhenResultsWithDecodeError(t *testing.T) {
 	ctx := context.Background()
-	replayer := NewReplayer()
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -160,8 +153,10 @@ func TestReplayerOplogsWhenResultsWithDecodeError(t *testing.T) {
 	mongoCollection.EXPECT().Name().Return("test-collection")
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
+
 	// When
-	events, err := replayer.Oplogs(ctx, mongoCollection)
+	events, err := replayer.Produce(ctx)
 
 	// Then
 	assert := assert.New(t)

@@ -12,55 +12,80 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-func (container *Container) GetMongoReplayerClient() mongo.Client {
-	if container.mongoReplayerClient == nil {
-		var options = []mongo.Option{
-			mongo.WithLogger(container.GetLogger()),
+func (container *Container) GetChangeEvent(ctx context.Context) (changeEventChan chan *mongo.ChangeEvent, err error) {
+	l := container.GetLogger()
+	if container.Cfg.Replay {
+		changeEventChan, err = container.getReplayProducer(ctx).Produce(ctx)
+		if err != nil {
+			l.Error("Mongo produce replay error", logger.Error("error", err))
 		}
-
-		container.mongoReplayerClient = mongo.NewReplayer(options...)
+	} else {
+		changeEventChan, err = container.getWatchProducer(ctx).GetProducer(container.getWatchOptions()...)(ctx)
+		if err != nil {
+			l.Error("Mongo produce watch error", logger.Error("error", err))
+		}
 	}
-
-	return container.mongoReplayerClient
+	return changeEventChan, err
 }
 
-func (container *Container) GetMongoWatcherClient() mongo.Client {
-	if container.mongoWatcherClient == nil {
-		var configOptions = container.Cfg.MongoDB.Options
-		var options = []mongo.Option{
-			mongo.WithLogger(container.GetLogger()),
-		}
-
-		container.mongoWatcherClient = mongo.NewWatcher(options...).WithOptions(
-			mongo.WithBatchSize(configOptions.BatchSize),
-			mongo.WithFullDocument(configOptions.FullDocument),
-			mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
+func (container *Container) GetChangeEventKafkaMessageTransformer() *mongo.ChangeEventKafkaMessageTransformer {
+	if container.changeEventTransformerToKafkaMessage == nil {
+		container.changeEventTransformerToKafkaMessage = mongo.NewChangeEventKafkaMessageTransformer(
+			container.Cfg.Topic,
+			container.GetLogger(),
 		)
 	}
+	return container.changeEventTransformerToKafkaMessage
+}
 
-	return container.mongoWatcherClient
+func (container *Container) getReplayProducer(ctx context.Context) *mongo.ReplayProducer {
+	if container.replayProducer == nil {
+		container.replayProducer = mongo.NewReplayProducer(
+			container.GetMongoCollection(ctx),
+			container.GetLogger(),
+		)
+	}
+	return container.replayProducer
+}
+
+func (container *Container) getWatchProducer(ctx context.Context) *mongo.WatchProducer {
+	if container.watchProducer == nil {
+		container.watchProducer = mongo.NewWatchProducer(
+			container.GetMongoCollection(ctx),
+			container.GetLogger(),
+		)
+	}
+	return container.watchProducer
+}
+
+func (container *Container) getWatchOptions() []mongo.WatchOption {
+	configOptions := container.Cfg.MongoDB.Options
+	return []mongo.WatchOption{
+		mongo.WithBatchSize(configOptions.BatchSize),
+		mongo.WithFullDocument(configOptions.FullDocument),
+		mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
+	}
+}
+
+func (container *Container) GetMongoCollection(ctx context.Context) mongo.CollectionAdapter {
+	if container.mongoCollection == nil {
+		container.mongoCollection = mongo.NewCollectionAdapter(
+			container.GetMongoConnection(ctx).Collection(container.Cfg.MongoDB.CollectionName),
+		)
+	}
+	return container.mongoCollection
 }
 
 func (container *Container) GetMongoConnection(ctx context.Context) *mongodriver.Database {
 	if container.mongoDB == nil {
 		mongoCfg := container.Cfg.MongoDB
-
 		if db, err := newMongoClient(ctx, container.GetLogger(), mongoCfg.URI, mongoCfg.DatabaseName); err != nil {
 			panic(err)
 		} else {
 			container.mongoDB = db
 		}
 	}
-
 	return container.mongoDB
-}
-
-func (container *Container) GetMongoCollection(ctx context.Context) mongo.CollectionAdapter {
-	if container.mongoCollection == nil {
-		container.mongoCollection = mongo.NewCollectionAdapter(container.GetMongoConnection(ctx).Collection(container.Cfg.MongoDB.CollectionName))
-	}
-
-	return container.mongoCollection
 }
 
 func newMongoClient(ctx context.Context, log logger.LoggerInterface, uri, database string) (*mongodriver.Database, error) {

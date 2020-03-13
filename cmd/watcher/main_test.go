@@ -51,17 +51,17 @@ func TestMainModeReplay(t *testing.T) {
 	defer container.GetKafkaRecorder().Unregister(
 		container.GetMetricsRegistry(),
 	)
-	logger := container.GetLogger()
 
 	// Given fixtures are inserted into MongoDB collection first
 	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))
 
 	// When worker is running in replay mode
-	events := getMongoEvents(ctx, container)
-	messages := make(chan *kafka.Message)
-	go transformMongoEventsToKafkaMessages(logger, container.Cfg.Kafka.Topic, events, messages)
-
-	go container.GetKafkaProducerPool().Produce(ctx, messages)
+	changeEventChan, err := container.GetChangeEvent(ctx)
+	if err != nil {
+		panic(err)
+	}
+	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
+	container.GetKafkaProducerPool().Produce(ctx, kafkaMessageChan)
 
 	// Then
 	assert := assert.New(t)
@@ -81,14 +81,14 @@ func TestMainModeWatch(t *testing.T) {
 	defer container.GetKafkaRecorder().Unregister(
 		container.GetMetricsRegistry(),
 	)
-	logger := container.GetLogger()
 
 	// When worker is running in watch mode
-	events := getMongoEvents(ctx, container)
-	messages := make(chan *kafka.Message)
-	go transformMongoEventsToKafkaMessages(logger, container.Cfg.Kafka.Topic, events, messages)
-
-	go container.GetKafkaProducerPool().Produce(ctx, messages)
+	changeEventChan, err := container.GetChangeEvent(ctx)
+	if err != nil {
+		panic(err)
+	}
+	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
+	go container.GetKafkaProducerPool().Produce(ctx, kafkaMessageChan)
 
 	// And I insert fixtures in mongodb collection
 	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))

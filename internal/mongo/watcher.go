@@ -9,82 +9,107 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type WatcherOption func(*watcher)
+type WatchProducer struct {
+	collection CollectionAdapter
+	logger     logger.LoggerInterface
+}
 
-type watcher struct {
-	*client
+func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
+	return func(ctx context.Context) (chan *ChangeEvent, error) {
 
-	fullDocumentEnabled bool
+		config := NewWatchConfig(o...)
+		var emptyPipeline = []bson.M{}
+
+		opts := &options.ChangeStreamOptions{
+			BatchSize:    &config.batchSize,
+			MaxAwaitTime: &config.maxAwaitTime,
+		}
+		if config.fullDocumentEnabled {
+			opts.SetFullDocument(options.UpdateLookup)
+		}
+
+		cursor, err := w.collection.Watch(ctx, emptyPipeline, opts)
+		if err != nil {
+			w.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+			return nil, err
+		}
+
+		var events = make(chan *ChangeEvent)
+
+		go func() {
+			defer close(events)
+
+			for {
+				w.sendEvents(ctx, cursor, events)
+			}
+		}()
+
+		return events, nil
+	}
+}
+
+func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) {
+	for cursor.Next(ctx) {
+		event := &ChangeEvent{}
+		if err := cursor.Decode(event); err != nil {
+			w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
+			continue
+		}
+
+		events <- event
+	}
+}
+
+func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface)*WatchProducer{
+	return &WatchProducer{
+		collection: adapter,
+		logger:     logger,
+	}
+}
+
+type WatchOption func(*WatchConfig)
+
+type WatchConfig struct {
 	batchSize           int32
+	fullDocumentEnabled bool
 	maxAwaitTime        time.Duration
 }
 
-// NewWatcher returns a new mongodb client
-func NewWatcher(options ...Option) *watcher {
-	return &watcher{
-		client:              newClient(options...),
-		fullDocumentEnabled: false,
+func (o *WatchConfig) apply(options ...WatchOption) {
+	for _, option := range options {
+		option(o)
 	}
 }
 
-func (w *watcher) WithOptions(options ...WatcherOption) *watcher {
-	for _, option := range options {
-		option(w)
+func NewWatchConfig(o ...WatchOption) *WatchConfig {
+	watchOptions := &WatchConfig{
+		batchSize:           0,
+		fullDocumentEnabled: false,
+		maxAwaitTime:        0,
 	}
-
-	return w
+	watchOptions.apply(o...)
+	return watchOptions
 }
 
 // WithBatchSize allows to specify a batch size when using changestream event
-func WithBatchSize(batchSize int32) WatcherOption {
-	return func(w *watcher) {
+func WithBatchSize(batchSize int32) WatchOption {
+	return func(w *WatchConfig) {
 		w.batchSize = batchSize
 	}
 }
 
 // WithFullDocument allows to returns the full document in oplogs when using
 // changestream event
-func WithFullDocument(enabled bool) WatcherOption {
-	return func(w *watcher) {
+func WithFullDocument(enabled bool) WatchOption {
+	return func(w *WatchConfig) {
 		w.fullDocumentEnabled = enabled
 	}
 }
 
 // WithMaxAwaitTime allows to specify the maximum await for new oplogs when using
 // changestream event
-func WithMaxAwaitTime(maxAwaitTime time.Duration) WatcherOption {
-	return func(w *watcher) {
+func WithMaxAwaitTime(maxAwaitTime time.Duration) WatchOption {
+	return func(w *WatchConfig) {
 		w.maxAwaitTime = maxAwaitTime
 	}
-}
-
-// Do is using the mongodb changestream feature to watch for oplogs of the specified collection
-func (w *watcher) Oplogs(ctx context.Context, collection CollectionAdapter) (chan *ChangeEvent, error) {
-	var emptyPipeline = []bson.M{}
-
-	opts := &options.ChangeStreamOptions{
-		BatchSize:    &w.batchSize,
-		MaxAwaitTime: &w.maxAwaitTime,
-	}
-	if w.fullDocumentEnabled {
-		opts.SetFullDocument(options.UpdateLookup)
-	}
-
-	cursor, err := collection.Watch(ctx, emptyPipeline, opts)
-	if err != nil {
-		w.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", collection.Name()), logger.Error("error", err))
-		return nil, err
-	}
-
-	var events = make(chan *ChangeEvent)
-
-	go func() {
-		defer close(events)
-
-		for {
-			w.sendEvents(ctx, cursor, events)
-		}
-	}()
-
-	return events, nil
 }

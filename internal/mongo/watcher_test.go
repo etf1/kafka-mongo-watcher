@@ -13,20 +13,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func TestNewWatcher(t *testing.T) {
-	logger := logger.NewNopLogger()
-	watcher := NewWatcher(WithLogger(logger))
-
-	assert.Equal(t, logger, watcher.logger)
-}
-
-func TestWatcherOplogsWhenNoResults(t *testing.T) {
+func TestWatchProduceWhenNoResults(t *testing.T) {
 	ctx := context.Background()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
-
-	watcher := NewWatcher().
-		WithOptions(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))
 
 	opts := &options.ChangeStreamOptions{
 		BatchSize:    &batchSize,
@@ -44,8 +34,10 @@ func TestWatcherOplogsWhenNoResults(t *testing.T) {
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
 
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger())
+
 	// When
-	events, err := watcher.Oplogs(ctx, mongoCollection)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -55,13 +47,10 @@ func TestWatcherOplogsWhenNoResults(t *testing.T) {
 	assert.Equal(len(events), 0)
 }
 
-func TestWatcherOplogsWhenWatchError(t *testing.T) {
+func TestWatchProduceWhenWatchError(t *testing.T) {
 	ctx := context.Background()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
-
-	watcher := NewWatcher().
-		WithOptions(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))
 
 	opts := &options.ChangeStreamOptions{
 		BatchSize:    &batchSize,
@@ -79,8 +68,10 @@ func TestWatcherOplogsWhenWatchError(t *testing.T) {
 	mongoCollection.EXPECT().Watch(ctx, []bson.M{}, opts).Return(mongoCursor, expectedErr)
 	mongoCollection.EXPECT().Name()
 
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger())
+
 	// When
-	events, err := watcher.Oplogs(ctx, mongoCollection)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -90,15 +81,13 @@ func TestWatcherOplogsWhenWatchError(t *testing.T) {
 	assert.Equal(len(events), 0)
 }
 
-func TestWatcherOplogsWhenHaveResults(t *testing.T) {
+func TestWatchProduceWhenHaveResults(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 
 	ctx := context.Background()
-	watcher := NewWatcher().
-		WithOptions(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))
 
 	opts := &options.ChangeStreamOptions{
 		BatchSize:    &batchSize,
@@ -116,8 +105,10 @@ func TestWatcherOplogsWhenHaveResults(t *testing.T) {
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(nil).AnyTimes()
 
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger())
+
 	// When
-	events, err := watcher.Oplogs(ctx, mongoCollection)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
 
 	// Then
 	assert := assert.New(t)

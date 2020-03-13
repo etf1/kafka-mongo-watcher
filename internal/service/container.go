@@ -22,14 +22,15 @@ type Container struct {
 	mongoDB         *mongodriver.Database
 	mongoCollection mongo.CollectionAdapter
 
+	replayProducer *mongo.ReplayProducer
+	watchProducer *mongo.WatchProducer
+	changeEventTransformerToKafkaMessage *mongo.ChangeEventKafkaMessageTransformer
+
 	kafkaProducer *kafkaconfluent.Producer
 	kafkaRecorder metrics.KafkaRecorder
 
 	kafkaClient       kafka.Client
 	kafkaProducerPool kafka.ProducerPool
-
-	mongoReplayerClient mongo.Client
-	mongoWatcherClient  mongo.Client
 }
 
 // NewContainer returns a dependency injection container that allows

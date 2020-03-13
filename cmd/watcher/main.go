@@ -6,8 +6,6 @@ import (
 	"syscall"
 
 	"github.com/etf1/kafka-mongo-watcher/config"
-	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
-	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/etf1/kafka-mongo-watcher/internal/service"
 	"github.com/gol4ng/logger"
 	signal_subscriber "github.com/gol4ng/signal"
@@ -17,46 +15,18 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.NewBase(ctx)
 
+	// TODO pass base context
 	container := service.NewContainer(cfg)
-	logger := container.GetLogger()
-
 	go container.GetTechServer().Start(ctx)
 
 	defer handleExitSignal(ctx, cancel, container)()
 
-	events := getMongoEvents(ctx, container)
-	messages := make(chan *kafka.Message)
-	go transformMongoEventsToKafkaMessages(logger, container.Cfg.Kafka.Topic, events, messages)
-
-	container.GetKafkaProducerPool().Produce(ctx, messages)
-}
-
-func getMongoEvents(ctx context.Context, container *service.Container) chan *mongo.ChangeEvent {
-	mongoClient := getMongoClient(container)
-	collection := container.GetMongoCollection(ctx)
-
-	events, err := mongoClient.Oplogs(ctx, collection)
+	changeEventChan, err := container.GetChangeEvent(ctx)
 	if err != nil {
-		println(err.Error())
-		container.GetLogger().Error("error")
+		panic(err)
 	}
-
-	return events
-}
-
-func getMongoClient(container *service.Container) (client mongo.Client) {
-	if container.Cfg.Replay {
-		client = container.GetMongoReplayerClient()
-	} else {
-		client = container.GetMongoWatcherClient()
-	}
-
-	return
-}
-
-func transformMongoEventsToKafkaMessages(logger logger.LoggerInterface, topic string, events chan *mongo.ChangeEvent, messages chan *kafka.Message) {
-	defer close(messages)
-	mongo.TransformChangeEventToKafkaMessage(logger, topic, events, messages)
+	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
+	container.GetKafkaProducerPool().Produce(ctx, kafkaMessageChan)
 }
 
 // Handle for an exit signal in order to quit application on a proper way (shutting down connections and servers)
