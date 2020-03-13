@@ -17,10 +17,5 @@ func NewLiveness(logger logger.LoggerInterface) http.Handler {
 
 // ServeHTTP handles an HTTP request
 func (h Liveness) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		respond(w, errorJSON("only GET requests are supported"), http.StatusMethodNotAllowed)
-		return
-	}
-
 	w.WriteHeader(http.StatusOK)
 }

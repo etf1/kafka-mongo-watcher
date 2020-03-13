@@ -24,7 +24,6 @@ func (t *ChangeEventKafkaMessageTransformer) Transform(changeEvents chan *Change
 
 			jsonBytes, err := event.marshal()
 			if err != nil {
-				println(err.Error())
 				t.logger.Error("Mongo transformer: Unable to unmarshal change event to json", logger.Error("error", err))
 				continue
 			}

@@ -3,7 +3,6 @@ mocks:
 	mockgen -source=internal/kafka/client.go -destination=internal/kafka/client_mock.go -package=kafka
 	mockgen -source=internal/kafka/producer.go -destination=internal/kafka/producer_mock.go -package=kafka
 	mockgen -source=internal/metrics/kafka.go -destination=internal/metrics/kafka_mock.go -package=metrics
-	mockgen -source=internal/mongo/client.go -destination=internal/mongo/client_mock.go -package=mongo
 	mockgen -source=internal/mongo/collection.go -destination=internal/mongo/collection_mock.go -package=mongo
 
 clean:

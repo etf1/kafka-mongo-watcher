@@ -58,9 +58,9 @@ func getTechHttpHandler(pprofEnabled bool, logger logger.LoggerInterface) http.H
 	livenessHandler := handler.NewLiveness(logger)
 
 	router := mux.NewRouter()
-	router.Handle("/metrics", promhttp.Handler())
-	router.Handle("/liveness", livenessHandler)
-	router.Handle("/readiness", livenessHandler)
+	router.Methods(http.MethodGet).Path("/metrics").Handler(promhttp.Handler())
+	router.Methods(http.MethodGet).Path("/liveness").Handler(livenessHandler)
+	router.Methods(http.MethodGet).Path("/readiness").Handler(livenessHandler)
 
 	if pprofEnabled {
 		router.HandleFunc("/debug/pprof/", pprof.Index)

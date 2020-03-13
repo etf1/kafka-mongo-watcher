@@ -15,7 +15,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.NewBase(ctx)
 
-	// TODO pass base context
 	container := service.NewContainer(cfg, ctx)
 	go container.GetTechServer().Start(ctx)
 

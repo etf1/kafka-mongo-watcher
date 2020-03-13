@@ -58,9 +58,9 @@ func TestClientLoggerEvents(t *testing.T) {
 	client := NewMockClient(ctrl)
 	client.EXPECT().Events().Return(events)
 
-	loggeer := logger.NewNopLogger()
+	logger := logger.NewNopLogger()
 
-	cli := NewClientLogger(client, loggeer)
+	cli := NewClientLogger(client, logger)
 
 	// When
 	result := cli.Events()
