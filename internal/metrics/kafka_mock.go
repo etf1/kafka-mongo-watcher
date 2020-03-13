@@ -94,3 +94,17 @@ func (mr *MockKafkaRecorderMockRecorder) RegisterOn(registry interface{}) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterOn", reflect.TypeOf((*MockKafkaRecorder)(nil).RegisterOn), registry)
 }
+
+// Unregister mocks base method
+func (m *MockKafkaRecorder) Unregister(registry prometheus.Registerer) KafkaRecorder {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unregister", registry)
+	ret0, _ := ret[0].(KafkaRecorder)
+	return ret0
+}
+
+// Unregister indicates an expected call of Unregister
+func (mr *MockKafkaRecorderMockRecorder) Unregister(registry interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unregister", reflect.TypeOf((*MockKafkaRecorder)(nil).Unregister), registry)
+}
