@@ -72,6 +72,11 @@ $ ./kafka-mongo-watcher -KAFKA_MONGO_WATCHER_REPLAY=true
 
 ## Available configuration variables
 
+In dev environment you can copy `.env.dist` in `.env` and edit his content in order to customize easily the env variables.
+
+You can set/override configuration variables from `.env` file and from `variables environment` and or from cli arguments 
+(If a variables was configured in multiple sources the last will override the previous one) 
+
 #### KAFKA_MONGO_WATCHER_REPLAY
 *Type*: bool
 
