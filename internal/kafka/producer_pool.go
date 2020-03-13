@@ -44,6 +44,8 @@ func (w *producerPool) Close() {
 
 // Produce allows to retrieve kafka messages from channel and produce them using the kafka client
 func (w *producerPool) Produce(ctx context.Context, messages chan *Message) {
+	defer w.client.Close()
+
 	for i := 0; i < w.number; i++ {
 		atomic.AddInt32(&w.numberRunning, 1)
 		w.waitGroup.Add(1)

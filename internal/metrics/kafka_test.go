@@ -37,8 +37,7 @@ func TestNewKafkaRecorder(t *testing.T) {
 	// Then
 	assert := assert.New(t)
 	assert.IsType(new(kafkaRecorder), recorder)
-	assert.IsType(new(prometheus.CounterVec), recorder.clientProduceSuccessCounter)
-	assert.IsType(new(prometheus.CounterVec), recorder.clientProduceErrorCounter)
+	assert.IsType(new(prometheus.CounterVec), recorder.clientProduceCounter)
 	assert.IsType(new(prometheus.CounterVec), recorder.producerSuccessCounter)
 	assert.IsType(new(prometheus.CounterVec), recorder.producerErrorCounter)
 }
@@ -54,7 +53,7 @@ func TestRegisterOn(t *testing.T) {
 
 	// Then
 	assert := assert.New(t)
-	assert.Len(testRegistry.collectors, 4)
+	assert.Len(testRegistry.collectors, 3)
 }
 
 func TestUnregister(t *testing.T) {
@@ -67,7 +66,7 @@ func TestUnregister(t *testing.T) {
 	recorder := NewKafkaRecorder()
 	recorder.RegisterOn(testRegistry)
 
-	assert.Len(testRegistry.collectors, 4)
+	assert.Len(testRegistry.collectors, 3)
 
 	// And unregistering metrics
 	recorder.Unregister(testRegistry)
@@ -76,7 +75,7 @@ func TestUnregister(t *testing.T) {
 	assert.Len(testRegistry.collectors, 0)
 }
 
-func TestIncKafkaClientProduceSuccessCounter(t *testing.T) {
+func TestIncKafkaClientProduceCounter(t *testing.T) {
 	// Given
 	recorder := NewKafkaRecorder()
 
@@ -84,32 +83,14 @@ func TestIncKafkaClientProduceSuccessCounter(t *testing.T) {
 	recorder.RegisterOn(testRegistry)
 
 	// When
-	recorder.IncKafkaClientProduceSuccessCounter("test-topic")
-	recorder.IncKafkaClientProduceSuccessCounter("test-topic")
-	recorder.IncKafkaClientProduceSuccessCounter("test-topic")
+	recorder.IncKafkaClientProduceCounter("test-topic")
+	recorder.IncKafkaClientProduceCounter("test-topic")
+	recorder.IncKafkaClientProduceCounter("test-topic")
 
 	// Then
 	assert := assert.New(t)
 
-	assert.Equal(float64(3), testutil.ToFloat64(recorder.clientProduceSuccessCounter))
-}
-
-func TestIncKafkaClientProduceErrorCounter(t *testing.T) {
-	// Given
-	recorder := NewKafkaRecorder()
-
-	testRegistry := &prometheusRegistererMock{}
-	recorder.RegisterOn(testRegistry)
-
-	// When
-	recorder.IncKafkaClientProduceErrorCounter("test-topic")
-	recorder.IncKafkaClientProduceErrorCounter("test-topic")
-	recorder.IncKafkaClientProduceErrorCounter("test-topic")
-
-	// Then
-	assert := assert.New(t)
-
-	assert.Equal(float64(3), testutil.ToFloat64(recorder.clientProduceErrorCounter))
+	assert.Equal(float64(3), testutil.ToFloat64(recorder.clientProduceCounter))
 }
 
 func TestIncKafkaProducerSuccessCounter(t *testing.T) {

@@ -33,15 +33,9 @@ func (c *clientMetric) Record() {
 }
 
 // Produce adds tracing information on the message and then produces it
-func (c *clientMetric) Produce(message *kafka.Message) error {
-	err := c.client.Produce(message)
-	if err != nil {
-		c.recorder.IncKafkaClientProduceErrorCounter(*message.TopicPartition.Topic)
-	} else {
-		c.recorder.IncKafkaClientProduceSuccessCounter(*message.TopicPartition.Topic)
-	}
-
-	return err
+func (c *clientMetric) Produce(message *kafka.Message) {
+	c.recorder.IncKafkaClientProduceCounter(*message.TopicPartition.Topic)
+	c.client.Produce(message)
 }
 
 // Events returns the kafka producer events

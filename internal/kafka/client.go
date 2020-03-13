@@ -5,7 +5,7 @@ import (
 )
 
 type Client interface {
-	Produce(message *kafka.Message) error
+	Produce(message *kafka.Message)
 	Events() chan kafka.Event
 	Close()
 }
@@ -22,8 +22,8 @@ func NewClient(producer KafkaProducer) *client {
 }
 
 // Produce sends a message using the producer
-func (c *client) Produce(message *kafka.Message) error {
-	return c.producer.Produce(message, nil)
+func (c *client) Produce(message *kafka.Message) {
+	c.producer.ProduceChannel() <- message
 }
 
 // Events returns the kafka producer events
@@ -33,5 +33,9 @@ func (c *client) Events() chan kafka.Event {
 
 // Close allows to close/disconnect the kafka client
 func (c *client) Close() {
+	for wait := true; wait; wait = c.producer.Len() > 0 {
+		// Wait for all events to be retrieved from Kafka library
+	}
+
 	c.producer.Close()
 }

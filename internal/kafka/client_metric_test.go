@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
@@ -28,7 +27,7 @@ func TestNewClientMetric(t *testing.T) {
 	assert.Equal(t, recorder, cli.recorder)
 }
 
-func TestClientMetricProduceWhenSuccess(t *testing.T) {
+func TestClientMetricProduce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -41,47 +40,15 @@ func TestClientMetricProduceWhenSuccess(t *testing.T) {
 	}
 
 	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message).Return(nil)
+	client.EXPECT().Produce(message)
 
 	recorder := metrics.NewMockKafkaRecorder(ctrl)
-	recorder.EXPECT().IncKafkaClientProduceSuccessCounter("test-topic")
+	recorder.EXPECT().IncKafkaClientProduceCounter("test-topic")
 
 	cli := NewClientMetric(client, recorder)
 
-	// When
-	err := cli.Produce(message)
-
-	// Then
-	assert.Nil(t, err)
-}
-
-func TestClientMetricProduceWhenError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	// Given
-	expectedErr := errors.New("an unexpected error occurred")
-
-	var topicName = "test-topic"
-	message := &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{
-			Topic: &topicName,
-		},
-	}
-
-	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message).Return(expectedErr)
-
-	recorder := metrics.NewMockKafkaRecorder(ctrl)
-	recorder.EXPECT().IncKafkaClientProduceErrorCounter("test-topic")
-
-	cli := NewClientMetric(client, recorder)
-
-	// When
-	err := cli.Produce(message)
-
-	// Then
-	assert.Equal(t, err, expectedErr)
+	// When - Then
+	cli.Produce(message)
 }
 
 func TestClientMetricEvents(t *testing.T) {

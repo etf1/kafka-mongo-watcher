@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -24,42 +23,27 @@ func TestNewClient(t *testing.T) {
 	assert.Equal(t, producer, cli.producer)
 }
 
-func TestClientProduceWhenSuccess(t *testing.T) {
+func TestClientProduce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	// Given
+	produceChannel := make(chan *kafkaconfluent.Message, 1)
+
 	message := &kafkaconfluent.Message{}
 	producer := NewMockKafkaProducer(ctrl)
-	producer.EXPECT().Produce(message, nil).Return(nil)
+	producer.EXPECT().ProduceChannel().Return(produceChannel)
 
 	cli := NewClient(producer)
 
 	// When
-	err := cli.Produce(message)
+	cli.Produce(message)
 
 	// Then
-	assert.Nil(t, err)
-}
+	inserted := <-produceChannel
 
-func TestClientProduceWhenError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	// Given
-	expectedErr := errors.New("an unexpected error occured")
-
-	message := &kafkaconfluent.Message{}
-	producer := NewMockKafkaProducer(ctrl)
-	producer.EXPECT().Produce(message, nil).Return(expectedErr)
-
-	cli := NewClient(producer)
-
-	// When
-	err := cli.Produce(message)
-
-	// Then
-	assert.Equal(t, err, expectedErr)
+	assert := assert.New(t)
+	assert.IsType(new(kafkaconfluent.Message), inserted)
 }
 
 func TestClientEvents(t *testing.T) {
@@ -86,6 +70,7 @@ func TestClientClose(t *testing.T) {
 
 	// Given
 	producer := NewMockKafkaProducer(ctrl)
+	producer.EXPECT().Len().Return(0)
 	producer.EXPECT().Close()
 
 	cli := NewClient(producer)

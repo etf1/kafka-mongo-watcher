@@ -33,28 +33,16 @@ func (m *MockKafkaRecorder) EXPECT() *MockKafkaRecorderMockRecorder {
 	return m.recorder
 }
 
-// IncKafkaClientProduceSuccessCounter mocks base method
-func (m *MockKafkaRecorder) IncKafkaClientProduceSuccessCounter(topic string) {
+// IncKafkaClientProduceCounter mocks base method
+func (m *MockKafkaRecorder) IncKafkaClientProduceCounter(topic string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "IncKafkaClientProduceSuccessCounter", topic)
+	m.ctrl.Call(m, "IncKafkaClientProduceCounter", topic)
 }
 
-// IncKafkaClientProduceSuccessCounter indicates an expected call of IncKafkaClientProduceSuccessCounter
-func (mr *MockKafkaRecorderMockRecorder) IncKafkaClientProduceSuccessCounter(topic interface{}) *gomock.Call {
+// IncKafkaClientProduceCounter indicates an expected call of IncKafkaClientProduceCounter
+func (mr *MockKafkaRecorderMockRecorder) IncKafkaClientProduceCounter(topic interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncKafkaClientProduceSuccessCounter", reflect.TypeOf((*MockKafkaRecorder)(nil).IncKafkaClientProduceSuccessCounter), topic)
-}
-
-// IncKafkaClientProduceErrorCounter mocks base method
-func (m *MockKafkaRecorder) IncKafkaClientProduceErrorCounter(topic string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "IncKafkaClientProduceErrorCounter", topic)
-}
-
-// IncKafkaClientProduceErrorCounter indicates an expected call of IncKafkaClientProduceErrorCounter
-func (mr *MockKafkaRecorderMockRecorder) IncKafkaClientProduceErrorCounter(topic interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncKafkaClientProduceErrorCounter", reflect.TypeOf((*MockKafkaRecorder)(nil).IncKafkaClientProduceErrorCounter), topic)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncKafkaClientProduceCounter", reflect.TypeOf((*MockKafkaRecorder)(nil).IncKafkaClientProduceCounter), topic)
 }
 
 // IncKafkaProducerSuccessCounter mocks base method

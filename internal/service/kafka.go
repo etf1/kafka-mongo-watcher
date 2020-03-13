@@ -9,8 +9,7 @@ import (
 func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 	if container.kafkaProducer == nil {
 		producer, err := kafkaconfluent.NewProducer(&kafkaconfluent.ConfigMap{
-			"bootstrap.servers":      container.Cfg.Kafka.BootstrapServers,
-			"statistics.interval.ms": 1000,
+			"bootstrap.servers": container.Cfg.Kafka.BootstrapServers,
 		})
 		if err != nil {
 			panic(err)

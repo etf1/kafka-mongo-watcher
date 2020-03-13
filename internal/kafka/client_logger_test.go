@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/gol4ng/logger"
@@ -28,7 +27,7 @@ func TestNewClientLogger(t *testing.T) {
 	assert.Equal(t, logger, cli.logger)
 }
 
-func TestClientLoggerProduceWhenSuccess(t *testing.T) {
+func TestClientLoggerProduce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -46,38 +45,8 @@ func TestClientLoggerProduceWhenSuccess(t *testing.T) {
 	logger := logger.NewNopLogger()
 	cli := NewClientLogger(client, logger)
 
-	// When
-	err := cli.Produce(message)
-
-	// Then
-	assert.Nil(t, err)
-}
-
-func TestClientLoggerProduceWhenError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	// Given
-	expectedErr := errors.New("an unexpected error occurred")
-
-	var topicName = "test-topic"
-	message := &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{
-			Topic: &topicName,
-		},
-	}
-
-	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message).Return(expectedErr)
-
-	logger := logger.NewNopLogger()
-	cli := NewClientLogger(client, logger)
-
-	// When
-	err := cli.Produce(message)
-
-	// Then
-	assert.Equal(t, err, expectedErr)
+	// When - Then
+	cli.Produce(message)
 }
 
 func TestClientLoggerEvents(t *testing.T) {

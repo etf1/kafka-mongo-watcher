@@ -59,6 +59,20 @@ func (mr *MockKafkaProducerMockRecorder) Events() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Events", reflect.TypeOf((*MockKafkaProducer)(nil).Events))
 }
 
+// Len mocks base method
+func (m *MockKafkaProducer) Len() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Len")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// Len indicates an expected call of Len
+func (mr *MockKafkaProducerMockRecorder) Len() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Len", reflect.TypeOf((*MockKafkaProducer)(nil).Len))
+}
+
 // Produce mocks base method
 func (m *MockKafkaProducer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	m.ctrl.T.Helper()
@@ -71,4 +85,18 @@ func (m *MockKafkaProducer) Produce(msg *kafka.Message, deliveryChan chan kafka.
 func (mr *MockKafkaProducerMockRecorder) Produce(msg, deliveryChan interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockKafkaProducer)(nil).Produce), msg, deliveryChan)
+}
+
+// ProduceChannel mocks base method
+func (m *MockKafkaProducer) ProduceChannel() chan *kafka.Message {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProduceChannel")
+	ret0, _ := ret[0].(chan *kafka.Message)
+	return ret0
+}
+
+// ProduceChannel indicates an expected call of ProduceChannel
+func (mr *MockKafkaProducerMockRecorder) ProduceChannel() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProduceChannel", reflect.TypeOf((*MockKafkaProducer)(nil).ProduceChannel))
 }

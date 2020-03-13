@@ -39,9 +39,9 @@ func NewClientTracer(cli Client, fn tracerFunc) *clientTracer {
 }
 
 // Produce adds tracing information on the message and then produces it
-func (c *clientTracer) Produce(message *kafka.Message) error {
+func (c *clientTracer) Produce(message *kafka.Message) {
 	c.fn(message)
-	return c.client.Produce(message)
+	c.client.Produce(message)
 }
 
 // Events returns the kafka producer events

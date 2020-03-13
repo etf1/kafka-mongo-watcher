@@ -86,6 +86,7 @@ func TestProduceWhenMessages(t *testing.T) {
 		Key:            []byte(`1`),
 		Value:          []byte(`A test value to be sent`),
 	})
+	kafkaClient.EXPECT().Close()
 
 	producer := NewProducerPool(logger, kafkaClient, number)
 
@@ -113,33 +114,7 @@ func TestProduceWhenNoMongoEvent(t *testing.T) {
 	close(messages)
 
 	kafkaClient := NewMockClient(ctrl)
-
-	producer := NewProducerPool(logger, kafkaClient, number)
-
-	// When - Then
-	producer.Produce(ctx, messages)
-
-	// Then
-	assert := assert.New(t)
-	assert.Equal(producer.numberRunning, int32(0))
-	assert.Equal(cap(messages), 0)
-	assert.Equal(len(messages), 0)
-}
-
-func TestProduceWhenError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	// Given
-	ctx := context.Background()
-	number := 5
-
-	logger := logger.NewNopLogger()
-
-	messages := make(chan *Message)
-	close(messages)
-
-	kafkaClient := NewMockClient(ctrl)
+	kafkaClient.EXPECT().Close()
 
 	producer := NewProducerPool(logger, kafkaClient, number)
 

@@ -6,8 +6,7 @@ import (
 
 // KafkaRecorder allows to record metrics about Kafka
 type KafkaRecorder interface {
-	IncKafkaClientProduceSuccessCounter(topic string)
-	IncKafkaClientProduceErrorCounter(topic string)
+	IncKafkaClientProduceCounter(topic string)
 	IncKafkaProducerSuccessCounter(topic string)
 	IncKafkaProducerErrorCounter(topic string)
 	RegisterOn(registry prometheus.Registerer) KafkaRecorder
@@ -15,29 +14,20 @@ type KafkaRecorder interface {
 }
 
 type kafkaRecorder struct {
-	clientProduceSuccessCounter *prometheus.CounterVec
-	clientProduceErrorCounter   *prometheus.CounterVec
-	producerSuccessCounter      *prometheus.CounterVec
-	producerErrorCounter        *prometheus.CounterVec
+	clientProduceCounter   *prometheus.CounterVec
+	producerSuccessCounter *prometheus.CounterVec
+	producerErrorCounter   *prometheus.CounterVec
 }
 
 // NewKafkaRecorder returns a kafka recorder that is used to send metrics
 func NewKafkaRecorder() *kafkaRecorder {
 	return &kafkaRecorder{
 		// Kafka producer metrics
-		clientProduceSuccessCounter: prometheus.NewCounterVec(
+		clientProduceCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "kafka",
-				Name:      "client_produce_success_counter_total",
-				Help:      "This represent the number of successful messages pushed by Kafka client",
-			},
-			[]string{"topic"},
-		),
-		clientProduceErrorCounter: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Namespace: "kafka",
-				Name:      "client_produce_error_counter_total",
-				Help:      "This represent the number of error messages handled by Kafka client",
+				Name:      "client_produce_counter_total",
+				Help:      "This represent the number of messages pushed by Kafka client",
 			},
 			[]string{"topic"},
 		),
@@ -67,8 +57,7 @@ func (r *kafkaRecorder) RegisterOn(registry prometheus.Registerer) KafkaRecorder
 	}
 
 	registry.MustRegister(
-		r.clientProduceSuccessCounter,
-		r.clientProduceErrorCounter,
+		r.clientProduceCounter,
 		r.producerSuccessCounter,
 		r.producerErrorCounter,
 	)
@@ -78,22 +67,16 @@ func (r *kafkaRecorder) RegisterOn(registry prometheus.Registerer) KafkaRecorder
 
 // Unregister allows to unregister kafka metrics from current Prometheus register
 func (r *kafkaRecorder) Unregister(registry prometheus.Registerer) KafkaRecorder {
-	registry.Unregister(r.clientProduceSuccessCounter)
-	registry.Unregister(r.clientProduceErrorCounter)
+	registry.Unregister(r.clientProduceCounter)
 	registry.Unregister(r.producerSuccessCounter)
 	registry.Unregister(r.producerErrorCounter)
 
 	return r
 }
 
-// IncKafkaClientProduceSuccessCounter increments the client produce success counter
-func (r *kafkaRecorder) IncKafkaClientProduceSuccessCounter(topic string) {
-	r.clientProduceSuccessCounter.WithLabelValues(topic).Inc()
-}
-
-// IncKafkaClientProduceErrorounter increments the client produce error counter
-func (r *kafkaRecorder) IncKafkaClientProduceErrorCounter(topic string) {
-	r.clientProduceErrorCounter.WithLabelValues(topic).Inc()
+// IncKafkaClientProduceCounter increments the client produce counter
+func (r *kafkaRecorder) IncKafkaClientProduceCounter(topic string) {
+	r.clientProduceCounter.WithLabelValues(topic).Inc()
 }
 
 // IncKafkaProducerSuccessCounter increments the producer success counter

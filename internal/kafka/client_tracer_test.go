@@ -1,7 +1,6 @@
 package kafka
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -34,7 +33,7 @@ func TestNewClientTracer(t *testing.T) {
 	assert.IsType(t, tracerFunc(nil), cli.fn)
 }
 
-func TestClientTracerProduceWhenSuccess(t *testing.T) {
+func TestClientTracerProduce(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -42,7 +41,7 @@ func TestClientTracerProduceWhenSuccess(t *testing.T) {
 	message := &kafkaconfluent.Message{}
 
 	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message).Return(nil)
+	client.EXPECT().Produce(message)
 
 	addedHeader := kafkaconfluent.Header{
 		Key:   "my-test-key",
@@ -56,41 +55,9 @@ func TestClientTracerProduceWhenSuccess(t *testing.T) {
 	cli := NewClientTracer(client, tracerFn)
 
 	// When
-	err := cli.Produce(message)
+	cli.Produce(message)
 
 	// Then
-	assert.Nil(t, err)
-	assert.Equal(t, addedHeader, message.Headers[0])
-}
-
-func TestClientTracerProduceWhenError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	// Given
-	expectedErr := errors.New("an unexpected error occurred")
-
-	message := &kafkaconfluent.Message{}
-
-	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message).Return(expectedErr)
-
-	addedHeader := kafkaconfluent.Header{
-		Key:   "my-test-key",
-		Value: []byte(`my-test-value`),
-	}
-
-	tracerFn := func(message *kafkaconfluent.Message) {
-		message.Headers = append(message.Headers, addedHeader)
-	}
-
-	cli := NewClientTracer(client, tracerFn)
-
-	// When
-	err := cli.Produce(message)
-
-	// Then
-	assert.Equal(t, err, expectedErr)
 	assert.Equal(t, addedHeader, message.Headers[0])
 }
 

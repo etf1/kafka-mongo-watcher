@@ -34,11 +34,9 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Produce mocks base method
-func (m *MockClient) Produce(message *kafka.Message) error {
+func (m *MockClient) Produce(message *kafka.Message) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Produce", message)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "Produce", message)
 }
 
 // Produce indicates an expected call of Produce
