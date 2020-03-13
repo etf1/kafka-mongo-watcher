@@ -13,7 +13,7 @@ services:
     environment:
       MONGODB_DATABASE: "watcher"
       MONGODB_PORT_NUMBER: 27011
-      MONGODB_ADVERTISED_HOSTNAME: mongo-primary
+      MONGODB_ADVERTISED_HOSTNAME: 127.0.0.1
       MONGODB_REPLICA_SET_MODE: primary
       MONGODB_REPLICA_SET_KEY: replicasetkey123
       MONGODB_ROOT_PASSWORD: toor
@@ -30,7 +30,7 @@ services:
     environment:
       MONGODB_DATABASE: "watcher"
       MONGODB_PORT_NUMBER: 27012
-      MONGODB_PRIMARY_HOST: mongo-primary
+      MONGODB_PRIMARY_HOST: 127.0.0.1
       MONGODB_PRIMARY_PORT_NUMBER: 27011
       MONGODB_ADVERTISED_HOSTNAME: mongo-secondary
       MONGODB_REPLICA_SET_MODE: secondary
@@ -49,7 +49,7 @@ services:
     environment:
       MONGODB_DATABASE: "watcher"
       MONGODB_PORT_NUMBER: 27013
-      MONGODB_PRIMARY_HOST: mongo-primary
+      MONGODB_PRIMARY_HOST: 127.0.0.1
       MONGODB_PRIMARY_PORT_NUMBER: 27011
       MONGODB_ADVERTISED_HOSTNAME: mongo-arbiter
       MONGODB_REPLICA_SET_MODE: arbiter
