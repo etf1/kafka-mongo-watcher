@@ -12,20 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-func (container *Container) GetChangeEvent(ctx context.Context) (changeEventChan chan *mongo.ChangeEvent, err error) {
-	l := container.GetLogger()
+func (container *Container) GetChangeEventProducer() mongo.ChangeEventProducer {
 	if container.Cfg.Replay {
-		changeEventChan, err = container.getReplayProducer().Produce(ctx)
-		if err != nil {
-			l.Error("Mongo produce replay error", logger.Error("error", err))
-		}
+		return container.getReplayProducer().Produce
 	} else {
-		changeEventChan, err = container.getWatchProducer().GetProducer(container.getWatchOptions()...)(ctx)
-		if err != nil {
-			l.Error("Mongo produce watch error", logger.Error("error", err))
-		}
+		return container.getWatchProducer().GetProducer(container.getWatchOptions()...)
 	}
-	return changeEventChan, err
 }
 
 func (container *Container) GetChangeEventKafkaMessageTransformer() *mongo.ChangeEventKafkaMessageTransformer {

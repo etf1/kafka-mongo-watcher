@@ -53,10 +53,10 @@ func TestMainModeReplay(t *testing.T) {
 	)
 
 	// Given fixtures are inserted into MongoDB collection first
-	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))
+	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection())
 
 	// When worker is running in replay mode
-	changeEventChan, err := container.GetChangeEvent(ctx)
+	changeEventChan, err := container.GetChangeEventProducer()(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +83,7 @@ func TestMainModeWatch(t *testing.T) {
 	)
 
 	// When worker is running in watch mode
-	changeEventChan, err := container.GetChangeEvent(ctx)
+	changeEventChan, err := container.GetChangeEventProducer()(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -91,14 +91,14 @@ func TestMainModeWatch(t *testing.T) {
 	go container.GetKafkaProducerPool().Produce(ctx, kafkaMessageChan)
 
 	// And I insert fixtures in mongodb collection
-	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection(ctx))
+	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection())
 
 	// Then I ensure kafka topic contains the expected oplogs
 	assert := assert.New(t)
 	assertFixturesAreInKafkaTopic(assert, cfg, fixtures)
 
 	// When I update fixtures in mongodb collection
-	fixtures = updateFixturesDocumentsInMongoDB(ctx, t, fixtures, cfg.CollectionName, container.GetMongoConnection(ctx))
+	fixtures = updateFixturesDocumentsInMongoDB(ctx, t, fixtures, cfg.CollectionName, container.GetMongoConnection())
 
 	// Then I ensure kafka topic contains the expected oplogs
 	assertFixturesAreInKafkaTopic(assert, cfg, fixtures)

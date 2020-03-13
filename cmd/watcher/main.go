@@ -21,7 +21,7 @@ func main() {
 
 	defer handleExitSignal(ctx, cancel, container)()
 
-	changeEventChan, err := container.GetChangeEvent(ctx)
+	changeEventChan, err := container.GetChangeEventProducer()(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +37,7 @@ func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container 
 
 		cancel()
 		container.GetKafkaProducerPool().Close()
-		container.GetMongoConnection(ctx).Client().Disconnect(ctx)
+		container.GetMongoConnection().Client().Disconnect(ctx)
 		container.GetKafkaClient().Close()
 		container.GetTechServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)
