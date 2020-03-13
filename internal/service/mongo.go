@@ -15,12 +15,12 @@ import (
 func (container *Container) GetChangeEvent(ctx context.Context) (changeEventChan chan *mongo.ChangeEvent, err error) {
 	l := container.GetLogger()
 	if container.Cfg.Replay {
-		changeEventChan, err = container.getReplayProducer(ctx).Produce(ctx)
+		changeEventChan, err = container.getReplayProducer().Produce(ctx)
 		if err != nil {
 			l.Error("Mongo produce replay error", logger.Error("error", err))
 		}
 	} else {
-		changeEventChan, err = container.getWatchProducer(ctx).GetProducer(container.getWatchOptions()...)(ctx)
+		changeEventChan, err = container.getWatchProducer().GetProducer(container.getWatchOptions()...)(ctx)
 		if err != nil {
 			l.Error("Mongo produce watch error", logger.Error("error", err))
 		}
@@ -38,20 +38,20 @@ func (container *Container) GetChangeEventKafkaMessageTransformer() *mongo.Chang
 	return container.changeEventTransformerToKafkaMessage
 }
 
-func (container *Container) getReplayProducer(ctx context.Context) *mongo.ReplayProducer {
+func (container *Container) getReplayProducer() *mongo.ReplayProducer {
 	if container.replayProducer == nil {
 		container.replayProducer = mongo.NewReplayProducer(
-			container.GetMongoCollection(ctx),
+			container.GetMongoCollection(),
 			container.GetLogger(),
 		)
 	}
 	return container.replayProducer
 }
 
-func (container *Container) getWatchProducer(ctx context.Context) *mongo.WatchProducer {
+func (container *Container) getWatchProducer() *mongo.WatchProducer {
 	if container.watchProducer == nil {
 		container.watchProducer = mongo.NewWatchProducer(
-			container.GetMongoCollection(ctx),
+			container.GetMongoCollection(),
 			container.GetLogger(),
 		)
 	}
@@ -67,19 +67,19 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 	}
 }
 
-func (container *Container) GetMongoCollection(ctx context.Context) mongo.CollectionAdapter {
+func (container *Container) GetMongoCollection() mongo.CollectionAdapter {
 	if container.mongoCollection == nil {
 		container.mongoCollection = mongo.NewCollectionAdapter(
-			container.GetMongoConnection(ctx).Collection(container.Cfg.MongoDB.CollectionName),
+			container.GetMongoConnection().Collection(container.Cfg.MongoDB.CollectionName),
 		)
 	}
 	return container.mongoCollection
 }
 
-func (container *Container) GetMongoConnection(ctx context.Context) *mongodriver.Database {
+func (container *Container) GetMongoConnection() *mongodriver.Database {
 	if container.mongoDB == nil {
 		mongoCfg := container.Cfg.MongoDB
-		if db, err := newMongoClient(ctx, container.GetLogger(), mongoCfg.URI, mongoCfg.DatabaseName); err != nil {
+		if db, err := newMongoClient(container.baseContext, container.GetLogger(), mongoCfg.URI, mongoCfg.DatabaseName); err != nil {
 			panic(err)
 		} else {
 			container.mongoDB = db

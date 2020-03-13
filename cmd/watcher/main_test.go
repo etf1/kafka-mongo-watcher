@@ -47,7 +47,7 @@ func TestMainModeReplay(t *testing.T) {
 	cfg.MongoDB.CollectionName = "testreplay"
 	cfg.Kafka.Topic = "integration-test-replay"
 
-	container := service.NewContainer(cfg)
+	container := service.NewContainer(cfg, ctx)
 	defer container.GetKafkaRecorder().Unregister(
 		container.GetMetricsRegistry(),
 	)
@@ -77,7 +77,7 @@ func TestMainModeWatch(t *testing.T) {
 	cfg.MongoDB.CollectionName = "testwatch"
 	cfg.Kafka.Topic = "integration-test-watch"
 
-	container := service.NewContainer(cfg)
+	container := service.NewContainer(cfg, ctx)
 	defer container.GetKafkaRecorder().Unregister(
 		container.GetMetricsRegistry(),
 	)

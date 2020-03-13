@@ -16,7 +16,7 @@ func main() {
 	cfg := config.NewBase(ctx)
 
 	// TODO pass base context
-	container := service.NewContainer(cfg)
+	container := service.NewContainer(cfg, ctx)
 	go container.GetTechServer().Start(ctx)
 
 	defer handleExitSignal(ctx, cancel, container)()

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
@@ -13,7 +15,8 @@ import (
 
 // Container stores all the application services references
 type Container struct {
-	Cfg *config.Base
+	Cfg         *config.Base
+	baseContext context.Context
 
 	logger logger.LoggerInterface
 
@@ -22,8 +25,8 @@ type Container struct {
 	mongoDB         *mongodriver.Database
 	mongoCollection mongo.CollectionAdapter
 
-	replayProducer *mongo.ReplayProducer
-	watchProducer *mongo.WatchProducer
+	replayProducer                       *mongo.ReplayProducer
+	watchProducer                        *mongo.WatchProducer
 	changeEventTransformerToKafkaMessage *mongo.ChangeEventKafkaMessageTransformer
 
 	kafkaProducer *kafkaconfluent.Producer
@@ -35,8 +38,9 @@ type Container struct {
 
 // NewContainer returns a dependency injection container that allows
 // to retrieve services
-func NewContainer(cfg *config.Base) *Container {
+func NewContainer(cfg *config.Base, ctx context.Context) *Container {
 	return &Container{
-		Cfg: cfg,
+		Cfg:         cfg,
+		baseContext: ctx,
 	}
 }
