@@ -44,6 +44,11 @@ func (c *clientTracer) Produce(message *kafka.Message) error {
 	return c.client.Produce(message)
 }
 
+// Events returns the kafka producer events
+func (c *clientTracer) Events() chan kafka.Event {
+	return c.client.Events()
+}
+
 func (c *clientTracer) Close() {
 	c.client.Close()
 }

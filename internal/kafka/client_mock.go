@@ -47,6 +47,20 @@ func (mr *MockClientMockRecorder) Produce(message interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockClient)(nil).Produce), message)
 }
 
+// Events mocks base method
+func (m *MockClient) Events() chan kafka.Event {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Events")
+	ret0, _ := ret[0].(chan kafka.Event)
+	return ret0
+}
+
+// Events indicates an expected call of Events
+func (mr *MockClientMockRecorder) Events() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Events", reflect.TypeOf((*MockClient)(nil).Events))
+}
+
 // Close mocks base method
 func (m *MockClient) Close() {
 	m.ctrl.T.Helper()

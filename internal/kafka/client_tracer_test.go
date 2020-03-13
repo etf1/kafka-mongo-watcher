@@ -94,6 +94,26 @@ func TestClientTracerProduceWhenError(t *testing.T) {
 	assert.Equal(t, addedHeader, message.Headers[0])
 }
 
+func TestClientTracerEvents(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Given
+	events := make(chan kafkaconfluent.Event)
+	client := NewMockClient(ctrl)
+	client.EXPECT().Events().Return(events)
+
+	tracerFn := func(message *kafkaconfluent.Message) {}
+
+	cli := NewClientTracer(client, tracerFn)
+
+	// When
+	result := cli.Events()
+
+	// Then
+	assert.Equal(t, events, result)
+}
+
 func TestClientTracerClose(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

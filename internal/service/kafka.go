@@ -20,7 +20,6 @@ func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 		log.Info("Connected to kafka producer", logger.String("bootstrao-servers", container.Cfg.Kafka.BootstrapServers))
 
 		container.kafkaProducer = producer
-		go container.GetKafkaRecorder().RecordProducer(container.kafkaProducer)
 	}
 
 	return container.kafkaProducer
@@ -40,9 +39,11 @@ func (container *Container) GetKafkaProducerPool() kafka.ProducerPool {
 
 func (container *Container) GetKafkaClient() kafka.Client {
 	if container.kafkaClient == nil {
-		container.kafkaClient = container.decorateKafkaClientWithLogger(
-			container.decorateKafkaClientWithTracer(
-				container.getKafkaBaseClient(),
+		container.kafkaClient = container.decorateKafkaClientWithMetrics(
+			container.decorateKafkaClientWithLogger(
+				container.decorateKafkaClientWithTracer(
+					container.getKafkaBaseClient(),
+				),
 			),
 		)
 	}
@@ -62,4 +63,11 @@ func (container *Container) decorateKafkaClientWithLogger(client kafka.Client) k
 
 func (container *Container) decorateKafkaClientWithTracer(client kafka.Client) kafka.Client {
 	return kafka.NewClientTracer(client, kafka.AddTracingHeader)
+}
+
+func (container *Container) decorateKafkaClientWithMetrics(client kafka.Client) kafka.Client {
+	clientMetric := kafka.NewClientMetric(client, container.GetKafkaRecorder())
+	go clientMetric.Record()
+
+	return clientMetric
 }

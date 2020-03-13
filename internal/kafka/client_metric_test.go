@@ -4,31 +4,31 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gol4ng/logger"
+	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
-func TestNewClientLogger(t *testing.T) {
+func TestNewClientMetric(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	// Given
 	client := NewMockClient(ctrl)
 
-	logger := logger.NewNopLogger()
+	recorder := metrics.NewMockKafkaRecorder(ctrl)
 
 	// When
-	cli := NewClientLogger(client, logger)
+	cli := NewClientMetric(client, recorder)
 
-	assert.IsType(t, new(clientLogger), cli)
+	assert.IsType(t, new(clientMetric), cli)
 
 	assert.Equal(t, client, cli.client)
-	assert.Equal(t, logger, cli.logger)
+	assert.Equal(t, recorder, cli.recorder)
 }
 
-func TestClientLoggerProduceWhenSuccess(t *testing.T) {
+func TestClientMetricProduceWhenSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -41,10 +41,12 @@ func TestClientLoggerProduceWhenSuccess(t *testing.T) {
 	}
 
 	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message)
+	client.EXPECT().Produce(message).Return(nil)
 
-	logger := logger.NewNopLogger()
-	cli := NewClientLogger(client, logger)
+	recorder := metrics.NewMockKafkaRecorder(ctrl)
+	recorder.EXPECT().IncKafkaClientProduceSuccessCounter("test-topic")
+
+	cli := NewClientMetric(client, recorder)
 
 	// When
 	err := cli.Produce(message)
@@ -53,7 +55,7 @@ func TestClientLoggerProduceWhenSuccess(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestClientLoggerProduceWhenError(t *testing.T) {
+func TestClientMetricProduceWhenError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -70,8 +72,10 @@ func TestClientLoggerProduceWhenError(t *testing.T) {
 	client := NewMockClient(ctrl)
 	client.EXPECT().Produce(message).Return(expectedErr)
 
-	logger := logger.NewNopLogger()
-	cli := NewClientLogger(client, logger)
+	recorder := metrics.NewMockKafkaRecorder(ctrl)
+	recorder.EXPECT().IncKafkaClientProduceErrorCounter("test-topic")
+
+	cli := NewClientMetric(client, recorder)
 
 	// When
 	err := cli.Produce(message)
@@ -80,7 +84,7 @@ func TestClientLoggerProduceWhenError(t *testing.T) {
 	assert.Equal(t, err, expectedErr)
 }
 
-func TestClientLoggerEvents(t *testing.T) {
+func TestClientMetricEvents(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -89,9 +93,9 @@ func TestClientLoggerEvents(t *testing.T) {
 	client := NewMockClient(ctrl)
 	client.EXPECT().Events().Return(events)
 
-	loggeer := logger.NewNopLogger()
+	recorder := metrics.NewMockKafkaRecorder(ctrl)
 
-	cli := NewClientLogger(client, loggeer)
+	cli := NewClientMetric(client, recorder)
 
 	// When
 	result := cli.Events()
@@ -100,7 +104,7 @@ func TestClientLoggerEvents(t *testing.T) {
 	assert.Equal(t, events, result)
 }
 
-func TestClientLoggerClose(t *testing.T) {
+func TestClientMetricClose(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -108,8 +112,8 @@ func TestClientLoggerClose(t *testing.T) {
 	client := NewMockClient(ctrl)
 	client.EXPECT().Close()
 
-	logger := logger.NewNopLogger()
-	cli := NewClientLogger(client, logger)
+	recorder := metrics.NewMockKafkaRecorder(ctrl)
+	cli := NewClientMetric(client, recorder)
 
 	// When - Then
 	cli.Close()

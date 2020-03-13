@@ -15,7 +15,7 @@ var cfg = &Base{
 	LogCliVerbose:    true,
 	LogLevel:         logger.LevelString(logger.InfoLevel.String()),
 	Replay:           false,
-	ProducerPoolSize: 5,
+	ProducerPoolSize: 1,
 	TechServer: TechServer{
 		PprofEnabled: true,
 		HTTPAddr:     ":8001",

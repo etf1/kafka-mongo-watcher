@@ -1,15 +1,11 @@
 package metrics
 
 import (
-	"errors"
 	"testing"
 
-	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
-	"github.com/golang/mock/gomock"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 type prometheusRegistererMock struct {
@@ -40,7 +36,9 @@ func TestNewKafkaRecorder(t *testing.T) {
 
 	// Then
 	assert := assert.New(t)
-	assert.IsType(new(KafkaRecorder), recorder)
+	assert.IsType(new(kafkaRecorder), recorder)
+	assert.IsType(new(prometheus.CounterVec), recorder.clientProduceSuccessCounter)
+	assert.IsType(new(prometheus.CounterVec), recorder.clientProduceErrorCounter)
 	assert.IsType(new(prometheus.CounterVec), recorder.producerSuccessCounter)
 	assert.IsType(new(prometheus.CounterVec), recorder.producerErrorCounter)
 }
@@ -56,7 +54,7 @@ func TestRegisterOn(t *testing.T) {
 
 	// Then
 	assert := assert.New(t)
-	assert.Len(testRegistry.collectors, 2)
+	assert.Len(testRegistry.collectors, 4)
 }
 
 func TestUnregister(t *testing.T) {
@@ -69,7 +67,7 @@ func TestUnregister(t *testing.T) {
 	recorder := NewKafkaRecorder()
 	recorder.RegisterOn(testRegistry)
 
-	assert.Len(testRegistry.collectors, 2)
+	assert.Len(testRegistry.collectors, 4)
 
 	// And unregistering metrics
 	recorder.Unregister(testRegistry)
@@ -78,41 +76,40 @@ func TestUnregister(t *testing.T) {
 	assert.Len(testRegistry.collectors, 0)
 }
 
-func TestRecordProducer(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
+func TestIncKafkaClientProduceSuccessCounter(t *testing.T) {
 	// Given
 	recorder := NewKafkaRecorder()
-	recorder.RegisterOn(prometheus.DefaultRegisterer)
 
-	topicName := "my-test-topic"
-
-	eventsChannel := make(chan kafkaconfluent.Event)
-
-	producer := kafka.NewMockKafkaProducer(ctrl)
-	producer.EXPECT().Events().Return(eventsChannel)
+	testRegistry := &prometheusRegistererMock{}
+	recorder.RegisterOn(testRegistry)
 
 	// When
-	go recorder.RecordProducer(producer)
-
-	eventsChannel <- &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{Topic: &topicName, Error: nil},
-	}
-	eventsChannel <- &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{Topic: &topicName, Error: nil},
-	}
-	eventsChannel <- &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{Topic: &topicName, Error: errors.New("unexpected error")},
-	}
-
-	close(eventsChannel)
+	recorder.IncKafkaClientProduceSuccessCounter("test-topic")
+	recorder.IncKafkaClientProduceSuccessCounter("test-topic")
+	recorder.IncKafkaClientProduceSuccessCounter("test-topic")
 
 	// Then
 	assert := assert.New(t)
 
-	assert.Equal(float64(2), testutil.ToFloat64(recorder.producerSuccessCounter))
-	assert.Equal(float64(1), testutil.ToFloat64(recorder.producerErrorCounter))
+	assert.Equal(float64(3), testutil.ToFloat64(recorder.clientProduceSuccessCounter))
+}
+
+func TestIncKafkaClientProduceErrorCounter(t *testing.T) {
+	// Given
+	recorder := NewKafkaRecorder()
+
+	testRegistry := &prometheusRegistererMock{}
+	recorder.RegisterOn(testRegistry)
+
+	// When
+	recorder.IncKafkaClientProduceErrorCounter("test-topic")
+	recorder.IncKafkaClientProduceErrorCounter("test-topic")
+	recorder.IncKafkaClientProduceErrorCounter("test-topic")
+
+	// Then
+	assert := assert.New(t)
+
+	assert.Equal(float64(3), testutil.ToFloat64(recorder.clientProduceErrorCounter))
 }
 
 func TestIncKafkaProducerSuccessCounter(t *testing.T) {

@@ -19,13 +19,11 @@ type Container struct {
 
 	techServer *server.TechServer
 
-	kafkaMetricsRecorder *metrics.KafkaRecorder
-
 	mongoDB         *mongodriver.Database
 	mongoCollection mongo.CollectionAdapter
 
 	kafkaProducer *kafkaconfluent.Producer
-	kafkaRecorder *metrics.KafkaRecorder
+	kafkaRecorder metrics.KafkaRecorder
 
 	kafkaClient       kafka.Client
 	kafkaProducerPool kafka.ProducerPool

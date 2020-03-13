@@ -29,6 +29,11 @@ func (c *clientLogger) Produce(message *kafka.Message) error {
 	return nil
 }
 
+// Events returns the kafka producer events
+func (c *clientLogger) Events() chan kafka.Event {
+	return c.client.Events()
+}
+
 func (c *clientLogger) Close() {
 	c.client.Close()
 }

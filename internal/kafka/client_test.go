@@ -62,6 +62,24 @@ func TestClientProduceWhenError(t *testing.T) {
 	assert.Equal(t, err, expectedErr)
 }
 
+func TestClientEvents(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Given
+	events := make(chan kafkaconfluent.Event)
+	producer := NewMockKafkaProducer(ctrl)
+	producer.EXPECT().Events().Return(events)
+
+	cli := NewClient(producer)
+
+	// When
+	result := cli.Events()
+
+	// Then
+	assert.Equal(t, events, result)
+}
+
 func TestClientClose(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

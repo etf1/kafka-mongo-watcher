@@ -9,7 +9,7 @@ func (container *Container) GetMetricsRegistry() prometheus.Registerer {
 	return prometheus.DefaultRegisterer
 }
 
-func (container *Container) GetKafkaRecorder() *metrics.KafkaRecorder {
+func (container *Container) GetKafkaRecorder() metrics.KafkaRecorder {
 	if container.kafkaRecorder == nil {
 		container.kafkaRecorder = metrics.NewKafkaRecorder().RegisterOn(container.GetMetricsRegistry())
 	}

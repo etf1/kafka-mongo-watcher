@@ -3,7 +3,8 @@ module github.com/etf1/kafka-mongo-watcher
 go 1.14
 
 require (
-	github.com/gol4ng/logger v0.5.4
+	github.com/confluentinc/confluent-kafka-go v1.3.0 // indirect
+	github.com/gol4ng/logger v0.5.5
 	github.com/gol4ng/signal v1.1.0
 	github.com/golang/mock v1.4.1
 	github.com/gorilla/mux v1.6.2
