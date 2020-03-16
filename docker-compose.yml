@@ -5,7 +5,6 @@ services:
     hostname: mongo-primary
     container_name: mongo-primary
     image: bitnami/mongodb:4.2
-    restart: always
     expose:
       - 27011
     ports:
@@ -22,7 +21,6 @@ services:
     hostname: mongo-secondary
     container_name: mongo-secondary
     image: bitnami/mongodb:4.2
-    restart: always
     expose:
       - 27012
     ports:
@@ -41,7 +39,6 @@ services:
     hostname: mongo-arbiter
     container_name: mongo-arbiter
     image: bitnami/mongodb:4.2
-    restart: always
     expose:
       - 27013
     ports:
