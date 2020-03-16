@@ -11,11 +11,10 @@ import (
 )
 
 var cfg = &Base{
-	PrintConfig:      false,
-	LogCliVerbose:    true,
-	LogLevel:         logger.LevelString(logger.InfoLevel.String()),
-	Replay:           false,
-	ProducerPoolSize: 1,
+	PrintConfig:   false,
+	LogCliVerbose: true,
+	LogLevel:      logger.LevelString(logger.InfoLevel.String()),
+	Replay:        false,
 	TechServer: TechServer{
 		PprofEnabled: true,
 		HTTPAddr:     ":8001",

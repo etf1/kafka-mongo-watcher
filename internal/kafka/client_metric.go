@@ -33,9 +33,17 @@ func (c *clientMetric) Record() {
 }
 
 // Produce adds tracing information on the message and then produces it
-func (c *clientMetric) Produce(message *kafka.Message) {
-	c.recorder.IncKafkaClientProduceCounter(*message.TopicPartition.Topic)
-	c.client.Produce(message)
+func (c *clientMetric) Produce(messages chan *Message) {
+	var next = make(chan *Message, len(messages))
+	go func() {
+		defer close(next)
+		for message := range messages {
+			c.recorder.IncKafkaClientProduceCounter(message.Topic)
+			next <- message
+		}
+	}()
+
+	c.client.Produce(next)
 }
 
 // Events returns the kafka producer events

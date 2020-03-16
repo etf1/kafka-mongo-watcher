@@ -82,12 +82,6 @@ You can set/override configuration variables from `.env` file and from `variable
 
 *Description*: In case you want to send all collection's documents once (default: false)
 
-#### KAFKA_MONGO_WATCHER_PRODUCER_POOL_SIZE
-*Type*: integer
-
-*Description*: The number of producer workers (goroutines) you want to use to produce into Kafka (default: 1)
-**Warning**: When using more than 1 producer pool size, the message order cannot be guaranteed.
-
 #### KAFKA_MONGO_WATCHER_MONGODB_URI
 *Type*: string
 

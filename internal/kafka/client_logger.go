@@ -19,9 +19,17 @@ func NewClientLogger(cli Client, logger logger.LoggerInterface) *clientLogger {
 }
 
 // Produce logs the message production information and then produces it
-func (c *clientLogger) Produce(message *kafka.Message) {
-	c.logger.Info("Kafka client: Producing message", logger.String("topic", *message.TopicPartition.Topic), logger.ByteString("key", message.Key), logger.ByteString("value", message.Value))
-	c.client.Produce(message)
+func (c *clientLogger) Produce(messages chan *Message) {
+	var next = make(chan *Message, len(messages))
+	go func() {
+		defer close(next)
+		for message := range messages {
+			c.logger.Info("Kafka client: Producing message", logger.String("topic", message.Topic), logger.ByteString("key", message.Key), logger.ByteString("value", message.Value))
+			next <- message
+		}
+	}()
+
+	c.client.Produce(next)
 }
 
 // Events returns the kafka producer events

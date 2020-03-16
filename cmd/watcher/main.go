@@ -25,7 +25,7 @@ func main() {
 		panic(err)
 	}
 	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
-	container.GetKafkaProducerPool().Produce(ctx, kafkaMessageChan)
+	container.GetKafkaClient().Produce(kafkaMessageChan)
 }
 
 // Handle for an exit signal in order to quit application on a proper way (shutting down connections and servers)
@@ -35,9 +35,8 @@ func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container 
 		log.Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
 
 		cancel()
-		container.GetKafkaProducerPool().Close()
-		container.GetMongoConnection().Client().Disconnect(ctx)
 		container.GetKafkaClient().Close()
+		container.GetMongoConnection().Client().Disconnect(ctx)
 		container.GetTechServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)
 }

@@ -24,18 +24,6 @@ func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 	return container.kafkaProducer
 }
 
-func (container *Container) GetKafkaProducerPool() kafka.ProducerPool {
-	if container.kafkaProducerPool == nil {
-		container.kafkaProducerPool = kafka.NewProducerPool(
-			container.GetLogger(),
-			container.GetKafkaClient(),
-			container.Cfg.ProducerPoolSize,
-		)
-	}
-
-	return container.kafkaProducerPool
-}
-
 func (container *Container) GetKafkaClient() kafka.Client {
 	if container.kafkaClient == nil {
 		container.kafkaClient = container.decorateKafkaClientWithMetrics(

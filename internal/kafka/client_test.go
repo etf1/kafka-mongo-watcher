@@ -30,20 +30,41 @@ func TestClientProduce(t *testing.T) {
 	// Given
 	produceChannel := make(chan *kafkaconfluent.Message, 1)
 
-	message := &kafkaconfluent.Message{}
+	messages := make(chan *Message)
+	go func() {
+		defer close(messages)
+		messages <- &Message{
+			Topic: "test-topic",
+			Key:   []byte(`my-key`),
+			Value: []byte(`my-value`),
+			Headers: []Header{
+				Header{Key: "x-test-header", Value: []byte("test")},
+			},
+		}
+	}()
+
 	producer := NewMockKafkaProducer(ctrl)
 	producer.EXPECT().ProduceChannel().Return(produceChannel)
+	producer.EXPECT().Len().Return(0)
+	producer.EXPECT().Close()
 
 	cli := NewClient(producer)
 
 	// When
-	cli.Produce(message)
+	cli.Produce(messages)
 
 	// Then
 	inserted := <-produceChannel
 
 	assert := assert.New(t)
 	assert.IsType(new(kafkaconfluent.Message), inserted)
+
+	assert.Equal("test-topic", *inserted.TopicPartition.Topic)
+	assert.Equal([]byte("my-key"), inserted.Key)
+	assert.Equal([]byte("my-value"), inserted.Value)
+
+	assert.Equal("x-test-header", inserted.Headers[0].Key)
+	assert.Equal([]byte("test"), inserted.Headers[0].Value)
 }
 
 func TestClientEvents(t *testing.T) {

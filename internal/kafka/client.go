@@ -5,7 +5,7 @@ import (
 )
 
 type Client interface {
-	Produce(message *kafka.Message)
+	Produce(messages chan *Message)
 	Events() chan kafka.Event
 	Close()
 }
@@ -22,8 +22,30 @@ func NewClient(producer KafkaProducer) *client {
 }
 
 // Produce sends a message using the producer
-func (c *client) Produce(message *kafka.Message) {
-	c.producer.ProduceChannel() <- message
+func (c *client) Produce(messages chan *Message) {
+	defer c.Close()
+
+	for message := range messages {
+		c.producer.ProduceChannel() <- &kafka.Message{
+			TopicPartition: kafka.TopicPartition{Topic: &message.Topic, Partition: kafka.PartitionAny},
+			Key:            message.Key,
+			Value:          message.Value,
+			Headers:        buildHeaders(message.Headers),
+		}
+	}
+}
+
+func buildHeaders(headers []Header) []kafka.Header {
+	var kafkaHeaders = make([]kafka.Header, 0)
+
+	for _, header := range headers {
+		kafkaHeaders = append(kafkaHeaders, kafka.Header{
+			Key:   header.Key,
+			Value: header.Value,
+		})
+	}
+
+	return kafkaHeaders
 }
 
 // Events returns the kafka producer events

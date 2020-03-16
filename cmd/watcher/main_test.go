@@ -34,7 +34,6 @@ func setupConfig(ctx context.Context) {
 
 		cfg = config.NewBase(ctx)
 		cfg.LogCliVerbose = false
-		cfg.ProducerPoolSize = 1
 	}
 }
 
@@ -61,7 +60,7 @@ func TestMainModeReplay(t *testing.T) {
 		panic(err)
 	}
 	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
-	container.GetKafkaProducerPool().Produce(ctx, kafkaMessageChan)
+	container.GetKafkaClient().Produce(kafkaMessageChan)
 
 	// Then
 	assert := assert.New(t)
@@ -88,7 +87,7 @@ func TestMainModeWatch(t *testing.T) {
 		panic(err)
 	}
 	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
-	go container.GetKafkaProducerPool().Produce(ctx, kafkaMessageChan)
+	go container.GetKafkaClient().Produce(kafkaMessageChan)
 
 	// And I insert fixtures in mongodb collection
 	fixtures := prepareFixturesDocumentsInMongoDB(ctx, t, cfg.CollectionName, container.GetMongoConnection())

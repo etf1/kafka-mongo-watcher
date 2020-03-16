@@ -32,21 +32,21 @@ func TestClientLoggerProduce(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Given
-	var topicName = "test-topic"
-	message := &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{
-			Topic: &topicName,
-		},
-	}
+	messages := make(chan *Message)
+	go func() {
+		messages <- &Message{
+			Topic: "test-topic",
+		}
+	}()
 
 	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message)
+	client.EXPECT().Produce(gomock.AssignableToTypeOf(messages))
 
 	logger := logger.NewNopLogger()
 	cli := NewClientLogger(client, logger)
 
 	// When - Then
-	cli.Produce(message)
+	cli.Produce(messages)
 }
 
 func TestClientLoggerEvents(t *testing.T) {

@@ -32,8 +32,7 @@ type Container struct {
 	kafkaProducer *kafkaconfluent.Producer
 	kafkaRecorder metrics.KafkaRecorder
 
-	kafkaClient       kafka.Client
-	kafkaProducerPool kafka.ProducerPool
+	kafkaClient kafka.Client
 }
 
 // NewContainer returns a dependency injection container that allows

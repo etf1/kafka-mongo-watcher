@@ -14,16 +14,16 @@ const XTracingHeaderName = "x-tracing"
 
 // AddTracingHeader simply adds a tracing header with application name and a timestamp
 // to enable simple debugging
-func AddTracingHeader(message *kafka.Message) {
+func AddTracingHeader(message *Message) {
 	now := time.Now()
 
-	message.Headers = append(message.Headers, kafka.Header{
+	message.Headers = append(message.Headers, Header{
 		Key:   XTracingHeaderName,
 		Value: []byte(fmt.Sprintf(`%s,%d`, config.AppName, now.Unix())),
 	})
 }
 
-type tracerFunc func(message *kafka.Message)
+type tracerFunc func(message *Message)
 
 type clientTracer struct {
 	client Client
@@ -39,9 +39,17 @@ func NewClientTracer(cli Client, fn tracerFunc) *clientTracer {
 }
 
 // Produce adds tracing information on the message and then produces it
-func (c *clientTracer) Produce(message *kafka.Message) {
-	c.fn(message)
-	c.client.Produce(message)
+func (c *clientTracer) Produce(messages chan *Message) {
+	var next = make(chan *Message, len(messages))
+	go func() {
+		defer close(next)
+		for message := range messages {
+			c.fn(message)
+			next <- message
+		}
+	}()
+
+	c.client.Produce(next)
 }
 
 // Events returns the kafka producer events

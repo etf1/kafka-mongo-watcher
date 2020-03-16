@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"testing"
+	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
 	"github.com/golang/mock/gomock"
@@ -32,15 +33,16 @@ func TestClientMetricProduce(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Given
-	var topicName = "test-topic"
-	message := &kafkaconfluent.Message{
-		TopicPartition: kafkaconfluent.TopicPartition{
-			Topic: &topicName,
-		},
-	}
+	messages := make(chan *Message)
+	go func() {
+		defer close(messages)
+		messages <- &Message{
+			Topic: "test-topic",
+		}
+	}()
 
 	client := NewMockClient(ctrl)
-	client.EXPECT().Produce(message)
+	client.EXPECT().Produce(gomock.AssignableToTypeOf(messages))
 
 	recorder := metrics.NewMockKafkaRecorder(ctrl)
 	recorder.EXPECT().IncKafkaClientProduceCounter("test-topic")
@@ -48,7 +50,8 @@ func TestClientMetricProduce(t *testing.T) {
 	cli := NewClientMetric(client, recorder)
 
 	// When - Then
-	cli.Produce(message)
+	cli.Produce(messages)
+	time.Sleep(100 * time.Millisecond) // Wait for incoming channel to be read
 }
 
 func TestClientMetricEvents(t *testing.T) {

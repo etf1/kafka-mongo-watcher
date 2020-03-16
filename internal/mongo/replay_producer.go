@@ -63,10 +63,9 @@ func (r *ReplayProducer) sendEvents(ctx context.Context, cursor DriverCursor, ev
 	}
 }
 
-func NewReplayProducer(adapter CollectionAdapter, logger logger.LoggerInterface)*ReplayProducer{
+func NewReplayProducer(adapter CollectionAdapter, logger logger.LoggerInterface) *ReplayProducer {
 	return &ReplayProducer{
 		collection: adapter,
 		logger:     logger,
 	}
 }
-

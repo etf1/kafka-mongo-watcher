@@ -34,15 +34,15 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Produce mocks base method
-func (m *MockClient) Produce(message *kafka.Message) {
+func (m *MockClient) Produce(messages chan *Message) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Produce", message)
+	m.ctrl.Call(m, "Produce", messages)
 }
 
 // Produce indicates an expected call of Produce
-func (mr *MockClientMockRecorder) Produce(message interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) Produce(messages interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockClient)(nil).Produce), message)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockClient)(nil).Produce), messages)
 }
 
 // Events mocks base method
