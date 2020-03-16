@@ -21,7 +21,7 @@ var cfg = &Base{
 		HTTPAddr:     ":8001",
 
 		ReadHeaderTimeout: 1 * time.Second,
-		WriteTimeout:      10 * time.Second,
+		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	},
 	MongoDB: MongoDB{
