@@ -87,7 +87,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	defer ctrl.Finish()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
-	resumeAfter := bson.M{"_data": "1234567890987654321"}
+	resumeAfter := []byte(`{"_data":"1234567890987654321"}`)
 	startAtOperationTime := primitive.Timestamp{
 		I: uint32(10),
 		T: uint32(10),
@@ -101,7 +101,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 		StartAtOperationTime: &startAtOperationTime,
 	}
 	opts.SetFullDocument(options.UpdateLookup)
-	opts.SetResumeAfter(resumeAfter)
+	opts.SetResumeAfter(bson.M{"_data": "1234567890987654321"})
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockDriverCursor(ctrl)

@@ -125,9 +125,14 @@ func WithMaxAwaitTime(maxAwaitTime time.Duration) WatchOption {
 
 // WithResumeAfter allows to specify the resume token for the change stream to resume
 // notifications after the operation specified in the resume token
-func WithResumeAfter(resumeAfter bson.M) WatchOption {
+func WithResumeAfter(resumeAfter []byte) WatchOption {
 	return func(w *WatchConfig) {
-		w.resumeAfter = resumeAfter
+		if len(resumeAfter) != 0 {
+			err := bson.UnmarshalExtJSON(resumeAfter, false, &w.resumeAfter)
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 }
 
@@ -135,6 +140,8 @@ func WithResumeAfter(resumeAfter bson.M) WatchOption {
 // return changes that occurred at or after the given timestamp.
 func WithStartAtOperationTime(startAtOperationTime primitive.Timestamp) WatchOption {
 	return func(w *WatchConfig) {
-		w.startAtOperationTime = &startAtOperationTime
+		if startAtOperationTime.I != 0 || startAtOperationTime.T != 0 {
+			w.startAtOperationTime = &startAtOperationTime
+		}
 	}
 }

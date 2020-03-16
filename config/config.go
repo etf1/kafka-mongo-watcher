@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/gol4ng/logger"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"go.etf1.tf1.fr/etf1-platform/pkg/config"
 )
@@ -48,11 +46,12 @@ type MongoDB struct {
 }
 
 type MongoDBOptions struct {
-	BatchSize            int32               `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_BATCH_SIZE"`
-	FullDocument         bool                `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_FULL_DOCUMENT"`
-	MaxAwaitTime         time.Duration       `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_MAX_AWAIT_TIME"`
-	ResumeAfter          bson.M              `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_RESUME_AFTER"`
-	StartAtOperationTime primitive.Timestamp `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME"`
+	BatchSize             int32         `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_BATCH_SIZE"`
+	FullDocument          bool          `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_FULL_DOCUMENT"`
+	MaxAwaitTime          time.Duration `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_MAX_AWAIT_TIME"`
+	ResumeAfter           string        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_RESUME_AFTER"`
+	StartAtOperationTimeI uint32        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_I"`
+	StartAtOperationTimeT uint32        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
 }
 
 // Kafka is the configuration provider for Kafka

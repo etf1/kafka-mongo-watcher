@@ -113,12 +113,15 @@ You can set/override configuration variables from `.env` file and from `variable
 *Description*: In case you want to set a maximum value awaiting for new oplogs (default: 0 / don't stop)
 
 #### KAFKA_MONGO_WATCHER_MONGODB_OPTION_RESUME_AFTER
-*Type*: bson.M
+*Type*: string
 
-*Description*: In case you want to set a logical starting point for the change stream
+*Description*: In case you want to set a logical starting point for the change stream (example : `{"_data": <hex string>}`)
 
-#### KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME
-*Type*: primitive.Timestamp
+#### KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_I
+*Type*: uint32 *(increment value)*
+
+#### KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_T
+*Type*: uint32 *(timestamp)*
 
 *Description*: In case you want to set a timestamp for the change stream to only return changes that occurred at or after the given timestamp (default: nil)
 

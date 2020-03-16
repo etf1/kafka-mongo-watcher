@@ -7,6 +7,7 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/gol4ng/logger"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -56,8 +57,11 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 		mongo.WithBatchSize(configOptions.BatchSize),
 		mongo.WithFullDocument(configOptions.FullDocument),
 		mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
-		mongo.WithResumeAfter(configOptions.ResumeAfter),
-		mongo.WithStartAtOperationTime(configOptions.StartAtOperationTime),
+		mongo.WithResumeAfter([]byte(configOptions.ResumeAfter)),
+		mongo.WithStartAtOperationTime(primitive.Timestamp{
+			I: configOptions.StartAtOperationTimeI,
+			T: configOptions.StartAtOperationTimeT,
+		}),
 	}
 }
 
