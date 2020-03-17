@@ -57,8 +57,9 @@ type MongoDBOptions struct {
 
 // Kafka is the configuration provider for Kafka
 type Kafka struct {
-	BootstrapServers string `config:"KAFKA_MONGO_WATCHER_KAFKA_BOOTSTRAP_SERVERS"`
-	Topic            string `config:"KAFKA_MONGO_WATCHER_KAFKA_TOPIC"`
+	BootstrapServers   string `config:"KAFKA_MONGO_WATCHER_KAFKA_BOOTSTRAP_SERVERS"`
+	Topic              string `config:"KAFKA_MONGO_WATCHER_KAFKA_TOPIC"`
+	ProduceChannelSize int    `config:"KAFKA_MONGO_WATCHER_KAFKA_PRODUCE_CHANNEL_SIZE"`
 }
 
 // NewBase returns a new base configuration
@@ -85,8 +86,9 @@ func NewBase(ctx context.Context) *Base {
 			},
 		},
 		Kafka: Kafka{
-			BootstrapServers: "127.0.0.1:9092",
-			Topic:            "kafka-mongo-watcher",
+			BootstrapServers:   "127.0.0.1:9092",
+			Topic:              "kafka-mongo-watcher",
+			ProduceChannelSize: 10000,
 		},
 	}
 

@@ -132,6 +132,13 @@ You can set/override configuration variables from `.env` file and from `variable
 
 *Description*: Kafka topic to write into (default: "kafka-mongo-watcher")
 
+#### KAFKA_MONGO_WATCHER_KAFKA_PRODUCE_CHANNEL_SIZE
+*Type*: integer
+
+*Description*: The maximum size of the internal channel producer size (default: 10000)
+
+A big value here can increase the heap memory of the application as all the payload that have to be sent to Kafka will be maintained in channel.
+
 #### KAFKA_MONGO_WATCHER_LOG_CLI_VERBOSE
 *Type*: boolean
 
