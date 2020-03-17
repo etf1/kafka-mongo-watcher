@@ -10,7 +10,7 @@ func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 	if container.kafkaProducer == nil {
 		producer, err := kafkaconfluent.NewProducer(&kafkaconfluent.ConfigMap{
 			"bootstrap.servers":       container.Cfg.Kafka.BootstrapServers,
-			"go.produce.channel.size": 10000,
+			"go.produce.channel.size": container.Cfg.Kafka.ProduceChannelSize,
 		})
 		if err != nil {
 			panic(err)
