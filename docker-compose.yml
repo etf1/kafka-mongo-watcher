@@ -1,0 +1,87 @@
+version: '3.7'
+
+services:
+  mongo-primary:
+    hostname: mongo-primary
+    container_name: mongo-primary
+    image: bitnami/mongodb:4.2
+    expose:
+      - 27011
+    ports:
+      - 27011:27011
+    environment:
+      MONGODB_DATABASE: "watcher"
+      MONGODB_PORT_NUMBER: 27011
+      MONGODB_ADVERTISED_HOSTNAME: 127.0.0.1
+      MONGODB_REPLICA_SET_MODE: primary
+      MONGODB_REPLICA_SET_KEY: replicasetkey123
+      MONGODB_ROOT_PASSWORD: toor
+
+  mongo-secondary:
+    hostname: mongo-secondary
+    container_name: mongo-secondary
+    image: bitnami/mongodb:4.2
+    expose:
+      - 27012
+    ports:
+      - 27012:27012
+    environment:
+      MONGODB_DATABASE: "watcher"
+      MONGODB_PORT_NUMBER: 27012
+      MONGODB_PRIMARY_HOST: 127.0.0.1
+      MONGODB_PRIMARY_PORT_NUMBER: 27011
+      MONGODB_ADVERTISED_HOSTNAME: mongo-secondary
+      MONGODB_REPLICA_SET_MODE: secondary
+      MONGODB_REPLICA_SET_KEY: replicasetkey123
+      MONGODB_PRIMARY_ROOT_PASSWORD: toor
+
+  mongo-arbiter:
+    hostname: mongo-arbiter
+    container_name: mongo-arbiter
+    image: bitnami/mongodb:4.2
+    expose:
+      - 27013
+    ports:
+      - 27013:27013
+    environment:
+      MONGODB_DATABASE: "watcher"
+      MONGODB_PORT_NUMBER: 27013
+      MONGODB_PRIMARY_HOST: 127.0.0.1
+      MONGODB_PRIMARY_PORT_NUMBER: 27011
+      MONGODB_ADVERTISED_HOSTNAME: mongo-arbiter
+      MONGODB_REPLICA_SET_MODE: arbiter
+      MONGODB_REPLICA_SET_KEY: replicasetkey123
+      MONGODB_PRIMARY_ROOT_PASSWORD: toor
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.4.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  broker:
+    image: confluentinc/cp-server:5.4.0
+    hostname: broker
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:29092
+      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:2181
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
