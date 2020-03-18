@@ -7,7 +7,7 @@ import (
 
 	"github.com/gol4ng/logger"
 
-	"go.etf1.tf1.fr/etf1-platform/pkg/config"
+	"github.com/etf1/go-config"
 )
 
 const AppName = "kafka-mongo-watcher"
