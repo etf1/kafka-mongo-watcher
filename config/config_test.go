@@ -32,8 +32,9 @@ var cfg = &Base{
 		},
 	},
 	Kafka: Kafka{
-		BootstrapServers: "127.0.0.1:9092",
-		Topic:            "kafka-mongo-watcher",
+		BootstrapServers:   "127.0.0.1:9092",
+		Topic:              "kafka-mongo-watcher",
+		ProduceChannelSize: 10000,
 	},
 }
 

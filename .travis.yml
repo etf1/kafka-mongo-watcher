@@ -1,3 +1,4 @@
+dist: bionic
 language: go
 matrix:
   include:
@@ -8,14 +9,18 @@ matrix:
     - go: tip
 
 before_install:
+  - wget -qO - http://packages.confluent.io/deb/3.1/archive.key | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.4 stable main"
+  - sudo apt-get update
+  - sudo apt-get install librdkafka-dev
 
 install:
   - export GO111MODULE=on
-  - go get github.com/mitchellh/gox
+  - GO111MODULE=off go get github.com/mitchellh/gox
 
 script:
   - go test -mod=vendor -v -race ./...
-  - if [ "${LATEST}" = "true" ]; then gox -ldflags "-s -w -X github.com/etf1/kafka-mongo-watcher/config.AppVersion=$TRAVIS_TAG" -os="linux darwin windows" -arch="386 amd64" -osarch="linux/amd64" -output="kafka-mongo-watcher-{{.OS}}-{{.Arch}}"  -verbose ./...; fi
+  - if [ "${LATEST}" = "true" ]; then gox -ldflags "-s -w -X github.com/etf1/kafka-mongo-watcher/config.AppVersion=$TRAVIS_TAG" -os="linux" -arch="amd64" -output="kafka-mongo-watcher-{{.OS}}-{{.Arch}}"  -verbose ./...; fi
 
 deploy:
   provider: releases
@@ -23,11 +28,6 @@ deploy:
   api_key:
     secure: $GITHUB_TOKEN
   file:
-    - kafka-mongo-watcher-windows-386.exe
-    - kafka-mongo-watcher-windows-amd64.exe
-    - kafka-mongo-watcher-darwin-386
-    - kafka-mongo-watcher-darwin-amd64
-    - kafka-mongo-watcher-linux-386
     - kafka-mongo-watcher-linux-amd64
   on:
     repo: etf1/kafka-mongo-watcher
