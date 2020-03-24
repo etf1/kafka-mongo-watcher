@@ -42,6 +42,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		var events = make(chan *ChangeEvent)
 
 		go func() {
+			defer cursor.Close(ctx)
 			defer close(events)
 
 			for {
