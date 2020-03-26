@@ -45,6 +45,7 @@ func TestReplayProduceWhenNoResults(t *testing.T) {
 
 	mongoCursor := NewMockDriverCursor(ctrl)
 	mongoCursor.EXPECT().Next(ctx).Return(false)
+	mongoCursor.EXPECT().Close(ctx)
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
@@ -107,6 +108,7 @@ func TestReplayProduceWhenHaveResults(t *testing.T) {
 	mongoCursor := NewMockDriverCursor(ctrl)
 	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
 	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
+	mongoCursor.EXPECT().Close(ctx)
 
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(nil)
@@ -147,6 +149,7 @@ func TestReplayProduceWhenResultsWithDecodeError(t *testing.T) {
 
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(errors.New("decode error"))
+	mongoCursor.EXPECT().Close(ctx)
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
