@@ -8,8 +8,9 @@ import (
 )
 
 type ReplayProducer struct {
-	collection CollectionAdapter
-	logger     logger.LoggerInterface
+	collection     CollectionAdapter
+	logger         logger.LoggerInterface
+	customPipeline string
 }
 
 func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error) {
@@ -34,6 +35,15 @@ func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error)
 				},
 			},
 		}}},
+	}
+
+	if r.customPipeline != "" {
+		var customElements = bson.A{}
+		if err := bson.UnmarshalExtJSON([]byte(r.customPipeline), true, &customElements); err != nil {
+			return nil, err
+		}
+
+		pipeline = append(customElements, pipeline...)
 	}
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
@@ -65,9 +75,10 @@ func (r *ReplayProducer) sendEvents(ctx context.Context, cursor DriverCursor, ev
 	}
 }
 
-func NewReplayProducer(adapter CollectionAdapter, logger logger.LoggerInterface) *ReplayProducer {
+func NewReplayProducer(adapter CollectionAdapter, logger logger.LoggerInterface, customPipeline string) *ReplayProducer {
 	return &ReplayProducer{
-		collection: adapter,
-		logger:     logger,
+		collection:     adapter,
+		logger:         logger,
+		customPipeline: customPipeline,
 	}
 }

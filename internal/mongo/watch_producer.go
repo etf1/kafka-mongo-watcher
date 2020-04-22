@@ -11,15 +11,25 @@ import (
 )
 
 type WatchProducer struct {
-	collection CollectionAdapter
-	logger     logger.LoggerInterface
+	collection     CollectionAdapter
+	logger         logger.LoggerInterface
+	customPipeline string
 }
 
 func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 	return func(ctx context.Context) (chan *ChangeEvent, error) {
 
 		config := NewWatchConfig(o...)
-		var emptyPipeline = []bson.M{}
+		var pipeline = bson.A{}
+
+		if w.customPipeline != "" {
+			var customElements = bson.A{}
+			if err := bson.UnmarshalExtJSON([]byte(w.customPipeline), true, &customElements); err != nil {
+				return nil, err
+			}
+
+			pipeline = append(customElements, pipeline...)
+		}
 
 		opts := &options.ChangeStreamOptions{
 			BatchSize:            &config.batchSize,
@@ -33,7 +43,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 			opts.SetResumeAfter(config.resumeAfter)
 		}
 
-		cursor, err := w.collection.Watch(ctx, emptyPipeline, opts)
+		cursor, err := w.collection.Watch(ctx, pipeline, opts)
 		if err != nil {
 			w.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
 			return nil, err
@@ -66,10 +76,11 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, eve
 	}
 }
 
-func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface) *WatchProducer {
+func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface, customPipeline string) *WatchProducer {
 	return &WatchProducer{
-		collection: adapter,
-		logger:     logger,
+		collection:     adapter,
+		logger:         logger,
+		customPipeline: customPipeline,
 	}
 }
 

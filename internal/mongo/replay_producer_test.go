@@ -52,7 +52,7 @@ func TestReplayProduceWhenNoResults(t *testing.T) {
 	mongoCollection.EXPECT().Name().Return("test-collection")
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
-	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
 	events, err := replayer.Produce(ctx)
@@ -84,7 +84,7 @@ func TestReplayProduceWhenAggregateError(t *testing.T) {
 	mongoCursor := NewMockDriverCursor(ctrl)
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, errors.New("aggregate error"))
 
-	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger(), "")
 	// When
 	events, err := replayer.Produce(ctx)
 
@@ -118,7 +118,7 @@ func TestReplayProduceWhenHaveResults(t *testing.T) {
 	mongoCollection.EXPECT().Name().Return("test-collection")
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
-	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
 	events, err := replayer.Produce(ctx)
@@ -156,7 +156,57 @@ func TestReplayProduceWhenResultsWithDecodeError(t *testing.T) {
 	mongoCollection.EXPECT().Name().Return("test-collection")
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
 
-	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger())
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger(), "")
+
+	// When
+	events, err := replayer.Produce(ctx)
+
+	// Then
+	assert := assert.New(t)
+
+	event := <-events
+	assert.Nil(event)
+
+	assert.Nil(err)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
+}
+
+func TestReplayProduceWhenCustomPipeline(t *testing.T) {
+	ctx := context.Background()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mongoDatabase := NewMockDriverDatabase(ctrl)
+	mongoDatabase.EXPECT().Name().Return("test-db")
+
+	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor.EXPECT().Next(ctx).Return(false)
+	mongoCursor.EXPECT().Close(ctx)
+
+	mongoCollection := NewMockCollectionAdapter(ctrl)
+	mongoCollection.EXPECT().Database().Return(mongoDatabase)
+	mongoCollection.EXPECT().Name().Return("test-collection")
+
+	customPipeline := "[ { \"$match\": {\"test\": \"ok\"} } ]"
+	pipeline = append(bson.A{
+		bson.D{
+			{
+				Key: "$match",
+				Value: bson.D{
+					{
+						Key:   "test",
+						Value: "ok",
+					},
+				},
+			},
+		},
+	}, pipeline...)
+
+	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, nil)
+
+	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger(), customPipeline)
 
 	// When
 	events, err := replayer.Produce(ctx)

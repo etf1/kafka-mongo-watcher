@@ -36,6 +36,7 @@ func (container *Container) getReplayProducer() *mongo.ReplayProducer {
 		container.replayProducer = mongo.NewReplayProducer(
 			container.GetMongoCollection(),
 			container.GetLogger(),
+			container.Cfg.CustomPipeline,
 		)
 	}
 	return container.replayProducer
@@ -46,6 +47,7 @@ func (container *Container) getWatchProducer() *mongo.WatchProducer {
 		container.watchProducer = mongo.NewWatchProducer(
 			container.GetMongoCollection(),
 			container.GetLogger(),
+			container.Cfg.CustomPipeline,
 		)
 	}
 	return container.watchProducer

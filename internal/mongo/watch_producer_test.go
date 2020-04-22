@@ -31,11 +31,11 @@ func TestWatchProduceWhenNoResults(t *testing.T) {
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockDriverCursor(ctrl)
 
-	var emptyPipeline = []bson.M{}
+	var emptyPipeline = bson.A{}
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
 
-	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger())
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
 	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
@@ -65,11 +65,13 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockDriverCursor(ctrl)
 
+	var emptyPipeline = bson.A{}
+
 	var expectedErr = errors.New("aggregate error")
-	mongoCollection.EXPECT().Watch(ctx, []bson.M{}, opts).Return(mongoCursor, expectedErr)
+	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, expectedErr)
 	mongoCollection.EXPECT().Name()
 
-	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger())
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
 	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
@@ -106,14 +108,14 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockDriverCursor(ctrl)
 
-	var emptyPipeline = []bson.M{}
+	var emptyPipeline = bson.A{}
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
 
 	mongoCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(nil).AnyTimes()
 
-	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger())
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
 	events, err := watcher.GetProducer(
@@ -129,6 +131,56 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 
 	event := <-events
 	assert.IsType(new(ChangeEvent), event)
+
+	assert.Nil(err)
+	assert.Equal(cap(events), 0)
+	assert.Equal(len(events), 0)
+}
+
+func TestWatchProduceWhenCustomPipeline(t *testing.T) {
+	ctx := context.Background()
+	batchSize := int32(10)
+	maxAwaitTime := time.Duration(10)
+
+	opts := &options.ChangeStreamOptions{
+		BatchSize:    &batchSize,
+		MaxAwaitTime: &maxAwaitTime,
+	}
+	opts.SetFullDocument(options.UpdateLookup)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mongoCollection := NewMockCollectionAdapter(ctrl)
+	mongoCursor := NewMockDriverCursor(ctrl)
+
+	var pipeline = bson.A{}
+
+	customPipeline := "[ { \"$match\": {\"fullDocument.active\": true} } ]"
+	pipeline = append(bson.A{
+		bson.D{
+			{
+				Key: "$match",
+				Value: bson.D{
+					{
+						Key:   "fullDocument.active",
+						Value: true,
+					},
+				},
+			},
+		},
+	}, pipeline...)
+
+	mongoCollection.EXPECT().Watch(ctx, pipeline, opts).Return(mongoCursor, nil)
+	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
+
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), customPipeline)
+
+	// When
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+
+	// Then
+	assert := assert.New(t)
 
 	assert.Nil(err)
 	assert.Equal(cap(events), 0)
