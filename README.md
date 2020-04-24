@@ -77,6 +77,13 @@ In dev environment you can copy `.env.dist` in `.env` and edit his content in or
 You can set/override configuration variables from `.env` file and from `variables environment` and or from cli arguments 
 (If a variables was configured in multiple sources the last will override the previous one) 
 
+#### KAFKA_MONGO_WATCHER_CUSTOM_PIPELINE
+*Type*: string
+
+*Description*: In case you want to specify a filtering pipeline, you can specify it here. It works both wil replay and watch mode.
+
+*Example value*: `[ { "$match": { "fullDocument.is_active": true } }, { $addFields: { "custom-field": "custom-value" } } ]`
+
 #### KAFKA_MONGO_WATCHER_REPLAY
 *Type*: bool
 

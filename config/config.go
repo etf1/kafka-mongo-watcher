@@ -21,6 +21,7 @@ type Base struct {
 	LogCliVerbose   bool               `config:"KAFKA_MONGO_WATCHER_LOG_CLI_VERBOSE"`
 	GraylogEndpoint string             `config:"KAFKA_MONGO_WATCHER_GRAYLOG_ENDPOINT"`
 	Replay          bool               `config:"KAFKA_MONGO_WATCHER_REPLAY"`
+	CustomPipeline  string             `config:"KAFKA_MONGO_WATCHER_CUSTOM_PIPELINE"`
 
 	TechServer
 	MongoDB
