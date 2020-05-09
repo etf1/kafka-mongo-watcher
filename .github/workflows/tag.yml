@@ -1,0 +1,146 @@
+name: Build tag release
+
+#on:
+#  push:
+#    tags:
+#      - '*'
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go_version: [ '1.13', '1.14' ]
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Install kafka library
+        run: |
+          wget -qO - http://packages.confluent.io/deb/3.1/archive.key | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.4 stable main"
+          sudo apt-get update
+          sudo apt-get install librdkafka-dev
+
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go_version }}
+
+      - name: Download go dependencies
+        run: go get -t -v ./...
+
+      - name: Run go tests
+        run: go test -mod vendor -v -race ./...
+
+  docker-build:
+    needs: test
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Login with docker registry
+        uses: azure/docker-login@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up docker buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          buildx-version: latest
+          qemu-version: latest
+
+      - name: Docker buildx available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+
+      - name: Retrieve tag name
+        id: get_version
+        run: echo ::set-output name=TAG_NAME::${GITHUB_REF/refs\/tags\//}
+
+      - name: Run docker buildx build
+        run: |
+          docker buildx build \
+            --platform linux/386,linux/amd64 \
+            --output=type=registry \
+            --tag etf1/kafka-mongo-watcher:${{ steps.get_version.outputs.TAG_NAME }} \
+            .
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create release
+        id: create
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: false
+    outputs:
+      upload_url: ${{ steps.create.outputs.upload_url }}
+
+  upload:
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: 386
+            aptarch: i386
+          - os: linux
+            arch: amd64
+            aptarch: amd64
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Add architecture
+        run: sudo dpkg --add-architecture ${{ matrix.aptarch }}
+
+      - name: Install kafka library
+        run: |
+          wget -qO - http://packages.confluent.io/deb/3.1/archive.key | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.4 stable main"
+          sudo apt-get update
+          sudo apt-get install librdkafka-dev:${{ matrix.aptarch }} gcc-multilib
+
+      - name: Setup go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.14
+
+      - name: Download go dependencies
+        run: go get -t -v ./...
+
+      - name: Install mitchellh/gox to create platform specific releases
+        run: GO111MODULE=off go get github.com/mitchellh/gox
+
+      - name: Create release
+        run: gox -cgo -ldflags "-s -w" -os="${{ matrix.os }}" -arch="${{ matrix.arch }}" -output="kafka-mongo-watcher-{{.OS}}-{{.Arch}}"  -verbose ./...
+
+      - name: Upload release assets
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: ./kafka-mongo-watcher-${{ matrix.os }}-${{ matrix.arch }}
+          asset_name: kafka-mongo-watcher-${{ matrix.os }}-${{ matrix.arch }}
+          asset_content_type: application/octet-stream

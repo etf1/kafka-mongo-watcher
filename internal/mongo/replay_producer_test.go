@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/gol4ng/logger"
 	"github.com/golang/mock/gomock"
@@ -132,6 +133,9 @@ func TestReplayProduceWhenHaveResults(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(cap(events), 0)
 	assert.Equal(len(events), 0)
+
+	// Wait for mongodb cursor Close assertion
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestReplayProduceWhenResultsWithDecodeError(t *testing.T) {
@@ -170,6 +174,9 @@ func TestReplayProduceWhenResultsWithDecodeError(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(cap(events), 0)
 	assert.Equal(len(events), 0)
+
+	// Wait for mongodb cursor Close assertion
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestReplayProduceWhenCustomPipeline(t *testing.T) {
@@ -220,4 +227,7 @@ func TestReplayProduceWhenCustomPipeline(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(cap(events), 0)
 	assert.Equal(len(events), 0)
+
+	// Wait for mongodb cursor Close assertion
+	time.Sleep(100 * time.Millisecond)
 }

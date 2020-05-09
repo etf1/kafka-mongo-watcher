@@ -1,0 +1,39 @@
+name: Run tests
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go_version: [ '1.13', '1.14' ]
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Install kafka library
+        run: |
+          wget -qO - http://packages.confluent.io/deb/3.1/archive.key | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://packages.confluent.io/deb/5.4 stable main"
+          sudo apt-get update
+          sudo apt-get install librdkafka-dev
+
+      - name: Setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go_version }}
+
+      - name: Download go dependencies
+        run: go get -t -v ./...
+
+      - name: Run go tests
+        run: go test -mod vendor -v -cover -race ./...
+
