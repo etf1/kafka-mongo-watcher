@@ -40,10 +40,11 @@ type TechServer struct {
 
 // MongoDB is the configuration provider for MongoDB
 type MongoDB struct {
-	URI            string `config:"KAFKA_MONGO_WATCHER_MONGODB_URI"`
-	DatabaseName   string `config:"KAFKA_MONGO_WATCHER_MONGODB_DATABASE_NAME"`
-	CollectionName string `config:"KAFKA_MONGO_WATCHER_MONGODB_COLLECTION_NAME"`
-	Options        MongoDBOptions
+	URI                    string        `config:"KAFKA_MONGO_WATCHER_MONGODB_URI"`
+	DatabaseName           string        `config:"KAFKA_MONGO_WATCHER_MONGODB_DATABASE_NAME"`
+	CollectionName         string        `config:"KAFKA_MONGO_WATCHER_MONGODB_COLLECTION_NAME"`
+	ServerSelectionTimeout time.Duration `config:"KAFKA_MONGO_WATCHER_MONGODB_SERVER_SELECTION_TIMEOUT"`
+	Options                MongoDBOptions
 }
 
 type MongoDBOptions struct {
@@ -78,9 +79,10 @@ func NewBase(ctx context.Context) *Base {
 			IdleTimeout:       90 * time.Second,
 		},
 		MongoDB: MongoDB{
-			URI:            "mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/watcher?replicaSet=replicaset&authSource=admin",
-			DatabaseName:   "watcher",
-			CollectionName: "items",
+			URI:                    "mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/watcher?replicaSet=replicaset&authSource=admin",
+			DatabaseName:           "watcher",
+			CollectionName:         "items",
+			ServerSelectionTimeout: 2 * time.Second,
 			Options: MongoDBOptions{
 				FullDocument: false,
 			},

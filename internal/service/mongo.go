@@ -79,7 +79,7 @@ func (container *Container) GetMongoCollection() mongo.CollectionAdapter {
 func (container *Container) GetMongoConnection() *mongodriver.Database {
 	if container.mongoDB == nil {
 		mongoCfg := container.Cfg.MongoDB
-		if db, err := newMongoClient(container.baseContext, container.GetLogger(), mongoCfg.URI, mongoCfg.DatabaseName); err != nil {
+		if db, err := newMongoClient(container.baseContext, container.GetLogger(), mongoCfg.URI, mongoCfg.DatabaseName, mongoCfg.ServerSelectionTimeout); err != nil {
 			panic(err)
 		} else {
 			container.mongoDB = db
@@ -88,11 +88,11 @@ func (container *Container) GetMongoConnection() *mongodriver.Database {
 	return container.mongoDB
 }
 
-func newMongoClient(ctx context.Context, log logger.LoggerInterface, uri, database string) (*mongodriver.Database, error) {
+func newMongoClient(ctx context.Context, log logger.LoggerInterface, uri, database string, serverSelectionTimeout time.Duration) (*mongodriver.Database, error) {
 	opts := options.Client().
 		ApplyURI(uri).
 		SetReadPreference(readpref.Primary()).
-		SetServerSelectionTimeout(2 * time.Second).
+		SetServerSelectionTimeout(serverSelectionTimeout).
 		SetAppName(config.AppName)
 	mongoClient, err := mongodriver.NewClient(opts)
 	if err != nil {
