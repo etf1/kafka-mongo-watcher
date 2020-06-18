@@ -104,6 +104,11 @@ You can set/override configuration variables from `.env` file and from `variable
 
 *Description*: The MongoDB database name you want to connect to (default: "watcher") 
 
+#### KAFKA_MONGO_WATCHER_MONGODB_SERVER_SELECTION_TIMEOUT
+*Type*: duration
+
+*Description*: The MongoDB server selection timeout duration (default: 2s)
+
 #### KAFKA_MONGO_WATCHER_MONGODB_OPTION_BATCH_SIZE
 *Type*: integer
 

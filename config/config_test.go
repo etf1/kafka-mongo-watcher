@@ -24,9 +24,10 @@ var cfg = &Base{
 		IdleTimeout:       90 * time.Second,
 	},
 	MongoDB: MongoDB{
-		URI:            "mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/watcher?replicaSet=replicaset&authSource=admin",
-		DatabaseName:   "watcher",
-		CollectionName: "items",
+		URI:                    "mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/watcher?replicaSet=replicaset&authSource=admin",
+		DatabaseName:           "watcher",
+		CollectionName:         "items",
+		ServerSelectionTimeout: 2 * time.Second,
 		Options: MongoDBOptions{
 			FullDocument: false,
 		},
