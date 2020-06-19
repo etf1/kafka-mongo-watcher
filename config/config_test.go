@@ -43,10 +43,10 @@ var cfg = &Base{
 
 // NewBase returns a new base configuration
 func TestNewBase(t *testing.T) {
-	os.Setenv("KAFKA_MONGO_WATCHER_PRINT_CONFIG", "false")
+	os.Setenv("PRINT_CONFIG", "false")
 
 	ctx := context.Background()
-	base := NewBase(ctx)
+	base := NewBase(ctx, "")
 
 	assert.IsType(t, new(Base), base)
 	assert.Equal(t, cfg, base)

@@ -9,6 +9,7 @@ github.com/davecgh/go-spew/spew
 github.com/etf1/go-config
 github.com/etf1/go-config/dotenv
 github.com/etf1/go-config/env
+github.com/etf1/go-config/prefix
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
 # github.com/gol4ng/logger v0.5.5
