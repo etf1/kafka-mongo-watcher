@@ -54,10 +54,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		go func() {
 			defer cursor.Close(ctx)
 			defer close(events)
-
-			for {
-				w.sendEvents(ctx, cursor, events)
-			}
+			w.sendEvents(ctx, cursor, events)
 		}()
 
 		return events, nil
@@ -66,13 +63,23 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 
 func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) {
 	for cursor.Next(ctx) {
+		if cursor.ID() == 0 {
+			w.logger.Error("Cursor has been closed")
+			return
+		}
+		if err := cursor.Err(); err != nil {
+			w.logger.Error("Cursor error", logger.Error("error", err))
+			return
+		}
 		event := &ChangeEvent{}
 		if err := cursor.Decode(event); err != nil {
 			w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
 			continue
 		}
-
 		events <- event
+	}
+	if err := cursor.Err(); err != nil {
+		w.logger.Error("Cursor error", logger.Error("error", err))
 	}
 }
 

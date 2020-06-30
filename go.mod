@@ -10,6 +10,6 @@ require (
 	github.com/gorilla/mux v1.6.2
 	github.com/prometheus/client_golang v1.5.0
 	github.com/stretchr/testify v1.5.1
-	go.mongodb.org/mongo-driver v1.3.1
+	go.mongodb.org/mongo-driver v1.3.4
 	gopkg.in/confluentinc/confluent-kafka-go.v1 v1.1.0
 )

@@ -12,6 +12,9 @@ import (
 type DriverCursor interface {
 	Decode(val interface{}) error
 	Next(ctx context.Context) bool
+	TryNext(ctx context.Context) bool
+	Err() error
+	ID() int64
 	Close(ctx context.Context) error
 }
 
