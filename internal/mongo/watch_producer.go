@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/gol4ng/logger"
@@ -45,7 +46,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 
 		cursor, err := w.collection.Watch(ctx, pipeline, opts)
 		if err != nil {
-			w.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+			w.logger.Error("Mongo client: An error has occured while trying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
 			return nil, err
 		}
 
@@ -54,22 +55,22 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		go func() {
 			defer cursor.Close(ctx)
 			defer close(events)
-			w.sendEvents(ctx, cursor, events)
+			if err := w.sendEvents(ctx, cursor, events); err != nil {
+				w.logger.Error("Mongo client : An error has occured while while watching collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+			}
 		}()
 
 		return events, nil
 	}
 }
 
-func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) {
+func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) error {
 	for cursor.Next(ctx) {
 		if cursor.ID() == 0 {
-			w.logger.Error("Cursor has been closed")
-			return
+			return errors.New("change stream cursor has been closed")
 		}
 		if err := cursor.Err(); err != nil {
-			w.logger.Error("Cursor error", logger.Error("error", err))
-			return
+			return cursor.Err()
 		}
 		event := &ChangeEvent{}
 		if err := cursor.Decode(event); err != nil {
@@ -78,9 +79,7 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, eve
 		}
 		events <- event
 	}
-	if err := cursor.Err(); err != nil {
-		w.logger.Error("Cursor error", logger.Error("error", err))
-	}
+	return cursor.Err()
 }
 
 func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface, customPipeline string) *WatchProducer {
