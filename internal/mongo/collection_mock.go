@@ -137,14 +137,14 @@ func (m *MockCollectionAdapter) EXPECT() *MockCollectionAdapterMockRecorder {
 }
 
 // Aggregate mocks base method
-func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (DriverCursor, error) {
+func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (AggregateCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Aggregate", varargs...)
-	ret0, _ := ret[0].(DriverCursor)
+	ret0, _ := ret[0].(AggregateCursor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -171,14 +171,14 @@ func (mr *MockCollectionAdapterMockRecorder) Database() *gomock.Call {
 }
 
 // Watch mocks base method
-func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (DriverCursor, error) {
+func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (StreamCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Watch", varargs...)
-	ret0, _ := ret[0].(DriverCursor)
+	ret0, _ := ret[0].(StreamCursor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
