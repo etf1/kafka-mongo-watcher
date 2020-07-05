@@ -90,7 +90,7 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 			return resumeToken, errors.New("change stream cursor has been closed")
 		}
 		if err := cursor.Err(); err != nil {
-			return resumeToken, cursor.Err()
+			return resumeToken, err
 		}
 		resumeToken = cursor.ResumeToken()
 		event := &ChangeEvent{}
