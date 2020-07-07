@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/gol4ng/logger"
@@ -41,21 +40,20 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		var events = make(chan *ChangeEvent)
 
 		go func() {
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
 			defer close(events)
 			for {
-				resumeToken, err := w.sendEvents(ctx, cursor, events)
-				w.logger.Error("Mongo client : An error has occured while watching collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
-
-				cursor.Close(ctx)
-
-				w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("token", resumeToken))
-
-				cursor, err = w.watch(ctx, pipeline, config, resumeToken)
-				if err != nil {
-					w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+				select {
+				case <-ctx.Done():
+					cursor.Close(ctx)
 					break
+				case resumeAfter := <-w.sendEvents(ctx, cursor, events):
+					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("token", resumeAfter))
+					cursor.Close(ctx)
+					cursor, err = w.watch(ctx, pipeline, config, resumeAfter)
+					if err != nil {
+						w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+						break
+					}
 				}
 			}
 		}()
@@ -104,24 +102,33 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 	return
 }
 
-func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent) (bson.Raw, error) {
-	var resumeToken bson.Raw
-	for cursor.Next(ctx) {
-		if cursor.ID() == 0 {
-			return resumeToken, errors.New("change stream cursor has been closed")
+func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent) <-chan bson.Raw {
+	resumeToken := make(chan bson.Raw, 1)
+
+	go func() {
+		var lastToken bson.Raw
+		for cursor.Next(ctx) {
+			if cursor.ID() == 0 {
+				w.logger.Error("Mongo client: Cursor has been closed")
+				resumeToken <- lastToken
+				break
+			}
+			if err := cursor.Err(); err != nil {
+				w.logger.Error("Mongo client: Failed to watch collection", logger.Error("error", err))
+				resumeToken <- lastToken
+				break
+			}
+			lastToken = cursor.ResumeToken()
+			event := &ChangeEvent{}
+			if err := cursor.Decode(event); err != nil {
+				w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
+				continue
+			}
+			events <- event
 		}
-		if err := cursor.Err(); err != nil {
-			return resumeToken, err
-		}
-		resumeToken = cursor.ResumeToken()
-		event := &ChangeEvent{}
-		if err := cursor.Decode(event); err != nil {
-			w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
-			continue
-		}
-		events <- event
-	}
-	return resumeToken, cursor.Err()
+	}()
+
+	return resumeToken
 }
 
 func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface, customPipeline string) *WatchProducer {

@@ -69,7 +69,7 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 
 	var expectedErr = errors.New("aggregate error")
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, expectedErr)
-	mongoCollection.EXPECT().Name()
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
@@ -96,7 +96,6 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	ctxWithCancel, _ := context.WithCancel(ctx)
 
 	opts := &options.ChangeStreamOptions{
 		BatchSize:            &batchSize,
@@ -115,7 +114,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
 	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
 	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
-	mongoCursor.EXPECT().Next(ctxWithCancel).Return(true).AnyTimes()
+	mongoCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(nil).AnyTimes()
 
