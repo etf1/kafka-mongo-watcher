@@ -29,7 +29,7 @@ func TestWatchProduceWhenNoResults(t *testing.T) {
 	defer ctrl.Finish()
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
@@ -63,7 +63,7 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
 
@@ -74,7 +74,7 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
-	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime), WithMaxRetries(0))(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -96,6 +96,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	ctxWithCancel, _ := context.WithCancel(ctx)
 
 	opts := &options.ChangeStreamOptions{
 		BatchSize:            &batchSize,
@@ -106,12 +107,15 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	opts.SetResumeAfter(bson.M{"_data": "1234567890987654321"})
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
 
-	mongoCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
+	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
+	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
+	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
+	mongoCursor.EXPECT().Next(ctxWithCancel).Return(true).AnyTimes()
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(nil).AnyTimes()
 
@@ -152,7 +156,7 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 	defer ctrl.Finish()
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var pipeline = bson.A{}
 

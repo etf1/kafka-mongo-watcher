@@ -23,7 +23,7 @@ github.com/gol4ng/logger/writer/provider
 # github.com/gol4ng/signal v1.1.0
 ## explicit
 github.com/gol4ng/signal
-# github.com/golang/mock v1.4.1
+# github.com/golang/mock v1.4.3
 ## explicit
 github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.3.2

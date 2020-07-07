@@ -8,8 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// DriverCursor represents a mongo-driver/mongo cursor object
-// it can be both a Cursor or a ChangeStream for instance
+// AggregateCursor represents a mongo-driver/mongo Cursor object
 type AggregateCursor interface {
 	Decode(val interface{}) error
 	Next(ctx context.Context) bool
@@ -17,13 +16,14 @@ type AggregateCursor interface {
 	Close(ctx context.Context) error
 }
 
+// StreamCursor represents a mongo-driver/mongo ChangeStream object
 type StreamCursor interface {
 	Decode(val interface{}) error
 	Next(ctx context.Context) bool
 	TryNext(ctx context.Context) bool
+	Close(ctx context.Context) error
 	Err() error
 	ID() int64
-	Close(ctx context.Context) error
 	ResumeToken() bson.Raw
 }
 

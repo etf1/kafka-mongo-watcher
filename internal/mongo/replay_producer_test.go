@@ -43,7 +43,7 @@ func TestReplayProduceWhenNoResults(t *testing.T) {
 	mongoDatabase := NewMockDriverDatabase(ctrl)
 	mongoDatabase.EXPECT().Name().Return("test-db")
 
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockAggregateCursor(ctrl)
 	mongoCursor.EXPECT().Next(ctx).Return(false)
 	mongoCursor.EXPECT().Close(ctx)
 
@@ -81,7 +81,7 @@ func TestReplayProduceWhenAggregateError(t *testing.T) {
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
 	mongoCollection.EXPECT().Name().Return("test-collection")
 
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockAggregateCursor(ctrl)
 	mongoCollection.EXPECT().Aggregate(ctx, pipeline).Return(mongoCursor, errors.New("aggregate error"))
 
 	replayer := NewReplayProducer(mongoCollection, logger.NewNopLogger(), "")
@@ -105,7 +105,7 @@ func TestReplayProduceWhenHaveResults(t *testing.T) {
 	mongoDatabase := NewMockDriverDatabase(ctrl)
 	mongoDatabase.EXPECT().Name().Return("test-db")
 
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockAggregateCursor(ctrl)
 	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
 	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
 	mongoCursor.EXPECT().Close(ctx)
@@ -143,7 +143,7 @@ func TestReplayProduceWhenResultsWithDecodeError(t *testing.T) {
 	mongoDatabase := NewMockDriverDatabase(ctrl)
 	mongoDatabase.EXPECT().Name().Return("test-db")
 
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockAggregateCursor(ctrl)
 	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
 	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
 
@@ -181,7 +181,7 @@ func TestReplayProduceWhenCustomPipeline(t *testing.T) {
 	mongoDatabase := NewMockDriverDatabase(ctrl)
 	mongoDatabase.EXPECT().Name().Return("test-db")
 
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockAggregateCursor(ctrl)
 	mongoCursor.EXPECT().Next(ctx).Return(false)
 	mongoCursor.EXPECT().Close(ctx)
 
