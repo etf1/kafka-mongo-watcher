@@ -33,7 +33,9 @@ func TestWatchProduceWhenNoResults(t *testing.T) {
 
 	var emptyPipeline = bson.A{}
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
+	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
@@ -70,6 +72,7 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	var expectedErr = errors.New("aggregate error")
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, expectedErr)
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
+	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
