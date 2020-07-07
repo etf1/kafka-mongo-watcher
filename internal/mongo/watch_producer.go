@@ -110,12 +110,10 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 		for cursor.Next(ctx) {
 			if cursor.ID() == 0 {
 				w.logger.Error("Mongo client: Cursor has been closed")
-				resumeToken <- lastToken
 				break
 			}
 			if err := cursor.Err(); err != nil {
 				w.logger.Error("Mongo client: Failed to watch collection", logger.Error("error", err))
-				resumeToken <- lastToken
 				break
 			}
 			lastToken = cursor.ResumeToken()
@@ -126,6 +124,7 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 			}
 			events <- event
 		}
+		resumeToken <- lastToken
 	}()
 
 	return resumeToken
