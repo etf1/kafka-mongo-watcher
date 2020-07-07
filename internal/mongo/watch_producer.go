@@ -92,10 +92,11 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 			break
 		}
 		if attempt >= config.maxRetries {
+			w.logger.Warning("failed to open cursor on collection, reach max retries", logger.String("collection", w.collection.Name()), logger.Int32("max_retries", config.maxRetries), logger.Error("error", err))
 			break
 		}
 		attempt++
-		w.logger.Warning("failed to open cursor on collection", logger.String("collection", w.collection.Name()), logger.Int32("attemps", attempt), logger.Duration("retry_delay", config.retryDelay), logger.Error("error", err))
+		w.logger.Warning("failed to open cursor on collection", logger.String("collection", w.collection.Name()), logger.Int32("attempt", attempt), logger.Duration("retry_delay", config.retryDelay), logger.Error("error", err))
 		if config.retryDelay > 0 {
 			time.Sleep(config.retryDelay)
 		}
