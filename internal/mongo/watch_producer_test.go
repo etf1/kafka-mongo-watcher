@@ -36,11 +36,12 @@ func TestWatchProduceWhenNoResults(t *testing.T) {
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
 	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
+	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
-	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime), WithMaxRetries(0))(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -112,7 +113,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
-	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil).AnyTimes()
 
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
 	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
@@ -130,6 +131,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 		WithMaxAwaitTime(maxAwaitTime),
 		WithResumeAfter(resumeAfter),
 		WithStartAtOperationTime(startAtOperationTime),
+		WithMaxRetries(0),
 	)(ctx)
 
 	// Then

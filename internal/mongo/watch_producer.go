@@ -31,11 +31,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 			pipeline = append(customElements, pipeline...)
 		}
 
-		var resumeAfter interface{}
-		if len(config.resumeAfter) > 0 {
-			resumeAfter = config.resumeAfter
-		}
-		cursor, err := w.watch(ctx, pipeline, config, resumeAfter)
+		cursor, err := w.watch(ctx, pipeline, config, config.resumeAfter, nil)
 
 		if err != nil {
 			w.logger.Error("Mongo client: An error has occured while trying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
@@ -58,7 +54,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 					if config.maxRetries == 0 {
 						return
 					}
-					cursor, err = w.watch(ctx, pipeline, config, resumeAfter)
+					cursor, err = w.watch(ctx, pipeline, config, nil, resumeAfter)
 					if err != nil {
 						w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
 						return
@@ -71,7 +67,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 	}
 }
 
-func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *WatchConfig, resumeAfter interface{}) (cursor StreamCursor, err error) {
+func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *WatchConfig, resumeAfter bson.M, startAfter bson.Raw) (cursor StreamCursor, err error) {
 	// retries loop
 	attempt := int32(0)
 	for {
@@ -83,8 +79,11 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 		if config.fullDocumentEnabled {
 			opts.SetFullDocument(options.UpdateLookup)
 		}
-		if resumeAfter != nil {
-			opts.SetStartAfter(resumeAfter)
+
+		if startAfter != nil {
+			opts.SetStartAfter(startAfter)
+		} else if len(resumeAfter) > 0 {
+			opts.SetResumeAfter(resumeAfter)
 		}
 
 		cursor, err = w.collection.Watch(ctx, pipeline, opts)
