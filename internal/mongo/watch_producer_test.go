@@ -114,6 +114,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 
 	var emptyPipeline = bson.A{}
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil).AnyTimes()
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
 	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
@@ -180,6 +181,7 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 	}, pipeline...)
 
 	mongoCollection.EXPECT().Watch(ctx, pipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
 	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
