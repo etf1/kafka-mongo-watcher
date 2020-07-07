@@ -54,6 +54,8 @@ type MongoDBOptions struct {
 	ResumeAfter           string        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_RESUME_AFTER"`
 	StartAtOperationTimeI uint32        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_I"`
 	StartAtOperationTimeT uint32        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
+	WatchRetryDelay       time.Duration `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_WATCH_RETRY_DELAY"`
+	WatchMaxRetries       int32         `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_WATCH_MAX_RETRIES"`
 }
 
 // Kafka is the configuration provider for Kafka
@@ -84,7 +86,9 @@ func NewBase(ctx context.Context) *Base {
 			CollectionName:         "items",
 			ServerSelectionTimeout: 2 * time.Second,
 			Options: MongoDBOptions{
-				FullDocument: false,
+				FullDocument:    false,
+				WatchMaxRetries: 3,
+				WatchRetryDelay: 500 * time.Millisecond,
 			},
 		},
 		Kafka: Kafka{

@@ -41,8 +41,9 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		var events = make(chan *ChangeEvent)
 
 		go func() {
-			defer close(events)
 			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			defer close(events)
 			for {
 				resumeToken, err := w.sendEvents(ctx, cursor, events)
 				w.logger.Error("Mongo client : An error has occured while watching collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
@@ -57,30 +58,49 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 					break
 				}
 			}
-			// cancel context
-			cancel()
 		}()
 
 		return events, nil
 	}
 }
 
-func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *WatchConfig, resumeToken bson.Raw) (StreamCursor, error) {
-	opts := &options.ChangeStreamOptions{
-		BatchSize:            &config.batchSize,
-		MaxAwaitTime:         &config.maxAwaitTime,
-		StartAtOperationTime: config.startAtOperationTime,
-	}
-	if config.fullDocumentEnabled {
-		opts.SetFullDocument(options.UpdateLookup)
-	}
+func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *WatchConfig, resumeToken bson.Raw) (cursor StreamCursor, err error) {
+	// choose the resume token to use
+	var resumeAfter interface{}
 	if resumeToken != nil {
-		opts.SetResumeAfter(resumeToken)
-	} else if len(config.resumeAfter) != 0 {
-		opts.SetResumeAfter(config.resumeAfter)
+		resumeAfter = resumeToken
+	} else if len(config.resumeAfter) > 0 {
+		resumeAfter = config.resumeAfter
 	}
+	// retries loop
+	attempt := int32(0)
+	for {
+		opts := &options.ChangeStreamOptions{
+			BatchSize:            &config.batchSize,
+			MaxAwaitTime:         &config.maxAwaitTime,
+			StartAtOperationTime: config.startAtOperationTime,
+		}
+		if config.fullDocumentEnabled {
+			opts.SetFullDocument(options.UpdateLookup)
+		}
+		if resumeAfter != nil {
+			opts.SetResumeAfter(resumeAfter)
+		}
 
-	return w.collection.Watch(ctx, pipeline, opts)
+		cursor, err = w.collection.Watch(ctx, pipeline, opts)
+		if err == nil {
+			break
+		}
+		if attempt >= config.maxRetries {
+			break
+		}
+		attempt++
+		w.logger.Warning("failed to open cursor on collection", logger.String("collection", w.collection.Name()), logger.Int32("attemps", attempt), logger.Duration("retry_delay", config.retryDelay), logger.Error("error", err))
+		if config.retryDelay > 0 {
+			time.Sleep(config.retryDelay)
+		}
+	}
+	return
 }
 
 func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent) (bson.Raw, error) {
@@ -119,6 +139,8 @@ type WatchConfig struct {
 	maxAwaitTime         time.Duration
 	resumeAfter          bson.M
 	startAtOperationTime *primitive.Timestamp
+	maxRetries           int32
+	retryDelay           time.Duration
 }
 
 func (o *WatchConfig) apply(options ...WatchOption) {
@@ -134,6 +156,8 @@ func NewWatchConfig(o ...WatchOption) *WatchConfig {
 		maxAwaitTime:         0,
 		resumeAfter:          bson.M{},
 		startAtOperationTime: nil,
+		maxRetries:           3,
+		retryDelay:           250 * time.Millisecond,
 	}
 	watchOptions.apply(o...)
 	return watchOptions
@@ -181,6 +205,26 @@ func WithStartAtOperationTime(startAtOperationTime primitive.Timestamp) WatchOpt
 	return func(w *WatchConfig) {
 		if startAtOperationTime.I != 0 || startAtOperationTime.T != 0 {
 			w.startAtOperationTime = &startAtOperationTime
+		}
+	}
+}
+
+// WithMaxRetries allows to specify the max retry attempts when watching collection fail
+// return changes that occurred at or after the given maxRetries.
+func WithMaxRetries(maxRetries int32) WatchOption {
+	return func(w *WatchConfig) {
+		if maxRetries >= 0 {
+			w.maxRetries = maxRetries
+		}
+	}
+}
+
+// WithRetryDelay allows to specify the delay between each retry attempt when watching collection fail
+// return changes that occurred at or after the given duration.
+func WithRetryDelay(retryDelay time.Duration) WatchOption {
+	return func(w *WatchConfig) {
+		if retryDelay > 0 {
+			w.retryDelay = retryDelay
 		}
 	}
 }
