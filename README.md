@@ -145,7 +145,7 @@ You can set/override configuration variables from `.env` file and from `variable
 #### KAFKA_MONGO_WATCHER_MONGODB_OPTION_WATCH_RETRY_DELAY
 *Type*: duration
 
-*Description*: Sleeping delay between two watch attemps (default: 500ms)
+*Description*: Sleeping delay between two watch attempts (default: 500ms)
 
 #### KAFKA_MONGO_WATCHER_KAFKA_BOOTSTRAP_SERVERS
 *Type*: string
