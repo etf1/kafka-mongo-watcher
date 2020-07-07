@@ -48,13 +48,13 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 					w.logger.Info("Context canceled")
 					cursor.Close(ctx)
 					return
-				case resumeAfter := <-w.sendEvents(ctx, cursor, events):
-					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("token", resumeAfter))
+				case startAfter := <-w.sendEvents(ctx, cursor, events):
+					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter))
 					cursor.Close(ctx)
 					if config.maxRetries == 0 {
 						return
 					}
-					cursor, err = w.watch(ctx, pipeline, config, nil, resumeAfter)
+					cursor, err = w.watch(ctx, pipeline, config, nil, startAfter)
 					if err != nil {
 						w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
 						return
