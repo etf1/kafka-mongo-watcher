@@ -181,11 +181,15 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 
 	mongoCollection.EXPECT().Watch(ctx, pipeline, opts).Return(mongoCursor, nil)
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
+	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
+	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
+	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
+	mongoCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), customPipeline)
 
 	// When
-	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime), WithMaxRetries(0))(ctx)
 
 	// Then
 	assert := assert.New(t)
