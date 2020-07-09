@@ -17,7 +17,7 @@ func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 		}
 
 		log := container.GetLogger()
-		log.Info("Connected to kafka producer", logger.String("bootstrao-servers", container.Cfg.Kafka.BootstrapServers))
+		log.Info("Connected to kafka producer", logger.String("bootstrap-servers", container.Cfg.Kafka.BootstrapServers))
 
 		container.kafkaProducer = producer
 	}
