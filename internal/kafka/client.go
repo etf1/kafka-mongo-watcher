@@ -1,6 +1,8 @@
 package kafka
 
 import (
+	"sync"
+
 	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
@@ -12,6 +14,8 @@ type Client interface {
 
 type client struct {
 	producer KafkaProducer
+	isClosed bool
+	closeMtx sync.Mutex
 }
 
 // NewClient returns a basic kafka client
@@ -55,9 +59,16 @@ func (c *client) Events() chan kafka.Event {
 
 // Close allows to close/disconnect the kafka client
 func (c *client) Close() {
+	defer c.closeMtx.Unlock()
+	c.closeMtx.Lock()
+
+	if c.isClosed {
+		return
+	}
+
 	for wait := true; wait; wait = c.producer.Len() > 0 {
 		// Wait for all events to be retrieved from Kafka library
 	}
-
 	c.producer.Close()
+	c.isClosed = true
 }

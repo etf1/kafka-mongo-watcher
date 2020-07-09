@@ -35,8 +35,13 @@ func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container 
 		log.Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
 
 		cancel()
+		log.Info("Close kafka client")
 		container.GetKafkaClient().Close()
+
+		log.Info("Close mongo client")
 		container.GetMongoConnection().Client().Disconnect(ctx)
+
+		log.Info("Close tech server")
 		container.GetTechServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)
 }
