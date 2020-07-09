@@ -29,7 +29,9 @@ var cfg = &Base{
 		CollectionName:         "items",
 		ServerSelectionTimeout: 2 * time.Second,
 		Options: MongoDBOptions{
-			FullDocument: false,
+			FullDocument:    false,
+			WatchMaxRetries: 3,
+			WatchRetryDelay: 500 * time.Millisecond,
 		},
 	},
 	Kafka: Kafka{

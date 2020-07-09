@@ -137,6 +137,16 @@ You can set/override configuration variables from `.env` file and from `variable
 
 *Description*: In case you want to set a timestamp for the change stream to only return changes that occurred at or after the given timestamp (default: nil)
 
+#### KAFKA_MONGO_WATCHER_MONGODB_OPTION_WATCH_MAX_RETRIES
+*Type*: integer
+
+*Description*: The max number of retries when trying to watch a collection (default: 3, set to 0 to disable retry)
+
+#### KAFKA_MONGO_WATCHER_MONGODB_OPTION_WATCH_RETRY_DELAY
+*Type*: duration
+
+*Description*: Sleeping delay between two watch attempts (default: 500ms)
+
 #### KAFKA_MONGO_WATCHER_KAFKA_BOOTSTRAP_SERVERS
 *Type*: string
 

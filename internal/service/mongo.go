@@ -64,6 +64,8 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 			I: configOptions.StartAtOperationTimeI,
 			T: configOptions.StartAtOperationTimeT,
 		}),
+		mongo.WithMaxRetries(configOptions.WatchMaxRetries),
+		mongo.WithRetryDelay(configOptions.WatchRetryDelay),
 	}
 }
 

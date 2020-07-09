@@ -3,16 +3,28 @@ package mongo
 import (
 	"context"
 
+	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// DriverCursor represents a mongo-driver/mongo cursor object
-// it can be both a Cursor or a ChangeStream for instance
-type DriverCursor interface {
+// AggregateCursor represents a mongo-driver/mongo Cursor object
+type AggregateCursor interface {
 	Decode(val interface{}) error
 	Next(ctx context.Context) bool
+	TryNext(ctx context.Context) bool
 	Close(ctx context.Context) error
+}
+
+// StreamCursor represents a mongo-driver/mongo ChangeStream object
+type StreamCursor interface {
+	Decode(val interface{}) error
+	Next(ctx context.Context) bool
+	TryNext(ctx context.Context) bool
+	Close(ctx context.Context) error
+	Err() error
+	ID() int64
+	ResumeToken() bson.Raw
 }
 
 // DriverDatabase represents the mongo-driver/mongo database object
@@ -23,9 +35,9 @@ type DriverDatabase interface {
 // CollectionAdapter is a wrapper over the mongo-driver/mongo collection object
 // mainly allowing us to use interfaces
 type CollectionAdapter interface {
-	Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (DriverCursor, error)
+	Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (AggregateCursor, error)
 	Database() DriverDatabase
-	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (DriverCursor, error)
+	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (StreamCursor, error)
 	Name() string
 }
 
@@ -41,7 +53,7 @@ func NewCollectionAdapter(collection *mongodriver.Collection) *collectionAdapter
 }
 
 // Aggregate sends an aggregate query using mongo-driver/mongo
-func (c *collectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (DriverCursor, error) {
+func (c *collectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (AggregateCursor, error) {
 	return c.collection.Aggregate(ctx, pipeline, opts...)
 }
 
@@ -51,7 +63,7 @@ func (c *collectionAdapter) Database() DriverDatabase {
 }
 
 // Watch sends an watch query using mongo-driver/mongo
-func (c *collectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (DriverCursor, error) {
+func (c *collectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (StreamCursor, error) {
 	return c.collection.Watch(ctx, pipeline, opts...)
 }
 

@@ -7,35 +7,36 @@ package mongo
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
+	bson "go.mongodb.org/mongo-driver/bson"
 	options "go.mongodb.org/mongo-driver/mongo/options"
 	reflect "reflect"
 )
 
-// MockDriverCursor is a mock of DriverCursor interface
-type MockDriverCursor struct {
+// MockAggregateCursor is a mock of AggregateCursor interface
+type MockAggregateCursor struct {
 	ctrl     *gomock.Controller
-	recorder *MockDriverCursorMockRecorder
+	recorder *MockAggregateCursorMockRecorder
 }
 
-// MockDriverCursorMockRecorder is the mock recorder for MockDriverCursor
-type MockDriverCursorMockRecorder struct {
-	mock *MockDriverCursor
+// MockAggregateCursorMockRecorder is the mock recorder for MockAggregateCursor
+type MockAggregateCursorMockRecorder struct {
+	mock *MockAggregateCursor
 }
 
-// NewMockDriverCursor creates a new mock instance
-func NewMockDriverCursor(ctrl *gomock.Controller) *MockDriverCursor {
-	mock := &MockDriverCursor{ctrl: ctrl}
-	mock.recorder = &MockDriverCursorMockRecorder{mock}
+// NewMockAggregateCursor creates a new mock instance
+func NewMockAggregateCursor(ctrl *gomock.Controller) *MockAggregateCursor {
+	mock := &MockAggregateCursor{ctrl: ctrl}
+	mock.recorder = &MockAggregateCursorMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockDriverCursor) EXPECT() *MockDriverCursorMockRecorder {
+func (m *MockAggregateCursor) EXPECT() *MockAggregateCursorMockRecorder {
 	return m.recorder
 }
 
 // Decode mocks base method
-func (m *MockDriverCursor) Decode(val interface{}) error {
+func (m *MockAggregateCursor) Decode(val interface{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Decode", val)
 	ret0, _ := ret[0].(error)
@@ -43,13 +44,13 @@ func (m *MockDriverCursor) Decode(val interface{}) error {
 }
 
 // Decode indicates an expected call of Decode
-func (mr *MockDriverCursorMockRecorder) Decode(val interface{}) *gomock.Call {
+func (mr *MockAggregateCursorMockRecorder) Decode(val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockDriverCursor)(nil).Decode), val)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockAggregateCursor)(nil).Decode), val)
 }
 
 // Next mocks base method
-func (m *MockDriverCursor) Next(ctx context.Context) bool {
+func (m *MockAggregateCursor) Next(ctx context.Context) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Next", ctx)
 	ret0, _ := ret[0].(bool)
@@ -57,13 +58,27 @@ func (m *MockDriverCursor) Next(ctx context.Context) bool {
 }
 
 // Next indicates an expected call of Next
-func (mr *MockDriverCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
+func (mr *MockAggregateCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockDriverCursor)(nil).Next), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockAggregateCursor)(nil).Next), ctx)
+}
+
+// TryNext mocks base method
+func (m *MockAggregateCursor) TryNext(ctx context.Context) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TryNext", ctx)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// TryNext indicates an expected call of TryNext
+func (mr *MockAggregateCursorMockRecorder) TryNext(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryNext", reflect.TypeOf((*MockAggregateCursor)(nil).TryNext), ctx)
 }
 
 // Close mocks base method
-func (m *MockDriverCursor) Close(ctx context.Context) error {
+func (m *MockAggregateCursor) Close(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close", ctx)
 	ret0, _ := ret[0].(error)
@@ -71,9 +86,130 @@ func (m *MockDriverCursor) Close(ctx context.Context) error {
 }
 
 // Close indicates an expected call of Close
-func (mr *MockDriverCursorMockRecorder) Close(ctx interface{}) *gomock.Call {
+func (mr *MockAggregateCursorMockRecorder) Close(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDriverCursor)(nil).Close), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockAggregateCursor)(nil).Close), ctx)
+}
+
+// MockStreamCursor is a mock of StreamCursor interface
+type MockStreamCursor struct {
+	ctrl     *gomock.Controller
+	recorder *MockStreamCursorMockRecorder
+}
+
+// MockStreamCursorMockRecorder is the mock recorder for MockStreamCursor
+type MockStreamCursorMockRecorder struct {
+	mock *MockStreamCursor
+}
+
+// NewMockStreamCursor creates a new mock instance
+func NewMockStreamCursor(ctrl *gomock.Controller) *MockStreamCursor {
+	mock := &MockStreamCursor{ctrl: ctrl}
+	mock.recorder = &MockStreamCursorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockStreamCursor) EXPECT() *MockStreamCursorMockRecorder {
+	return m.recorder
+}
+
+// Decode mocks base method
+func (m *MockStreamCursor) Decode(val interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Decode", val)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Decode indicates an expected call of Decode
+func (mr *MockStreamCursorMockRecorder) Decode(val interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockStreamCursor)(nil).Decode), val)
+}
+
+// Next mocks base method
+func (m *MockStreamCursor) Next(ctx context.Context) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Next", ctx)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Next indicates an expected call of Next
+func (mr *MockStreamCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockStreamCursor)(nil).Next), ctx)
+}
+
+// TryNext mocks base method
+func (m *MockStreamCursor) TryNext(ctx context.Context) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TryNext", ctx)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// TryNext indicates an expected call of TryNext
+func (mr *MockStreamCursorMockRecorder) TryNext(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryNext", reflect.TypeOf((*MockStreamCursor)(nil).TryNext), ctx)
+}
+
+// Close mocks base method
+func (m *MockStreamCursor) Close(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close
+func (mr *MockStreamCursorMockRecorder) Close(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStreamCursor)(nil).Close), ctx)
+}
+
+// Err mocks base method
+func (m *MockStreamCursor) Err() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Err")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Err indicates an expected call of Err
+func (mr *MockStreamCursorMockRecorder) Err() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Err", reflect.TypeOf((*MockStreamCursor)(nil).Err))
+}
+
+// ID mocks base method
+func (m *MockStreamCursor) ID() int64 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ID")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+// ID indicates an expected call of ID
+func (mr *MockStreamCursorMockRecorder) ID() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockStreamCursor)(nil).ID))
+}
+
+// ResumeToken mocks base method
+func (m *MockStreamCursor) ResumeToken() bson.Raw {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResumeToken")
+	ret0, _ := ret[0].(bson.Raw)
+	return ret0
+}
+
+// ResumeToken indicates an expected call of ResumeToken
+func (mr *MockStreamCursorMockRecorder) ResumeToken() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResumeToken", reflect.TypeOf((*MockStreamCursor)(nil).ResumeToken))
 }
 
 // MockDriverDatabase is a mock of DriverDatabase interface
@@ -137,14 +273,14 @@ func (m *MockCollectionAdapter) EXPECT() *MockCollectionAdapterMockRecorder {
 }
 
 // Aggregate mocks base method
-func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (DriverCursor, error) {
+func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (AggregateCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Aggregate", varargs...)
-	ret0, _ := ret[0].(DriverCursor)
+	ret0, _ := ret[0].(AggregateCursor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -171,14 +307,14 @@ func (mr *MockCollectionAdapterMockRecorder) Database() *gomock.Call {
 }
 
 // Watch mocks base method
-func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (DriverCursor, error) {
+func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (StreamCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "Watch", varargs...)
-	ret0, _ := ret[0].(DriverCursor)
+	ret0, _ := ret[0].(StreamCursor)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

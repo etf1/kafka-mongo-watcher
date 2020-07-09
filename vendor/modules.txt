@@ -23,7 +23,7 @@ github.com/gol4ng/logger/writer/provider
 # github.com/gol4ng/signal v1.1.0
 ## explicit
 github.com/gol4ng/signal
-# github.com/golang/mock v1.4.1
+# github.com/golang/mock v1.4.3
 ## explicit
 github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.3.2
@@ -84,7 +84,7 @@ github.com/stretchr/testify/mock
 github.com/xdg/scram
 # github.com/xdg/stringprep v0.0.0-20180714160509-73f8eece6fdc
 github.com/xdg/stringprep
-# go.mongodb.org/mongo-driver v1.3.1
+# go.mongodb.org/mongo-driver v1.3.4
 ## explicit
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec

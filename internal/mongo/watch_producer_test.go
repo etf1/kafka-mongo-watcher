@@ -29,16 +29,19 @@ func TestWatchProduceWhenNoResults(t *testing.T) {
 	defer ctrl.Finish()
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
+	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
+	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
-	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime), WithMaxRetries(0))(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -63,18 +66,19 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
 
 	var expectedErr = errors.New("aggregate error")
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, expectedErr)
-	mongoCollection.EXPECT().Name()
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
+	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	// When
-	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime), WithMaxRetries(0))(ctx)
 
 	// Then
 	assert := assert.New(t)
@@ -106,11 +110,15 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	opts.SetResumeAfter(bson.M{"_data": "1234567890987654321"})
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
-	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil).AnyTimes()
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 
+	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
+	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
+	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(nil).AnyTimes()
@@ -124,6 +132,7 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 		WithMaxAwaitTime(maxAwaitTime),
 		WithResumeAfter(resumeAfter),
 		WithStartAtOperationTime(startAtOperationTime),
+		WithMaxRetries(0),
 	)(ctx)
 
 	// Then
@@ -152,7 +161,7 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 	defer ctrl.Finish()
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
-	mongoCursor := NewMockDriverCursor(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var pipeline = bson.A{}
 
@@ -172,12 +181,16 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 	}, pipeline...)
 
 	mongoCollection.EXPECT().Watch(ctx, pipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
+	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
+	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
+	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), customPipeline)
 
 	// When
-	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime))(ctx)
+	events, err := watcher.GetProducer(WithBatchSize(batchSize), WithFullDocument(true), WithMaxAwaitTime(maxAwaitTime), WithMaxRetries(0))(ctx)
 
 	// Then
 	assert := assert.New(t)

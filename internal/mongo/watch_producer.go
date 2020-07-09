@@ -31,6 +31,46 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 			pipeline = append(customElements, pipeline...)
 		}
 
+		cursor, err := w.watch(ctx, pipeline, config, config.resumeAfter, nil)
+
+		if err != nil {
+			w.logger.Error("Mongo client: An error has occured while trying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+			return nil, err
+		}
+
+		var events = make(chan *ChangeEvent)
+
+		go func() {
+			defer close(events)
+			for {
+				select {
+				case <-ctx.Done():
+					w.logger.Info("Context canceled")
+					cursor.Close(ctx)
+					return
+				case startAfter := <-w.sendEvents(ctx, cursor, events):
+					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter))
+					cursor.Close(ctx)
+					if config.maxRetries == 0 {
+						return
+					}
+					cursor, err = w.watch(ctx, pipeline, config, nil, startAfter)
+					if err != nil {
+						w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+						return
+					}
+				}
+			}
+		}()
+
+		return events, nil
+	}
+}
+
+func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *WatchConfig, resumeAfter bson.M, startAfter bson.Raw) (cursor StreamCursor, err error) {
+	// retries loop
+	attempt := int32(0)
+	for {
 		opts := &options.ChangeStreamOptions{
 			BatchSize:            &config.batchSize,
 			MaxAwaitTime:         &config.maxAwaitTime,
@@ -39,41 +79,55 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		if config.fullDocumentEnabled {
 			opts.SetFullDocument(options.UpdateLookup)
 		}
-		if len(config.resumeAfter) != 0 {
-			opts.SetResumeAfter(config.resumeAfter)
+
+		if startAfter != nil {
+			opts.SetStartAfter(startAfter)
+		} else if len(resumeAfter) > 0 {
+			opts.SetResumeAfter(resumeAfter)
 		}
 
-		cursor, err := w.collection.Watch(ctx, pipeline, opts)
-		if err != nil {
-			w.logger.Error("Mongo client: An error has occured while watching collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
-			return nil, err
+		cursor, err = w.collection.Watch(ctx, pipeline, opts)
+		if err == nil {
+			break
 		}
-
-		var events = make(chan *ChangeEvent)
-
-		go func() {
-			defer cursor.Close(ctx)
-			defer close(events)
-
-			for {
-				w.sendEvents(ctx, cursor, events)
-			}
-		}()
-
-		return events, nil
+		if attempt >= config.maxRetries {
+			w.logger.Warning("failed to open cursor on collection, reach max retries", logger.String("collection", w.collection.Name()), logger.Int32("max_retries", config.maxRetries), logger.Error("error", err))
+			break
+		}
+		attempt++
+		w.logger.Warning("failed to open cursor on collection", logger.String("collection", w.collection.Name()), logger.Int32("attempt", attempt), logger.Duration("retry_delay", config.retryDelay), logger.Error("error", err))
+		if config.retryDelay > 0 {
+			time.Sleep(config.retryDelay)
+		}
 	}
+	return
 }
 
-func (w *WatchProducer) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) {
-	for cursor.Next(ctx) {
-		event := &ChangeEvent{}
-		if err := cursor.Decode(event); err != nil {
-			w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
-			continue
-		}
+func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent) <-chan bson.Raw {
+	resumeToken := make(chan bson.Raw, 1)
 
-		events <- event
-	}
+	go func() {
+		defer close(resumeToken)
+		for cursor.Next(ctx) {
+			if cursor.ID() == 0 {
+				w.logger.Error("Mongo client: Cursor has been closed")
+				break
+			}
+			if err := cursor.Err(); err != nil {
+				w.logger.Error("Mongo client: Failed to watch collection", logger.Error("error", err))
+				break
+			}
+			event := &ChangeEvent{}
+			if err := cursor.Decode(event); err != nil {
+				w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
+				continue
+			}
+			events <- event
+		}
+		resumeToken <- cursor.ResumeToken()
+	}()
+
+	return resumeToken
 }
 
 func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface, customPipeline string) *WatchProducer {
@@ -92,6 +146,8 @@ type WatchConfig struct {
 	maxAwaitTime         time.Duration
 	resumeAfter          bson.M
 	startAtOperationTime *primitive.Timestamp
+	maxRetries           int32
+	retryDelay           time.Duration
 }
 
 func (o *WatchConfig) apply(options ...WatchOption) {
@@ -107,6 +163,8 @@ func NewWatchConfig(o ...WatchOption) *WatchConfig {
 		maxAwaitTime:         0,
 		resumeAfter:          bson.M{},
 		startAtOperationTime: nil,
+		maxRetries:           3,
+		retryDelay:           250 * time.Millisecond,
 	}
 	watchOptions.apply(o...)
 	return watchOptions
@@ -154,6 +212,26 @@ func WithStartAtOperationTime(startAtOperationTime primitive.Timestamp) WatchOpt
 	return func(w *WatchConfig) {
 		if startAtOperationTime.I != 0 || startAtOperationTime.T != 0 {
 			w.startAtOperationTime = &startAtOperationTime
+		}
+	}
+}
+
+// WithMaxRetries allows to specify the max retry attempts when watching collection fail
+// return changes that occurred at or after the given maxRetries.
+func WithMaxRetries(maxRetries int32) WatchOption {
+	return func(w *WatchConfig) {
+		if maxRetries >= 0 {
+			w.maxRetries = maxRetries
+		}
+	}
+}
+
+// WithRetryDelay allows to specify the delay between each retry attempt when watching collection fail
+// return changes that occurred at or after the given duration.
+func WithRetryDelay(retryDelay time.Duration) WatchOption {
+	return func(w *WatchConfig) {
+		if retryDelay > 0 {
+			w.retryDelay = retryDelay
 		}
 	}
 }

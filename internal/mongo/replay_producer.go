@@ -63,7 +63,7 @@ func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error)
 	return events, nil
 }
 
-func (r *ReplayProducer) sendEvents(ctx context.Context, cursor DriverCursor, events chan *ChangeEvent) {
+func (r *ReplayProducer) sendEvents(ctx context.Context, cursor AggregateCursor, events chan *ChangeEvent) {
 	for cursor.Next(ctx) {
 		event := &ChangeEvent{}
 		if err := cursor.Decode(event); err != nil {
