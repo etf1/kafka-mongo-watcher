@@ -46,16 +46,16 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 			for {
 				select {
 				case <-ctx.Done():
-					w.logger.Info("Context canceled")
+					w.logger.Info("Context canceled", logger.Error("err", ctx.Err()))
 					cursor.Close(ctx)
 					return
 				default:
 					startAfter, err := w.sendEvents(ctx, cursor, events)
+					cursor.Close(ctx)
 					if err == nil {
 						return
 					}
 					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter), logger.Error("error", err))
-					cursor.Close(ctx)
 					if config.maxRetries == 0 {
 						return
 					}
@@ -115,7 +115,6 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 			return resumeToken, fmt.Errorf("cursor has been closed")
 		}
 		if err := cursor.Err(); err != nil {
-			//w.logger.Error("Mongo client: Failed to watch collection", logger.Error("error", err))
 			return resumeToken, err
 		}
 		event := &ChangeEvent{}
