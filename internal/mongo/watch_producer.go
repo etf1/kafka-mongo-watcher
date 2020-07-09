@@ -111,6 +111,7 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent) (bson.Raw, error) {
 	var resumeToken bson.Raw
 	for cursor.Next(ctx) {
+		resumeToken = cursor.ResumeToken()
 		if cursor.ID() == 0 {
 			return resumeToken, fmt.Errorf("cursor has been closed")
 		}
