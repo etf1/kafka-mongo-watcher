@@ -8,6 +8,8 @@ import (
 	"github.com/gol4ng/logger"
 
 	"github.com/etf1/go-config"
+	"github.com/etf1/go-config/env"
+	"github.com/etf1/go-config/prefix"
 )
 
 const AppName = "kafka-mongo-watcher"
@@ -16,12 +18,12 @@ var AppVersion = "wip"
 
 // Base is the base configuration provider
 type Base struct {
-	PrintConfig     bool               `config:"KAFKA_MONGO_WATCHER_PRINT_CONFIG"`
-	LogLevel        logger.LevelString `config:"KAFKA_MONGO_WATCHER_LOG_LEVEL"`
-	LogCliVerbose   bool               `config:"KAFKA_MONGO_WATCHER_LOG_CLI_VERBOSE"`
-	GraylogEndpoint string             `config:"KAFKA_MONGO_WATCHER_GRAYLOG_ENDPOINT"`
-	Replay          bool               `config:"KAFKA_MONGO_WATCHER_REPLAY"`
-	CustomPipeline  string             `config:"KAFKA_MONGO_WATCHER_CUSTOM_PIPELINE"`
+	PrintConfig     bool               `config:"PRINT_CONFIG"`
+	LogLevel        logger.LevelString `config:"LOG_LEVEL"`
+	LogCliVerbose   bool               `config:"LOG_CLI_VERBOSE"`
+	GraylogEndpoint string             `config:"GRAYLOG_ENDPOINT"`
+	Replay          bool               `config:"REPLAY"`
+	CustomPipeline  string             `config:"CUSTOM_PIPELINE"`
 
 	TechServer
 	MongoDB
@@ -30,43 +32,43 @@ type Base struct {
 
 // TechServer is the configuration provider for monitoring HTTP server
 type TechServer struct {
-	PprofEnabled bool   `config:"KAFKA_MONGO_WATCHER_PPROF_ENABLED"`
-	HTTPAddr     string `config:"KAFKA_MONGO_WATCHER_HTTP_TECH_ADDR"`
+	PprofEnabled bool   `config:"PPROF_ENABLED"`
+	HTTPAddr     string `config:"HTTP_TECH_ADDR"`
 
-	ReadHeaderTimeout time.Duration `config:"KAFKA_MONGO_WATCHER_HTTP_READ_HEADER_TIMEOUT"`
-	WriteTimeout      time.Duration `config:"KAFKA_MONGO_WATCHER_HTTP_WRITE_TIMEOUT"`
-	IdleTimeout       time.Duration `config:"KAFKA_MONGO_WATCHER_HTTP_IDLE_TIMEOUT"`
+	ReadHeaderTimeout time.Duration `config:"HTTP_READ_HEADER_TIMEOUT"`
+	WriteTimeout      time.Duration `config:"HTTP_WRITE_TIMEOUT"`
+	IdleTimeout       time.Duration `config:"HTTP_IDLE_TIMEOUT"`
 }
 
 // MongoDB is the configuration provider for MongoDB
 type MongoDB struct {
-	URI                    string        `config:"KAFKA_MONGO_WATCHER_MONGODB_URI"`
-	DatabaseName           string        `config:"KAFKA_MONGO_WATCHER_MONGODB_DATABASE_NAME"`
-	CollectionName         string        `config:"KAFKA_MONGO_WATCHER_MONGODB_COLLECTION_NAME"`
-	ServerSelectionTimeout time.Duration `config:"KAFKA_MONGO_WATCHER_MONGODB_SERVER_SELECTION_TIMEOUT"`
+	URI                    string        `config:"MONGODB_URI"`
+	DatabaseName           string        `config:"MONGODB_DATABASE_NAME"`
+	CollectionName         string        `config:"MONGODB_COLLECTION_NAME"`
+	ServerSelectionTimeout time.Duration `config:"MONGODB_SERVER_SELECTION_TIMEOUT"`
 	Options                MongoDBOptions
 }
 
 type MongoDBOptions struct {
-	BatchSize             int32         `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_BATCH_SIZE"`
-	FullDocument          bool          `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_FULL_DOCUMENT"`
-	MaxAwaitTime          time.Duration `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_MAX_AWAIT_TIME"`
-	ResumeAfter           string        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_RESUME_AFTER"`
-	StartAtOperationTimeI uint32        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_I"`
-	StartAtOperationTimeT uint32        `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
-	WatchRetryDelay       time.Duration `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_WATCH_RETRY_DELAY"`
-	WatchMaxRetries       int32         `config:"KAFKA_MONGO_WATCHER_MONGODB_OPTION_WATCH_MAX_RETRIES"`
+	BatchSize             int32         `config:"MONGODB_OPTION_BATCH_SIZE"`
+	FullDocument          bool          `config:"MONGODB_OPTION_FULL_DOCUMENT"`
+	MaxAwaitTime          time.Duration `config:"MONGODB_OPTION_MAX_AWAIT_TIME"`
+	ResumeAfter           string        `config:"MONGODB_OPTION_RESUME_AFTER"`
+	StartAtOperationTimeI uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_I"`
+	StartAtOperationTimeT uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
+	WatchRetryDelay       time.Duration `config:"MONGODB_OPTION_WATCH_RETRY_DELAY"`
+	WatchMaxRetries       int32         `config:"MONGODB_OPTION_WATCH_MAX_RETRIES"`
 }
 
 // Kafka is the configuration provider for Kafka
 type Kafka struct {
-	BootstrapServers   string `config:"KAFKA_MONGO_WATCHER_KAFKA_BOOTSTRAP_SERVERS"`
-	Topic              string `config:"KAFKA_MONGO_WATCHER_KAFKA_TOPIC"`
-	ProduceChannelSize int    `config:"KAFKA_MONGO_WATCHER_KAFKA_PRODUCE_CHANNEL_SIZE"`
+	BootstrapServers   string `config:"KAFKA_BOOTSTRAP_SERVERS"`
+	Topic              string `config:"KAFKA_TOPIC"`
+	ProduceChannelSize int    `config:"KAFKA_PRODUCE_CHANNEL_SIZE"`
 }
 
 // NewBase returns a new base configuration
-func NewBase(ctx context.Context) *Base {
+func NewBase(ctx context.Context, configPrefix string) *Base {
 	cfg := &Base{
 		PrintConfig:   true,
 		LogCliVerbose: true,
@@ -98,7 +100,11 @@ func NewBase(ctx context.Context) *Base {
 		},
 	}
 
-	config.LoadOrFatal(ctx, cfg)
+	loader := config.DefaultConfigLoader.PrependBackends(
+		prefix.NewBackend(configPrefix, env.NewBackend()),
+	)
+
+	loader.LoadOrFatal(ctx, cfg)
 
 	if cfg.PrintConfig {
 		fmt.Println(config.TableString(cfg))
