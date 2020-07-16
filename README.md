@@ -77,6 +77,15 @@ In dev environment you can copy `.env.dist` in `.env` and edit his content in or
 You can set/override configuration variables from `.env` file and from `variables environment` and or from cli arguments 
 (If a variables was configured in multiple sources the last will override the previous one) 
 
+Configuration variables with prefix are first loaded and then without prefix. For example if you define `KAFKA_MONGO_WATCHER_MONGODB_URI=xxxx` it will used for the mongo uri, even if `MONGODB_URI=yyyy` is set. This allows some overriding case, sometimes useful inside kubernetes cluster.
+
+#### KAFKA_MONGO_WATCHER_PREFIX
+*Type*: string
+
+*Description*: In case you want to specify a different prefix (not `KAFKA_MONGO_WATCHER`) for all configuration environment variables.
+
+*Example value*: `KAFKA_MONGO_WATCHER_PREFIX=CUSTOM` in this case 
+
 #### CUSTOM_PIPELINE
 *Type*: string
 
