@@ -186,6 +186,7 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
 	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
 	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
+	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), customPipeline)
 
