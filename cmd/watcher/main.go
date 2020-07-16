@@ -11,9 +11,13 @@ import (
 	signal_subscriber "github.com/gol4ng/signal"
 )
 
+const (
+	configPrefix = "kafka_mongo_watcher"
+)
+
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
-	cfg := config.NewBase(ctx)
+	cfg := config.NewBase(ctx, configPrefix)
 
 	container := service.NewContainer(cfg, ctx)
 	go container.GetTechServer().Start(ctx)
