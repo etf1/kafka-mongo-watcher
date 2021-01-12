@@ -1,9 +1,9 @@
 package kafka
 
 import (
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 type clientMetric struct {

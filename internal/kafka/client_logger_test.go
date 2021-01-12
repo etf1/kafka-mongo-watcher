@@ -3,10 +3,10 @@ package kafka
 import (
 	"testing"
 
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/gol4ng/logger"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 func TestNewClientLogger(t *testing.T) {

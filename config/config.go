@@ -100,7 +100,7 @@ func NewBase(ctx context.Context, configPrefix string) *Base {
 		},
 	}
 
-	loader := config.DefaultConfigLoader.PrependBackends(
+	loader := config.NewDefaultConfigLoader().PrependBackends(
 		prefix.NewBackend(configPrefix, env.NewBackend()),
 	)
 

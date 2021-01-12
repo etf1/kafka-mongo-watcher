@@ -1,8 +1,8 @@
 package kafka
 
 import (
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/gol4ng/logger"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 type clientLogger struct {
