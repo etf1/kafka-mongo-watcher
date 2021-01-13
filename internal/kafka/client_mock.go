@@ -5,8 +5,8 @@
 package kafka
 
 import (
+	kafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	gomock "github.com/golang/mock/gomock"
-	kafka "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 	reflect "reflect"
 )
 

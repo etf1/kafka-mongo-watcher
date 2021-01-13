@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
@@ -17,7 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 type fixture struct {
@@ -167,7 +167,22 @@ func assertFixturesAreInKafkaTopic(assert *assert.Assertions, cfg *config.Base, 
 	consumer.SubscribeTopics([]string{cfg.Kafka.Topic}, nil)
 
 	for i := 0; i < len(fixtures); i++ {
-		msg, err := consumer.ReadMessage(-1)
+		var msg *kafkaconfluent.Message
+		var err error
+
+		for {
+			msg, err = consumer.ReadMessage(30 * time.Second)
+			if err == nil {
+				break
+			}
+
+			// In case this is not a "unknown topic" error, break and fail, elsewhere we will wait for the topic to be ready
+			// and retry
+			if kafkaError, ok := err.(kafkaconfluent.Error); ok && kafkaError.Code() != kafkaconfluent.ErrUnknownTopicOrPart {
+				break
+			}
+		}
+
 		assert.Nil(err)
 
 		var event mongo.ChangeEvent

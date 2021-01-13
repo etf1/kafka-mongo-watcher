@@ -54,7 +54,7 @@ services:
       MONGODB_PRIMARY_ROOT_PASSWORD: toor
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:5.4.0
+    image: confluentinc/cp-zookeeper:5.5.3
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -64,7 +64,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker:
-    image: confluentinc/cp-server:5.4.0
+    image: confluentinc/cp-server:5.5.3
     hostname: broker
     container_name: broker
     depends_on:

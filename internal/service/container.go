@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
@@ -10,7 +11,6 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/internal/server"
 	"github.com/gol4ng/logger"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 // Container stores all the application services references

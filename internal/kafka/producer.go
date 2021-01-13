@@ -1,6 +1,6 @@
 package kafka
 
-import "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
+import "github.com/confluentinc/confluent-kafka-go/kafka"
 
 type KafkaProducer interface {
 	Close()

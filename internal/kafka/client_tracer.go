@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
-	"gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 // XTracingHeaderName corresponds to the X-Tracing header to is sent in Kafka messages

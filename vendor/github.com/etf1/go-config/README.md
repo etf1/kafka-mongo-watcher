@@ -35,7 +35,7 @@ func New(context context.Context) *MyConfig {
 		BDDPassword: "my_fake_password",
 	}
 
-	config.LoadOrFatal(context, cfg) // It use the DefaultConfigLoader
+	config.NewDefaultConfigLoader().LoadOrFatal(context, cfg)
 	return cfg
 }
 

@@ -3,9 +3,9 @@ package kafka
 import (
 	"testing"
 
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 func TestNewClient(t *testing.T) {

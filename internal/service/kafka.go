@@ -1,9 +1,9 @@
 package service
 
 import (
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/gol4ng/logger"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
