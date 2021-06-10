@@ -84,6 +84,10 @@ You can set/override configuration variables from `.env` file and from `variable
 
 *Example value*: `[ { "$match": { "fullDocument.is_active": true } }, { $addFields: { "custom-field": "custom-value" } } ]`
 
+**Hint**: You can also use some built-in variables such as `%currentTimestamp%` that will put the current timestamp value right in the aggregation pipeline.
+
+*Example value with variables*: `[ { "$match": { "date": { "$gt": { "$date": { "$numberLong": "%currentTimestamp%" } } } } } ]`
+
 #### KAFKA_MONGO_WATCHER_REPLAY
 *Type*: bool
 
