@@ -1,6 +1,6 @@
 # Kafka MongoDB Watcher
 
-[![TravisBuildStatus](https://api.travis-ci.org/etf1/kafka-mongo-watcher.svg?branch=master)](https://travis-ci.org/etf1/kafka-mongo-watcher)
+![Test (master)](https://github.com/etf1/kafka-mongo-watcher/workflows/Test%20(master)/badge.svg)
 [![GoDoc](https://godoc.org/github.com/etf1/kafka-mongo-watcher?status.png)](https://godoc.org/github.com/etf1/kafka-mongo-watcher)
 
 This project listens for a MongoDB collection events (insert, update, delete, ...) also called "oplogs" for operation logs and distribute them into a Kafka topic of your choice.
