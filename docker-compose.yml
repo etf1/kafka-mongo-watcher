@@ -4,7 +4,7 @@ services:
   mongo-primary:
     hostname: mongo-primary
     container_name: mongo-primary
-    image: bitnami/mongodb:4.2
+    image: bitnami/mongodb:4.4
     expose:
       - 27011
     ports:
@@ -20,7 +20,7 @@ services:
   mongo-secondary:
     hostname: mongo-secondary
     container_name: mongo-secondary
-    image: bitnami/mongodb:4.2
+    image: bitnami/mongodb:4.4
     expose:
       - 27012
     ports:
@@ -38,7 +38,7 @@ services:
   mongo-arbiter:
     hostname: mongo-arbiter
     container_name: mongo-arbiter
-    image: bitnami/mongodb:4.2
+    image: bitnami/mongodb:4.4
     expose:
       - 27013
     ports:
@@ -54,7 +54,7 @@ services:
       MONGODB_PRIMARY_ROOT_PASSWORD: toor
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:5.5.3
+    image: confluentinc/cp-zookeeper:6.2.0
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -64,7 +64,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker:
-    image: confluentinc/cp-server:5.5.3
+    image: confluentinc/cp-server:6.2.0
     hostname: broker
     container_name: broker
     depends_on:
