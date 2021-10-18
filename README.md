@@ -66,7 +66,7 @@ $ ./kafka-mongo-watcher -KAFKA_MONGO_WATCHER_REPLAY=true
 ...
 <info> Tech HTTP server started {"facility":"kafka-mongo-watcher","version":"wip","addr":":8001","file":"/usr/local/Cellar/go/1.14/libexec/src/runtime/asm_amd64.s","line":1373}
 <info> Connected to mongodb database {"facility":"kafka-mongo-watcher","version":"wip","uri":"mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/watcher?replicaSet=replicaset\u0026authSource=admin"}
-<info> Connected to kafka producer {"facility":"kafka-mongo-watcher","version":"wip","bootstrao-servers":"127.0.0.1:9092"}
+<info> Connected to kafka producer {"facility":"kafka-mongo-watcher","version":"wip","bootstrap-servers":"127.0.0.1:9092"}
 ...
 ```
 
@@ -212,6 +212,11 @@ A big value here can increase the heap memory of the application as all the payl
 *Type*: boolean
 
 *Description*: In case you want to enable Go pprof debugging (default: true). No impact when not used
+
+#### OTEL_COLLECTOR_ENDPOINT
+*Type*: string
+
+*Description*: In case you want to enable OpenTelemetry tracing, fill this with the <host>:<port> of your collector endpoint
 
 ## Prometheus metrics
 

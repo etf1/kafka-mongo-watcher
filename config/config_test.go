@@ -11,6 +11,7 @@ import (
 )
 
 var cfg = &Base{
+	AppName:       AppName,
 	PrintConfig:   false,
 	LogCliVerbose: true,
 	LogLevel:      logger.LevelString(logger.InfoLevel.String()),

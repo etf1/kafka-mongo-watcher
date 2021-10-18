@@ -11,12 +11,13 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/internal/server"
 	"github.com/gol4ng/logger"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Container stores all the application services references
 type Container struct {
-	Cfg         *config.Base
 	baseContext context.Context
+	Cfg         *config.Base
 
 	logger logger.LoggerInterface
 
@@ -33,11 +34,13 @@ type Container struct {
 	kafkaRecorder metrics.KafkaRecorder
 
 	kafkaClient kafka.Client
+
+	tracerProvider trace.TracerProvider
 }
 
 // NewContainer returns a dependency injection container that allows
 // to retrieve services
-func NewContainer(cfg *config.Base, ctx context.Context) *Container {
+func NewContainer(ctx context.Context, cfg *config.Base) *Container {
 	return &Container{
 		Cfg:         cfg,
 		baseContext: ctx,
