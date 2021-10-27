@@ -18,12 +18,14 @@ var AppVersion = "wip"
 
 // Base is the base configuration provider
 type Base struct {
-	PrintConfig     bool               `config:"PRINT_CONFIG"`
-	LogLevel        logger.LevelString `config:"LOG_LEVEL"`
-	LogCliVerbose   bool               `config:"LOG_CLI_VERBOSE"`
-	GraylogEndpoint string             `config:"GRAYLOG_ENDPOINT"`
-	Replay          bool               `config:"REPLAY"`
-	CustomPipeline  string             `config:"CUSTOM_PIPELINE"`
+	AppName               string             `config:"APP_NAME"`
+	PrintConfig           bool               `config:"PRINT_CONFIG"`
+	LogLevel              logger.LevelString `config:"LOG_LEVEL"`
+	LogCliVerbose         bool               `config:"LOG_CLI_VERBOSE"`
+	GraylogEndpoint       string             `config:"GRAYLOG_ENDPOINT"`
+	Replay                bool               `config:"REPLAY"`
+	CustomPipeline        string             `config:"CUSTOM_PIPELINE"`
+	OtelCollectorEndpoint string             `config:"OTEL_COLLECTOR_ENDPOINT"`
 
 	TechServer
 	MongoDB
@@ -70,6 +72,7 @@ type Kafka struct {
 // NewBase returns a new base configuration
 func NewBase(ctx context.Context, configPrefix string) *Base {
 	cfg := &Base{
+		AppName:       AppName,
 		PrintConfig:   true,
 		LogCliVerbose: true,
 		LogLevel:      logger.LevelString(logger.InfoLevel.String()),

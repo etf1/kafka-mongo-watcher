@@ -19,7 +19,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.NewBase(ctx, configPrefix)
 
-	container := service.NewContainer(cfg, ctx)
+	container := service.NewContainer(ctx, cfg)
 	go container.GetTechServer().Start(ctx)
 
 	defer handleExitSignal(ctx, cancel, container)()
