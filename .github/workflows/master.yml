@@ -17,8 +17,6 @@ jobs:
         with:
           go-version: ${{ matrix.go_version }}
 
-      - name: Install go dependencies & run tests
+      - name: Run tests
         shell: script -q -e -c "bash {0}"
-        run: |
-          go get -t -v ./...
-          go test -count=1 -v -cover ./...
+        run: go test -count=1 -v -cover ./...
