@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -10,6 +12,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 )
 
 func (container *Container) GetTracerProvider() trace.TracerProvider {
@@ -28,7 +31,14 @@ func (container *Container) GetTracerProvider() trace.TracerProvider {
 			otlptracegrpc.WithInsecure(),
 			otlptracegrpc.WithEndpoint(container.Cfg.OtelCollectorEndpoint),
 			otlptracegrpc.WithDialOption(
-				grpc.WithBlock(),
+				grpc.WithConnectParams(grpc.ConnectParams{
+					Backoff: backoff.Config{
+						BaseDelay:  1 * time.Second,
+						Multiplier: 1.6,
+						MaxDelay:   15 * time.Second,
+					},
+					MinConnectTimeout: 2 * time.Second,
+				}),
 			),
 		)
 		if err != nil {
