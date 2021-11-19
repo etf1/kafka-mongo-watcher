@@ -26,6 +26,7 @@ type Base struct {
 	Replay                bool               `config:"REPLAY"`
 	CustomPipeline        string             `config:"CUSTOM_PIPELINE"`
 	OtelCollectorEndpoint string             `config:"OTEL_COLLECTOR_ENDPOINT"`
+	OtelSampleRatio       float64            `config:"OTEL_SAMPLE_RATIO"`
 
 	TechServer
 	MongoDB
@@ -72,11 +73,12 @@ type Kafka struct {
 // NewBase returns a new base configuration
 func NewBase(ctx context.Context, configPrefix string) *Base {
 	cfg := &Base{
-		AppName:       AppName,
-		PrintConfig:   true,
-		LogCliVerbose: true,
-		LogLevel:      logger.LevelString(logger.InfoLevel.String()),
-		Replay:        false,
+		AppName:         AppName,
+		PrintConfig:     true,
+		LogCliVerbose:   true,
+		LogLevel:        logger.LevelString(logger.InfoLevel.String()),
+		Replay:          false,
+		OtelSampleRatio: 1,
 		TechServer: TechServer{
 			PprofEnabled: true,
 			HTTPAddr:     ":8001",

@@ -218,6 +218,11 @@ A big value here can increase the heap memory of the application as all the payl
 
 *Description*: In case you want to enable OpenTelemetry tracing, fill this with the <host>:<port> of your collector endpoint
 
+#### OTEL_SAMPLE_RATIO
+*Type*: float64
+
+*Description*: A fraction between 0 and 1 to enable sampling OpenTelemetry traces
+
 ## Prometheus metrics
 
 The watcher also exposes metrics about Go process and Watcher application.

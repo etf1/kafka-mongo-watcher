@@ -51,7 +51,11 @@ func (container *Container) GetTracerProvider() trace.TracerProvider {
 				semconv.ServiceNameKey.String(container.Cfg.AppName),
 				semconv.ServiceVersionKey.String(config.AppVersion),
 			)),
-			sdktrace.WithSampler(sdktrace.AlwaysSample()),
+			sdktrace.WithSampler(
+				sdktrace.ParentBased(
+					sdktrace.TraceIDRatioBased(container.Cfg.OtelSampleRatio),
+				),
+			),
 			sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(traceExporter)),
 		)
 
