@@ -17,9 +17,10 @@ var cfg = &Base{
 	LogLevel:        logger.LevelString(logger.InfoLevel.String()),
 	Replay:          false,
 	OtelSampleRatio: 1,
-	TechServer: TechServer{
-		PprofEnabled: true,
+	PprofEnabled:    true,
+	HttpServer: HttpServer{
 		HTTPAddr:     ":8001",
+		DebugEnabled: false,
 
 		ReadHeaderTimeout: 1 * time.Second,
 		WriteTimeout:      60 * time.Second,

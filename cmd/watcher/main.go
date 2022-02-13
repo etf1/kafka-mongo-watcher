@@ -20,7 +20,7 @@ func main() {
 	cfg := config.NewBase(ctx, configPrefix)
 
 	container := service.NewContainer(ctx, cfg)
-	go container.GetTechServer().Start(ctx)
+	go container.GetHttpServer().Start(ctx)
 
 	defer handleExitSignal(ctx, cancel, container)()
 
@@ -41,6 +41,6 @@ func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container 
 		cancel()
 		container.GetKafkaClient().Close()
 		container.GetMongoConnection().Client().Disconnect(ctx)
-		container.GetTechServer().Close(ctx)
+		container.GetHttpServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)
 }
