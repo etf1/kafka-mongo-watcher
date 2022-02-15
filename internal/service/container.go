@@ -5,10 +5,11 @@ import (
 
 	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
+	"github.com/etf1/kafka-mongo-watcher/internal/debug"
+	"github.com/etf1/kafka-mongo-watcher/internal/http"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
-	"github.com/etf1/kafka-mongo-watcher/internal/server"
 	"github.com/gol4ng/logger"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/trace"
@@ -19,9 +20,10 @@ type Container struct {
 	baseContext context.Context
 	Cfg         *config.Base
 
-	logger logger.LoggerInterface
+	debugger *debug.Debugger
+	logger   logger.LoggerInterface
 
-	techServer *server.TechServer
+	httpServer *http.Server
 
 	mongoDB         *mongodriver.Database
 	mongoCollection mongo.CollectionAdapter

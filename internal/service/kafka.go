@@ -31,7 +31,9 @@ func (container *Container) GetKafkaClient() kafka.Client {
 		container.kafkaClient = container.decorateKafkaClientWithMetrics(
 			container.decorateKafkaClientWithLogger(
 				container.decorateKafkaClientWithTracer(
-					container.getKafkaBaseClient(),
+					container.decorateKafkaClientWithDebugger(
+						container.getKafkaBaseClient(),
+					),
 				),
 			),
 		)
@@ -58,6 +60,14 @@ func (container *Container) decorateKafkaClientWithOpenTelemetry(producer *kafka
 		otelconfluent.WithTracerProvider(container.GetTracerProvider()),
 		otelconfluent.WithTracerName("etf1/kafka-mongo-watcher"),
 	)
+}
+
+func (container *Container) decorateKafkaClientWithDebugger(client kafka.Client) kafka.Client {
+	if container.Cfg.HttpServer.DebugEnabled {
+		client = kafka.NewClientDebugger(client, container.GetDebugger().Add)
+	}
+
+	return client
 }
 
 func (container *Container) decorateKafkaClientWithLogger(client kafka.Client) kafka.Client {

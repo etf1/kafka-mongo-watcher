@@ -27,16 +27,17 @@ type Base struct {
 	CustomPipeline        string             `config:"CUSTOM_PIPELINE"`
 	OtelCollectorEndpoint string             `config:"OTEL_COLLECTOR_ENDPOINT"`
 	OtelSampleRatio       float64            `config:"OTEL_SAMPLE_RATIO"`
+	PprofEnabled          bool               `config:"PPROF_ENABLED"`
 
-	TechServer
+	HttpServer
 	MongoDB
 	Kafka
 }
 
-// TechServer is the configuration provider for monitoring HTTP server
-type TechServer struct {
-	PprofEnabled bool   `config:"PPROF_ENABLED"`
+// HttpServer is the configuration provider for monitoring and debug HTTP server
+type HttpServer struct {
 	HTTPAddr     string `config:"HTTP_TECH_ADDR"`
+	DebugEnabled bool   `config:"HTTP_DEBUG_ENABLED"`
 
 	ReadHeaderTimeout time.Duration `config:"HTTP_READ_HEADER_TIMEOUT"`
 	WriteTimeout      time.Duration `config:"HTTP_WRITE_TIMEOUT"`
@@ -79,9 +80,10 @@ func NewBase(ctx context.Context, configPrefix string) *Base {
 		LogLevel:        logger.LevelString(logger.InfoLevel.String()),
 		Replay:          false,
 		OtelSampleRatio: 1,
-		TechServer: TechServer{
-			PprofEnabled: true,
+		PprofEnabled:    true,
+		HttpServer: HttpServer{
 			HTTPAddr:     ":8001",
+			DebugEnabled: false,
 
 			ReadHeaderTimeout: 1 * time.Second,
 			WriteTimeout:      60 * time.Second,

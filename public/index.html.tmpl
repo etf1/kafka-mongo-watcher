@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8" />
+
+    <script type="text/javascript">
+      window.__context = {
+        collection: "{{ .collection }}",
+        database: "{{ .database }}"
+      };
+    </script>
+
+    <script type="module" src="/ui/component/App.js"></script>
+    <script type="text/javascript" src="https://cdn.tailwindcss.com/3.0.18"></script>
+
+    <title>Kafka Mongo Watcher - Debug UI</title>
+  </head>
+
+  <body id="app" />
+</html>
