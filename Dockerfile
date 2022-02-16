@@ -14,5 +14,6 @@ LABEL name="kafka-mongo-watcher"
 
 WORKDIR /
 COPY --from=builder /project/kafka-mongo-watcher kafka-mongo-watcher
+COPY --from=builder /project/public /public
 
 CMD ["./kafka-mongo-watcher"]
