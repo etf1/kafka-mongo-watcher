@@ -16,6 +16,7 @@ function App() {
     useEffect(() => {
         const eventSource = new EventSource('/sse/event');
 
+        eventSource.addEventListener('open', () => setStreaming(true));
         eventSource.addEventListener('error', () => setStreaming(false));
         eventSource.addEventListener('event', (e) => setEvent(JSON.parse(e.data)));
     }, []);

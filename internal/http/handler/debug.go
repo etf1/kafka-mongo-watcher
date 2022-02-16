@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/debug"
 	"github.com/gol4ng/logger"
@@ -11,6 +12,10 @@ import (
 
 type Debugger interface {
 	Events() chan *debug.Event
+}
+
+func send(w http.ResponseWriter, event string, data interface{}) {
+	fmt.Fprintf(w, "event: %s\ndata: %v\n\n", event, data)
 }
 
 type Debug struct {
@@ -61,6 +66,9 @@ func (h *Debug) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.closingClients <- messageChan
 	}()
 
+	send(w, "opened", time.Now().Unix())
+	flusher.Flush()
+
 	// Listen for current active client events.
 	for {
 		select {
@@ -70,13 +78,12 @@ func (h *Debug) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-			data := fmt.Sprintf(
-				"event: event\ndata: %v\n\n",
-				string(eventBytes),
-			)
-
-			fmt.Fprint(w, data)
+			send(w, "event", string(eventBytes))
 			flusher.Flush()
+		case <-time.After(10 * time.Second):
+			send(w, "ping", time.Now().Unix())
+			flusher.Flush()
+
 		case <-r.Context().Done():
 			return
 		}
