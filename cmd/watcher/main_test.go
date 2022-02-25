@@ -30,7 +30,7 @@ var cfg *config.Base
 
 func setupConfig(ctx context.Context) {
 	if cfg == nil {
-		os.Setenv("KAFKA_MONGO_WATCHER_PRINT_CONFIG", "false")
+		os.Setenv("PRINT_CONFIG", "false")
 
 		cfg = config.NewBase(ctx, configPrefix)
 		cfg.LogCliVerbose = false

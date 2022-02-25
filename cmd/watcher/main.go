@@ -11,11 +11,16 @@ import (
 	signal_subscriber "github.com/gol4ng/signal"
 )
 
-const (
+var (
 	configPrefix = "kafka_mongo_watcher"
 )
 
 func main() {
+
+	if prefixFromEnv := os.Getenv("KAFKA_MONGO_WATCHER_PREFIX"); prefixFromEnv != "" {
+		configPrefix = prefixFromEnv
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.NewBase(ctx, configPrefix)
 
