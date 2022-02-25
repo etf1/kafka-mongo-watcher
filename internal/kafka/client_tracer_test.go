@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
 type TrackerMock struct {

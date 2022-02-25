@@ -18,22 +18,26 @@ var AppVersion = "wip"
 
 // Base is the base configuration provider
 type Base struct {
-	PrintConfig     bool               `config:"PRINT_CONFIG"`
-	LogLevel        logger.LevelString `config:"LOG_LEVEL"`
-	LogCliVerbose   bool               `config:"LOG_CLI_VERBOSE"`
-	GraylogEndpoint string             `config:"GRAYLOG_ENDPOINT"`
-	Replay          bool               `config:"REPLAY"`
-	CustomPipeline  string             `config:"CUSTOM_PIPELINE"`
+	AppName               string             `config:"APP_NAME"`
+	PrintConfig           bool               `config:"PRINT_CONFIG"`
+	LogLevel              logger.LevelString `config:"LOG_LEVEL"`
+	LogCliVerbose         bool               `config:"LOG_CLI_VERBOSE"`
+	GraylogEndpoint       string             `config:"GRAYLOG_ENDPOINT"`
+	Replay                bool               `config:"REPLAY"`
+	CustomPipeline        string             `config:"CUSTOM_PIPELINE"`
+	OtelCollectorEndpoint string             `config:"OTEL_COLLECTOR_ENDPOINT"`
+	OtelSampleRatio       float64            `config:"OTEL_SAMPLE_RATIO"`
+	PprofEnabled          bool               `config:"PPROF_ENABLED"`
 
-	TechServer
+	HttpServer
 	MongoDB
 	Kafka
 }
 
-// TechServer is the configuration provider for monitoring HTTP server
-type TechServer struct {
-	PprofEnabled bool   `config:"PPROF_ENABLED"`
+// HttpServer is the configuration provider for monitoring and debug HTTP server
+type HttpServer struct {
 	HTTPAddr     string `config:"HTTP_TECH_ADDR"`
+	DebugEnabled bool   `config:"HTTP_DEBUG_ENABLED"`
 
 	ReadHeaderTimeout time.Duration `config:"HTTP_READ_HEADER_TIMEOUT"`
 	WriteTimeout      time.Duration `config:"HTTP_WRITE_TIMEOUT"`
@@ -70,13 +74,16 @@ type Kafka struct {
 // NewBase returns a new base configuration
 func NewBase(ctx context.Context, configPrefix string) *Base {
 	cfg := &Base{
-		PrintConfig:   true,
-		LogCliVerbose: true,
-		LogLevel:      logger.LevelString(logger.InfoLevel.String()),
-		Replay:        false,
-		TechServer: TechServer{
-			PprofEnabled: true,
+		AppName:         AppName,
+		PrintConfig:     true,
+		LogCliVerbose:   true,
+		LogLevel:        logger.LevelString(logger.InfoLevel.String()),
+		Replay:          false,
+		OtelSampleRatio: 1,
+		PprofEnabled:    true,
+		HttpServer: HttpServer{
 			HTTPAddr:     ":8001",
+			DebugEnabled: false,
 
 			ReadHeaderTimeout: 1 * time.Second,
 			WriteTimeout:      60 * time.Second,
@@ -100,7 +107,7 @@ func NewBase(ctx context.Context, configPrefix string) *Base {
 		},
 	}
 
-	loader := config.DefaultConfigLoader.PrependBackends(
+	loader := config.NewDefaultConfigLoader().PrependBackends(
 		prefix.NewBackend(configPrefix, env.NewBackend()),
 	)
 

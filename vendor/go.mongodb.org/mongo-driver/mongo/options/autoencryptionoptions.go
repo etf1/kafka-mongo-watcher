@@ -6,6 +6,10 @@
 
 package options
 
+import (
+	"crypto/tls"
+)
+
 // AutoEncryptionOptions represents options used to configure auto encryption/decryption behavior for a mongo.Client
 // instance.
 //
@@ -27,6 +31,7 @@ type AutoEncryptionOptions struct {
 	SchemaMap             map[string]interface{}
 	BypassAutoEncryption  *bool
 	ExtraOptions          map[string]interface{}
+	TLSConfig             map[string]*tls.Config
 }
 
 // AutoEncryption creates a new AutoEncryptionOptions configured with default values.
@@ -34,8 +39,15 @@ func AutoEncryption() *AutoEncryptionOptions {
 	return &AutoEncryptionOptions{}
 }
 
-// SetKeyVaultClientOptions specifies options for the client used to communicate with the key vault collection. If this is
-// not set, the client used to do encryption will be re-used for key vault communication.
+// SetKeyVaultClientOptions specifies options for the client used to communicate with the key vault collection.
+//
+// If this is set, it is used to create an internal mongo.Client.
+// Otherwise, if the target mongo.Client being configured has an unlimited connection pool size (i.e. maxPoolSize=0),
+// it is reused to interact with the key vault collection.
+// Otherwise, if the target mongo.Client has a limited connection pool size, a separate internal mongo.Client is used
+// (and created if necessary). The internal mongo.Client may be shared during automatic encryption (if
+// BypassAutomaticEncryption is false). The internal mongo.Client is configured with the same options as the target
+// mongo.Client except minPoolSize is set to 0 and AutoEncryptionOptions is omitted.
 func (a *AutoEncryptionOptions) SetKeyVaultClientOptions(opts *ClientOptions) *AutoEncryptionOptions {
 	a.KeyVaultClientOptions = opts
 	return a
@@ -66,6 +78,13 @@ func (a *AutoEncryptionOptions) SetSchemaMap(schemaMap map[string]interface{}) *
 }
 
 // SetBypassAutoEncryption specifies whether or not auto encryption should be done.
+//
+// If this is unset or false and target mongo.Client being configured has an unlimited connection pool size
+// (i.e. maxPoolSize=0), it is reused in the process of auto encryption.
+// Otherwise, if the target mongo.Client has a limited connection pool size, a separate internal mongo.Client is used
+// (and created if necessary). The internal mongo.Client may be shared for key vault operations (if KeyVaultClient is
+// unset). The internal mongo.Client is configured with the same options as the target mongo.Client except minPoolSize
+// is set to 0 and AutoEncryptionOptions is omitted.
 func (a *AutoEncryptionOptions) SetBypassAutoEncryption(bypass bool) *AutoEncryptionOptions {
 	a.BypassAutoEncryption = &bypass
 	return a
@@ -74,6 +93,23 @@ func (a *AutoEncryptionOptions) SetBypassAutoEncryption(bypass bool) *AutoEncryp
 // SetExtraOptions specifies a map of options to configure the mongocryptd process.
 func (a *AutoEncryptionOptions) SetExtraOptions(extraOpts map[string]interface{}) *AutoEncryptionOptions {
 	a.ExtraOptions = extraOpts
+	return a
+}
+
+// SetTLSConfig specifies tls.Config instances for each KMS provider to use to configure TLS on all connections created
+// to the KMS provider.
+//
+// This should only be used to set custom TLS configurations. By default, the connection will use an empty tls.Config{} with MinVersion set to tls.VersionTLS12.
+func (a *AutoEncryptionOptions) SetTLSConfig(tlsOpts map[string]*tls.Config) *AutoEncryptionOptions {
+	tlsConfigs := make(map[string]*tls.Config)
+	for provider, config := range tlsOpts {
+		// use TLS min version 1.2 to enforce more secure hash algorithms and advanced cipher suites
+		if config.MinVersion == 0 {
+			config.MinVersion = tls.VersionTLS12
+		}
+		tlsConfigs[provider] = config
+	}
+	a.TLSConfig = tlsConfigs
 	return a
 }
 
@@ -102,6 +138,9 @@ func MergeAutoEncryptionOptions(opts ...*AutoEncryptionOptions) *AutoEncryptionO
 		}
 		if opt.ExtraOptions != nil {
 			aeo.ExtraOptions = opt.ExtraOptions
+		}
+		if opt.TLSConfig != nil {
+			aeo.TLSConfig = opt.TLSConfig
 		}
 	}
 

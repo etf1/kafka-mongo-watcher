@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 
+	"github.com/etf1/kafka-mongo-watcher/internal/mongo/variables"
 	"github.com/gol4ng/logger"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -39,7 +40,9 @@ func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error)
 
 	if r.customPipeline != "" {
 		var customElements = bson.A{}
-		if err := bson.UnmarshalExtJSON([]byte(r.customPipeline), true, &customElements); err != nil {
+		var custom = []byte(variables.Replace(r.customPipeline))
+
+		if err := bson.UnmarshalExtJSON(custom, true, &customElements); err != nil {
 			return nil, err
 		}
 

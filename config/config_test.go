@@ -11,13 +11,16 @@ import (
 )
 
 var cfg = &Base{
-	PrintConfig:   false,
-	LogCliVerbose: true,
-	LogLevel:      logger.LevelString(logger.InfoLevel.String()),
-	Replay:        false,
-	TechServer: TechServer{
-		PprofEnabled: true,
+	AppName:         AppName,
+	PrintConfig:     false,
+	LogCliVerbose:   true,
+	LogLevel:        logger.LevelString(logger.InfoLevel.String()),
+	Replay:          false,
+	OtelSampleRatio: 1,
+	PprofEnabled:    true,
+	HttpServer: HttpServer{
 		HTTPAddr:     ":8001",
+		DebugEnabled: false,
 
 		ReadHeaderTimeout: 1 * time.Second,
 		WriteTimeout:      60 * time.Second,

@@ -1,6 +1,6 @@
 # Kafka MongoDB Watcher
 
-[![TravisBuildStatus](https://api.travis-ci.org/etf1/kafka-mongo-watcher.svg?branch=master)](https://travis-ci.org/etf1/kafka-mongo-watcher)
+![Test (master)](https://github.com/etf1/kafka-mongo-watcher/workflows/Test%20(master)/badge.svg)
 [![GoDoc](https://godoc.org/github.com/etf1/kafka-mongo-watcher?status.png)](https://godoc.org/github.com/etf1/kafka-mongo-watcher)
 
 This project listens for a MongoDB collection events (insert, update, delete, ...) also called "oplogs" for operation logs and distribute them into a Kafka topic of your choice.
@@ -64,9 +64,9 @@ You can use flags (as in this example) or environment variables:
 ```bash
 $ ./kafka-mongo-watcher -REPLAY=true
 ...
-<info> Tech HTTP server started {"facility":"kafka-mongo-watcher","version":"wip","addr":":8001","file":"/usr/local/Cellar/go/1.14/libexec/src/runtime/asm_amd64.s","line":1373}
+<info> HTTP server started {"facility":"kafka-mongo-watcher","version":"wip","addr":":8001","file":"/usr/local/Cellar/go/1.14/libexec/src/runtime/asm_amd64.s","line":1373}
 <info> Connected to mongodb database {"facility":"kafka-mongo-watcher","version":"wip","uri":"mongodb://root:toor@127.0.0.1:27011,127.0.0.1:27012,127.0.0.1:27013/watcher?replicaSet=replicaset\u0026authSource=admin"}
-<info> Connected to kafka producer {"facility":"kafka-mongo-watcher","version":"wip","bootstrao-servers":"127.0.0.1:9092"}
+<info> Connected to kafka producer {"facility":"kafka-mongo-watcher","version":"wip","bootstrap-servers":"127.0.0.1:9092"}
 ...
 ```
 
@@ -97,6 +97,10 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 *Type*: bool
 
 *Description*: In case you want to send all collection's documents once (default: false)
+
+**Hint**: You can also use some built-in variables such as `%currentTimestamp%` that will put the current timestamp value right in the aggregation pipeline.
+
+*Example value with variables*: `[ { "$match": { "date": { "$gt": { "$date": { "$numberLong": "%currentTimestamp%" } } } } } ]`
 
 #### MONGODB_URI
 *Type*: string
@@ -217,6 +221,26 @@ A big value here can increase the heap memory of the application as all the payl
 *Type*: boolean
 
 *Description*: In case you want to enable Go pprof debugging (default: true). No impact when not used
+
+#### OTEL_COLLECTOR_ENDPOINT
+*Type*: string
+
+*Description*: In case you want to enable OpenTelemetry tracing, fill this with the <host>:<port> of your collector endpoint
+
+#### OTEL_SAMPLE_RATIO
+*Type*: float64
+
+*Description*: A fraction between 0 and 1 to enable sampling OpenTelemetry traces
+
+## Enable the debug UI
+
+[<img src="https://github.com/etf1/kafka-mongo-watcher/blob/master/misc/debug-ui.png?raw=true" />](https://youtu.be/6hyCkqHYFQ8)
+
+You can enable this debug UI that will be available at [http://127.0.0.1:8001/](http://127.0.0.1:8001/).
+
+You just have to set `HTTP_DEBUG_ENABLED=true`.
+
+It will allows you to track real time activity on documents watched by your collection.
 
 ## Prometheus metrics
 

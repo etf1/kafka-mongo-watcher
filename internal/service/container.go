@@ -3,24 +3,27 @@ package service
 import (
 	"context"
 
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
+	"github.com/etf1/kafka-mongo-watcher/internal/debug"
+	"github.com/etf1/kafka-mongo-watcher/internal/http"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
-	"github.com/etf1/kafka-mongo-watcher/internal/server"
 	"github.com/gol4ng/logger"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Container stores all the application services references
 type Container struct {
-	Cfg         *config.Base
 	baseContext context.Context
+	Cfg         *config.Base
 
-	logger logger.LoggerInterface
+	debugger *debug.Debugger
+	logger   logger.LoggerInterface
 
-	techServer *server.TechServer
+	httpServer *http.Server
 
 	mongoDB         *mongodriver.Database
 	mongoCollection mongo.CollectionAdapter
@@ -33,11 +36,13 @@ type Container struct {
 	kafkaRecorder metrics.KafkaRecorder
 
 	kafkaClient kafka.Client
+
+	tracerProvider trace.TracerProvider
 }
 
 // NewContainer returns a dependency injection container that allows
 // to retrieve services
-func NewContainer(cfg *config.Base, ctx context.Context) *Container {
+func NewContainer(ctx context.Context, cfg *config.Base) *Container {
 	return &Container{
 		Cfg:         cfg,
 		baseContext: ctx,

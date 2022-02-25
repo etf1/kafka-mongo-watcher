@@ -24,8 +24,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := config.NewBase(ctx, configPrefix)
 
-	container := service.NewContainer(cfg, ctx)
-	go container.GetTechServer().Start(ctx)
+	container := service.NewContainer(ctx, cfg)
+	go container.GetHttpServer().Start(ctx)
 
 	defer handleExitSignal(ctx, cancel, container)()
 
@@ -46,6 +46,6 @@ func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container 
 		cancel()
 		container.GetKafkaClient().Close()
 		container.GetMongoConnection().Client().Disconnect(ctx)
-		container.GetTechServer().Close(ctx)
+		container.GetHttpServer().Close(ctx)
 	}, os.Interrupt, syscall.SIGTERM)
 }

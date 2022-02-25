@@ -1,12 +1,13 @@
 package service
 
 import (
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
+	"github.com/etf1/opentelemetry-go-contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/otelconfluent"
 	"github.com/gol4ng/logger"
-	kafkaconfluent "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
-func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
+func (container *Container) GetKafkaProducer() *kafkaconfluent.Producer {
 	if container.kafkaProducer == nil {
 		producer, err := kafkaconfluent.NewProducer(&kafkaconfluent.ConfigMap{
 			"bootstrap.servers":       container.Cfg.Kafka.BootstrapServers,
@@ -17,7 +18,7 @@ func (container *Container) GetKafkaProducer() kafka.KafkaProducer {
 		}
 
 		log := container.GetLogger()
-		log.Info("Connected to kafka producer", logger.String("bootstrao-servers", container.Cfg.Kafka.BootstrapServers))
+		log.Info("Connected to kafka producer", logger.String("bootstrap-servers", container.Cfg.Kafka.BootstrapServers))
 
 		container.kafkaProducer = producer
 	}
@@ -30,7 +31,9 @@ func (container *Container) GetKafkaClient() kafka.Client {
 		container.kafkaClient = container.decorateKafkaClientWithMetrics(
 			container.decorateKafkaClientWithLogger(
 				container.decorateKafkaClientWithTracer(
-					container.getKafkaBaseClient(),
+					container.decorateKafkaClientWithDebugger(
+						container.getKafkaBaseClient(),
+					),
 				),
 			),
 		)
@@ -40,9 +43,31 @@ func (container *Container) GetKafkaClient() kafka.Client {
 }
 
 func (container *Container) getKafkaBaseClient() kafka.Client {
-	return kafka.NewClient(
-		container.GetKafkaProducer(),
+	originalKafkaProducer := container.GetKafkaProducer()
+	var kafkaProducer kafka.KafkaProducer = originalKafkaProducer
+
+	if container.Cfg.OtelCollectorEndpoint != "" {
+		// In case OpenTelemetry endpoint is enabled, decorate the Kafka producer.
+		kafkaProducer = container.decorateKafkaClientWithOpenTelemetry(originalKafkaProducer)
+	}
+
+	return kafka.NewClient(kafkaProducer)
+}
+
+func (container *Container) decorateKafkaClientWithOpenTelemetry(producer *kafkaconfluent.Producer) *otelconfluent.Producer {
+	return otelconfluent.NewProducerWithTracing(
+		producer,
+		otelconfluent.WithTracerProvider(container.GetTracerProvider()),
+		otelconfluent.WithTracerName("etf1/kafka-mongo-watcher"),
 	)
+}
+
+func (container *Container) decorateKafkaClientWithDebugger(client kafka.Client) kafka.Client {
+	if container.Cfg.HttpServer.DebugEnabled {
+		client = kafka.NewClientDebugger(client, container.GetDebugger().Add)
+	}
+
+	return client
 }
 
 func (container *Container) decorateKafkaClientWithLogger(client kafka.Client) kafka.Client {

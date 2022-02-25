@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend"
@@ -12,8 +11,6 @@ import (
 	"github.com/etf1/go-config/dotenv"
 	"github.com/etf1/go-config/env"
 )
-
-var DefaultConfigLoader = NewDefaultConfigLoader()
 
 type Loader struct {
 	backends []backend.Backend
@@ -53,14 +50,6 @@ func NewConfigLoader(backends ...backend.Backend) *Loader {
 	return &Loader{backends: backends}
 }
 
-func Load(ctx context.Context, to interface{}) error {
-	return DefaultConfigLoader.Load(ctx, to)
-}
-
-func LoadOrFatal(ctx context.Context, to interface{}) {
-	DefaultConfigLoader.LoadOrFatal(ctx, to)
-}
-
 /*
  * Create Loader preconfigured with:
  * - .env file loader if file exist
@@ -68,15 +57,10 @@ func LoadOrFatal(ctx context.Context, to interface{}) {
  * - flags loader
  */
 func NewDefaultConfigLoader() *Loader {
-	builder := NewConfigLoader(
+	return NewConfigLoader(
+		dotenv.GetBackendsFromFlag()...
+	).AppendBackends(
 		env.NewBackend(),
 		flags.NewBackend(),
 	)
-
-	f := ".env"
-	if _, err := os.Stat(f); err == nil {
-		builder.PrependBackends(dotenv.NewBackend(f))
-	}
-
-	return builder
 }
