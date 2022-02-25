@@ -25,8 +25,8 @@ type Base struct {
 	GraylogEndpoint       string             `config:"GRAYLOG_ENDPOINT"`
 	Replay                bool               `config:"REPLAY"`
 	CustomPipeline        string             `config:"CUSTOM_PIPELINE"`
-	OtelCollectorEndpoint string             `config:"OTEL_COLLECTOR_ENDPOINT"`
-	OtelSampleRatio       float64            `config:"OTEL_SAMPLE_RATIO"`
+	OtelCollectorEndpoint string             `config:"OPEN_TELEMETRY_COLLECTOR_ENDPOINT"`
+	OtelSampleRatio       float64            `config:"OPEN_TELEMETRY_SAMPLE_RATIO"`
 	PprofEnabled          bool               `config:"PPROF_ENABLED"`
 
 	HttpServer

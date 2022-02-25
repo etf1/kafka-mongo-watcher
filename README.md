@@ -222,12 +222,12 @@ A big value here can increase the heap memory of the application as all the payl
 
 *Description*: In case you want to enable Go pprof debugging (default: true). No impact when not used
 
-#### OTEL_COLLECTOR_ENDPOINT
+#### OPEN_TELEMETRY_COLLECTOR_ENDPOINT
 *Type*: string
 
 *Description*: In case you want to enable OpenTelemetry tracing, fill this with the <host>:<port> of your collector endpoint
 
-#### OTEL_SAMPLE_RATIO
+#### OPEN_TELEMETRY_SAMPLE_RATIO
 *Type*: float64
 
 *Description*: A fraction between 0 and 1 to enable sampling OpenTelemetry traces
