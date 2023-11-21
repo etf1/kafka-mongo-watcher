@@ -28,15 +28,18 @@ func (container *Container) GetKafkaProducer() *kafkaconfluent.Producer {
 
 func (container *Container) GetKafkaClient() kafka.Client {
 	if container.kafkaClient == nil {
-		container.kafkaClient = container.decorateKafkaClientWithMetrics(
-			container.decorateKafkaClientWithLogger(
-				container.decorateKafkaClientWithTracer(
-					container.decorateKafkaClientWithDebugger(
-						container.getKafkaBaseClient(),
+		/*
+			container.kafkaClient = container.decorateKafkaClientWithMetrics(
+				container.decorateKafkaClientWithLogger(
+					container.decorateKafkaClientWithTracer(
+						container.decorateKafkaClientWithDebugger(
+							container.getKafkaBaseClient(),
+						),
 					),
 				),
-			),
-		)
+			)
+		*/
+		container.kafkaClient = container.getKafkaBaseClient()
 	}
 
 	return container.kafkaClient
