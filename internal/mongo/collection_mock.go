@@ -6,78 +6,37 @@ package mongo
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	bson "go.mongodb.org/mongo-driver/bson"
 	options "go.mongodb.org/mongo-driver/mongo/options"
-	reflect "reflect"
 )
 
-// MockAggregateCursor is a mock of AggregateCursor interface
+// MockAggregateCursor is a mock of AggregateCursor interface.
 type MockAggregateCursor struct {
 	ctrl     *gomock.Controller
 	recorder *MockAggregateCursorMockRecorder
 }
 
-// MockAggregateCursorMockRecorder is the mock recorder for MockAggregateCursor
+// MockAggregateCursorMockRecorder is the mock recorder for MockAggregateCursor.
 type MockAggregateCursorMockRecorder struct {
 	mock *MockAggregateCursor
 }
 
-// NewMockAggregateCursor creates a new mock instance
+// NewMockAggregateCursor creates a new mock instance.
 func NewMockAggregateCursor(ctrl *gomock.Controller) *MockAggregateCursor {
 	mock := &MockAggregateCursor{ctrl: ctrl}
 	mock.recorder = &MockAggregateCursorMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockAggregateCursor) EXPECT() *MockAggregateCursorMockRecorder {
 	return m.recorder
 }
 
-// Decode mocks base method
-func (m *MockAggregateCursor) Decode(val interface{}) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Decode", val)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Decode indicates an expected call of Decode
-func (mr *MockAggregateCursorMockRecorder) Decode(val interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockAggregateCursor)(nil).Decode), val)
-}
-
-// Next mocks base method
-func (m *MockAggregateCursor) Next(ctx context.Context) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Next", ctx)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// Next indicates an expected call of Next
-func (mr *MockAggregateCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockAggregateCursor)(nil).Next), ctx)
-}
-
-// TryNext mocks base method
-func (m *MockAggregateCursor) TryNext(ctx context.Context) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TryNext", ctx)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// TryNext indicates an expected call of TryNext
-func (mr *MockAggregateCursorMockRecorder) TryNext(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryNext", reflect.TypeOf((*MockAggregateCursor)(nil).TryNext), ctx)
-}
-
-// Close mocks base method
+// Close mocks base method.
 func (m *MockAggregateCursor) Close(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close", ctx)
@@ -85,78 +44,78 @@ func (m *MockAggregateCursor) Close(ctx context.Context) error {
 	return ret0
 }
 
-// Close indicates an expected call of Close
+// Close indicates an expected call of Close.
 func (mr *MockAggregateCursorMockRecorder) Close(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockAggregateCursor)(nil).Close), ctx)
 }
 
-// MockStreamCursor is a mock of StreamCursor interface
-type MockStreamCursor struct {
-	ctrl     *gomock.Controller
-	recorder *MockStreamCursorMockRecorder
-}
-
-// MockStreamCursorMockRecorder is the mock recorder for MockStreamCursor
-type MockStreamCursorMockRecorder struct {
-	mock *MockStreamCursor
-}
-
-// NewMockStreamCursor creates a new mock instance
-func NewMockStreamCursor(ctrl *gomock.Controller) *MockStreamCursor {
-	mock := &MockStreamCursor{ctrl: ctrl}
-	mock.recorder = &MockStreamCursorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockStreamCursor) EXPECT() *MockStreamCursorMockRecorder {
-	return m.recorder
-}
-
-// Decode mocks base method
-func (m *MockStreamCursor) Decode(val interface{}) error {
+// Decode mocks base method.
+func (m *MockAggregateCursor) Decode(val interface{}) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Decode", val)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Decode indicates an expected call of Decode
-func (mr *MockStreamCursorMockRecorder) Decode(val interface{}) *gomock.Call {
+// Decode indicates an expected call of Decode.
+func (mr *MockAggregateCursorMockRecorder) Decode(val interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockStreamCursor)(nil).Decode), val)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockAggregateCursor)(nil).Decode), val)
 }
 
-// Next mocks base method
-func (m *MockStreamCursor) Next(ctx context.Context) bool {
+// Next mocks base method.
+func (m *MockAggregateCursor) Next(ctx context.Context) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Next", ctx)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// Next indicates an expected call of Next
-func (mr *MockStreamCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
+// Next indicates an expected call of Next.
+func (mr *MockAggregateCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockStreamCursor)(nil).Next), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockAggregateCursor)(nil).Next), ctx)
 }
 
-// TryNext mocks base method
-func (m *MockStreamCursor) TryNext(ctx context.Context) bool {
+// TryNext mocks base method.
+func (m *MockAggregateCursor) TryNext(ctx context.Context) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "TryNext", ctx)
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// TryNext indicates an expected call of TryNext
-func (mr *MockStreamCursorMockRecorder) TryNext(ctx interface{}) *gomock.Call {
+// TryNext indicates an expected call of TryNext.
+func (mr *MockAggregateCursorMockRecorder) TryNext(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryNext", reflect.TypeOf((*MockStreamCursor)(nil).TryNext), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryNext", reflect.TypeOf((*MockAggregateCursor)(nil).TryNext), ctx)
 }
 
-// Close mocks base method
+// MockStreamCursor is a mock of StreamCursor interface.
+type MockStreamCursor struct {
+	ctrl     *gomock.Controller
+	recorder *MockStreamCursorMockRecorder
+}
+
+// MockStreamCursorMockRecorder is the mock recorder for MockStreamCursor.
+type MockStreamCursorMockRecorder struct {
+	mock *MockStreamCursor
+}
+
+// NewMockStreamCursor creates a new mock instance.
+func NewMockStreamCursor(ctrl *gomock.Controller) *MockStreamCursor {
+	mock := &MockStreamCursor{ctrl: ctrl}
+	mock.recorder = &MockStreamCursorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockStreamCursor) EXPECT() *MockStreamCursorMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
 func (m *MockStreamCursor) Close(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Close", ctx)
@@ -164,13 +123,27 @@ func (m *MockStreamCursor) Close(ctx context.Context) error {
 	return ret0
 }
 
-// Close indicates an expected call of Close
+// Close indicates an expected call of Close.
 func (mr *MockStreamCursorMockRecorder) Close(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStreamCursor)(nil).Close), ctx)
 }
 
-// Err mocks base method
+// Decode mocks base method.
+func (m *MockStreamCursor) Decode(val interface{}) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Decode", val)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Decode indicates an expected call of Decode.
+func (mr *MockStreamCursorMockRecorder) Decode(val interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockStreamCursor)(nil).Decode), val)
+}
+
+// Err mocks base method.
 func (m *MockStreamCursor) Err() error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Err")
@@ -178,13 +151,13 @@ func (m *MockStreamCursor) Err() error {
 	return ret0
 }
 
-// Err indicates an expected call of Err
+// Err indicates an expected call of Err.
 func (mr *MockStreamCursorMockRecorder) Err() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Err", reflect.TypeOf((*MockStreamCursor)(nil).Err))
 }
 
-// ID mocks base method
+// ID mocks base method.
 func (m *MockStreamCursor) ID() int64 {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
@@ -192,13 +165,27 @@ func (m *MockStreamCursor) ID() int64 {
 	return ret0
 }
 
-// ID indicates an expected call of ID
+// ID indicates an expected call of ID.
 func (mr *MockStreamCursorMockRecorder) ID() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockStreamCursor)(nil).ID))
 }
 
-// ResumeToken mocks base method
+// Next mocks base method.
+func (m *MockStreamCursor) Next(ctx context.Context) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Next", ctx)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Next indicates an expected call of Next.
+func (mr *MockStreamCursorMockRecorder) Next(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockStreamCursor)(nil).Next), ctx)
+}
+
+// ResumeToken mocks base method.
 func (m *MockStreamCursor) ResumeToken() bson.Raw {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResumeToken")
@@ -206,36 +193,50 @@ func (m *MockStreamCursor) ResumeToken() bson.Raw {
 	return ret0
 }
 
-// ResumeToken indicates an expected call of ResumeToken
+// ResumeToken indicates an expected call of ResumeToken.
 func (mr *MockStreamCursorMockRecorder) ResumeToken() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResumeToken", reflect.TypeOf((*MockStreamCursor)(nil).ResumeToken))
 }
 
-// MockDriverDatabase is a mock of DriverDatabase interface
+// TryNext mocks base method.
+func (m *MockStreamCursor) TryNext(ctx context.Context) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TryNext", ctx)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// TryNext indicates an expected call of TryNext.
+func (mr *MockStreamCursorMockRecorder) TryNext(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TryNext", reflect.TypeOf((*MockStreamCursor)(nil).TryNext), ctx)
+}
+
+// MockDriverDatabase is a mock of DriverDatabase interface.
 type MockDriverDatabase struct {
 	ctrl     *gomock.Controller
 	recorder *MockDriverDatabaseMockRecorder
 }
 
-// MockDriverDatabaseMockRecorder is the mock recorder for MockDriverDatabase
+// MockDriverDatabaseMockRecorder is the mock recorder for MockDriverDatabase.
 type MockDriverDatabaseMockRecorder struct {
 	mock *MockDriverDatabase
 }
 
-// NewMockDriverDatabase creates a new mock instance
+// NewMockDriverDatabase creates a new mock instance.
 func NewMockDriverDatabase(ctrl *gomock.Controller) *MockDriverDatabase {
 	mock := &MockDriverDatabase{ctrl: ctrl}
 	mock.recorder = &MockDriverDatabaseMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDriverDatabase) EXPECT() *MockDriverDatabaseMockRecorder {
 	return m.recorder
 }
 
-// Name mocks base method
+// Name mocks base method.
 func (m *MockDriverDatabase) Name() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Name")
@@ -243,36 +244,36 @@ func (m *MockDriverDatabase) Name() string {
 	return ret0
 }
 
-// Name indicates an expected call of Name
+// Name indicates an expected call of Name.
 func (mr *MockDriverDatabaseMockRecorder) Name() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockDriverDatabase)(nil).Name))
 }
 
-// MockCollectionAdapter is a mock of CollectionAdapter interface
+// MockCollectionAdapter is a mock of CollectionAdapter interface.
 type MockCollectionAdapter struct {
 	ctrl     *gomock.Controller
 	recorder *MockCollectionAdapterMockRecorder
 }
 
-// MockCollectionAdapterMockRecorder is the mock recorder for MockCollectionAdapter
+// MockCollectionAdapterMockRecorder is the mock recorder for MockCollectionAdapter.
 type MockCollectionAdapterMockRecorder struct {
 	mock *MockCollectionAdapter
 }
 
-// NewMockCollectionAdapter creates a new mock instance
+// NewMockCollectionAdapter creates a new mock instance.
 func NewMockCollectionAdapter(ctrl *gomock.Controller) *MockCollectionAdapter {
 	mock := &MockCollectionAdapter{ctrl: ctrl}
 	mock.recorder = &MockCollectionAdapterMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockCollectionAdapter) EXPECT() *MockCollectionAdapterMockRecorder {
 	return m.recorder
 }
 
-// Aggregate mocks base method
+// Aggregate mocks base method.
 func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (AggregateCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
@@ -285,14 +286,14 @@ func (m *MockCollectionAdapter) Aggregate(ctx context.Context, pipeline interfac
 	return ret0, ret1
 }
 
-// Aggregate indicates an expected call of Aggregate
+// Aggregate indicates an expected call of Aggregate.
 func (mr *MockCollectionAdapterMockRecorder) Aggregate(ctx, pipeline interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, pipeline}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Aggregate", reflect.TypeOf((*MockCollectionAdapter)(nil).Aggregate), varargs...)
 }
 
-// Database mocks base method
+// Database mocks base method.
 func (m *MockCollectionAdapter) Database() DriverDatabase {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Database")
@@ -300,13 +301,27 @@ func (m *MockCollectionAdapter) Database() DriverDatabase {
 	return ret0
 }
 
-// Database indicates an expected call of Database
+// Database indicates an expected call of Database.
 func (mr *MockCollectionAdapterMockRecorder) Database() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Database", reflect.TypeOf((*MockCollectionAdapter)(nil).Database))
 }
 
-// Watch mocks base method
+// Name mocks base method.
+func (m *MockCollectionAdapter) Name() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Name")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Name indicates an expected call of Name.
+func (mr *MockCollectionAdapterMockRecorder) Name() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockCollectionAdapter)(nil).Name))
+}
+
+// Watch mocks base method.
 func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (StreamCursor, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, pipeline}
@@ -319,23 +334,9 @@ func (m *MockCollectionAdapter) Watch(ctx context.Context, pipeline interface{},
 	return ret0, ret1
 }
 
-// Watch indicates an expected call of Watch
+// Watch indicates an expected call of Watch.
 func (mr *MockCollectionAdapterMockRecorder) Watch(ctx, pipeline interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, pipeline}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockCollectionAdapter)(nil).Watch), varargs...)
-}
-
-// Name mocks base method
-func (m *MockCollectionAdapter) Name() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Name")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// Name indicates an expected call of Name
-func (mr *MockCollectionAdapterMockRecorder) Name() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockCollectionAdapter)(nil).Name))
 }
