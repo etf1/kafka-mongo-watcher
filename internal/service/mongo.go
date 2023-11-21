@@ -66,6 +66,7 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 		}),
 		mongo.WithMaxRetries(configOptions.WatchMaxRetries),
 		mongo.WithRetryDelay(configOptions.WatchRetryDelay),
+		mongo.WithIgnoreUpdateDescription(configOptions.IgnoreUpdateDescription),
 	}
 }
 

@@ -54,14 +54,15 @@ type MongoDB struct {
 }
 
 type MongoDBOptions struct {
-	BatchSize             int32         `config:"MONGODB_OPTION_BATCH_SIZE"`
-	FullDocument          bool          `config:"MONGODB_OPTION_FULL_DOCUMENT"`
-	MaxAwaitTime          time.Duration `config:"MONGODB_OPTION_MAX_AWAIT_TIME"`
-	ResumeAfter           string        `config:"MONGODB_OPTION_RESUME_AFTER"`
-	StartAtOperationTimeI uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_I"`
-	StartAtOperationTimeT uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
-	WatchRetryDelay       time.Duration `config:"MONGODB_OPTION_WATCH_RETRY_DELAY"`
-	WatchMaxRetries       int32         `config:"MONGODB_OPTION_WATCH_MAX_RETRIES"`
+	BatchSize               int32         `config:"MONGODB_OPTION_BATCH_SIZE"`
+	FullDocument            bool          `config:"MONGODB_OPTION_FULL_DOCUMENT"`
+	IgnoreUpdateDescription bool          `config:"MONGODB_OPTION_IGNORE_UPDATE_DESCRIPTION"`
+	MaxAwaitTime            time.Duration `config:"MONGODB_OPTION_MAX_AWAIT_TIME"`
+	ResumeAfter             string        `config:"MONGODB_OPTION_RESUME_AFTER"`
+	StartAtOperationTimeI   uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_I"`
+	StartAtOperationTimeT   uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
+	WatchRetryDelay         time.Duration `config:"MONGODB_OPTION_WATCH_RETRY_DELAY"`
+	WatchMaxRetries         int32         `config:"MONGODB_OPTION_WATCH_MAX_RETRIES"`
 }
 
 // Kafka is the configuration provider for Kafka

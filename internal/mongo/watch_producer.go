@@ -48,7 +48,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 					w.logger.Info("Context canceled")
 					cursor.Close(ctx)
 					return
-				case startAfter := <-w.sendEvents(ctx, cursor, events):
+				case startAfter := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription):
 					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter))
 					cursor.Close(ctx)
 					if config.maxRetries == 0 {
@@ -103,7 +103,7 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 	return
 }
 
-func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent) <-chan bson.Raw {
+func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent, ignoreUpdateDescription bool) <-chan bson.Raw {
 	resumeToken := make(chan bson.Raw, 1)
 
 	go func() {
@@ -121,6 +121,9 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 			if err := cursor.Decode(event); err != nil {
 				w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
 				continue
+			}
+			if ignoreUpdateDescription {
+				event.Updates = nil
 			}
 			events <- event
 		}
@@ -141,13 +144,14 @@ func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface, 
 type WatchOption func(*WatchConfig)
 
 type WatchConfig struct {
-	batchSize            int32
-	fullDocumentEnabled  bool
-	maxAwaitTime         time.Duration
-	resumeAfter          bson.M
-	startAtOperationTime *primitive.Timestamp
-	maxRetries           int32
-	retryDelay           time.Duration
+	batchSize               int32
+	fullDocumentEnabled     bool
+	ignoreUpdateDescription bool
+	maxAwaitTime            time.Duration
+	resumeAfter             bson.M
+	startAtOperationTime    *primitive.Timestamp
+	maxRetries              int32
+	retryDelay              time.Duration
 }
 
 func (o *WatchConfig) apply(options ...WatchOption) {
@@ -158,13 +162,14 @@ func (o *WatchConfig) apply(options ...WatchOption) {
 
 func NewWatchConfig(o ...WatchOption) *WatchConfig {
 	watchOptions := &WatchConfig{
-		batchSize:            0,
-		fullDocumentEnabled:  false,
-		maxAwaitTime:         0,
-		resumeAfter:          bson.M{},
-		startAtOperationTime: nil,
-		maxRetries:           3,
-		retryDelay:           250 * time.Millisecond,
+		batchSize:               0,
+		fullDocumentEnabled:     false,
+		ignoreUpdateDescription: false,
+		maxAwaitTime:            0,
+		resumeAfter:             bson.M{},
+		startAtOperationTime:    nil,
+		maxRetries:              3,
+		retryDelay:              250 * time.Millisecond,
 	}
 	watchOptions.apply(o...)
 	return watchOptions
@@ -203,6 +208,12 @@ func WithResumeAfter(resumeAfter []byte) WatchOption {
 				panic(err)
 			}
 		}
+	}
+}
+
+func WithIgnoreUpdateDescription(ignore bool) WatchOption {
+	return func(w *WatchConfig) {
+		w.ignoreUpdateDescription = ignore
 	}
 }
 
