@@ -12,8 +12,8 @@ jobs:
       matrix:
         go_version: [ '1.19', '1.20', '1.21' ]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go_version }}
 
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - uses: azure/docker-login@v1
       with:
@@ -34,7 +34,7 @@ jobs:
 
     - name: Set up docker buildx
       id: buildx
-      uses: crazy-max/ghaction-docker-buildx@v1
+      uses: crazy-max/ghaction-docker-buildx@v3
       with:
         buildx-version: latest
         qemu-version: latest
@@ -81,10 +81,10 @@ jobs:
             goarch: amd64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: 1.17
+          go-version: 1.21
 
       - name: Get the version
         id: get_version
