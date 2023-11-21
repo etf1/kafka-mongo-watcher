@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
@@ -35,13 +36,13 @@ type MarkCommandFn func(ctx context.Context, db string, cmd bsoncore.Document) (
 
 // CryptOptions specifies options to configure a Crypt instance.
 type CryptOptions struct {
+	MongoCrypt           *mongocrypt.MongoCrypt
 	CollInfoFn           CollectionInfoFn
 	KeyFn                KeyRetrieverFn
 	MarkFn               MarkCommandFn
-	KmsProviders         bsoncore.Document
-	SchemaMap            map[string]bsoncore.Document
 	TLSConfig            map[string]*tls.Config
 	BypassAutoEncryption bool
+	BypassQueryAnalysis  bool
 }
 
 // Crypt is an interface implemented by types that can encrypt and decrypt instances of
@@ -58,12 +59,17 @@ type Crypt interface {
 	CreateDataKey(ctx context.Context, kmsProvider string, opts *options.DataKeyOptions) (bsoncore.Document, error)
 	// EncryptExplicit encrypts the given value with the given options.
 	EncryptExplicit(ctx context.Context, val bsoncore.Value, opts *options.ExplicitEncryptionOptions) (byte, []byte, error)
+	// EncryptExplicitExpression encrypts the given expression with the given options.
+	EncryptExplicitExpression(ctx context.Context, val bsoncore.Document, opts *options.ExplicitEncryptionOptions) (bsoncore.Document, error)
 	// DecryptExplicit decrypts the given encrypted value.
 	DecryptExplicit(ctx context.Context, subtype byte, data []byte) (bsoncore.Value, error)
 	// Close cleans up any resources associated with the Crypt instance.
 	Close()
 	// BypassAutoEncryption returns true if auto-encryption should be bypassed.
 	BypassAutoEncryption() bool
+	// RewrapDataKey attempts to rewrap the document data keys matching the filter, preparing the re-wrapped documents
+	// to be returned as a slice of bsoncore.Document.
+	RewrapDataKey(ctx context.Context, filter []byte, opts *options.RewrapManyDataKeyOptions) ([]bsoncore.Document, error)
 }
 
 // crypt consumes the libmongocrypt.MongoCrypt type to iterate the mongocrypt state machine and perform encryption
@@ -79,23 +85,16 @@ type crypt struct {
 }
 
 // NewCrypt creates a new Crypt instance configured with the given AutoEncryptionOptions.
-func NewCrypt(opts *CryptOptions) (Crypt, error) {
+func NewCrypt(opts *CryptOptions) Crypt {
 	c := &crypt{
+		mongoCrypt:           opts.MongoCrypt,
 		collInfoFn:           opts.CollInfoFn,
 		keyFn:                opts.KeyFn,
 		markFn:               opts.MarkFn,
 		tlsConfig:            opts.TLSConfig,
 		bypassAutoEncryption: opts.BypassAutoEncryption,
 	}
-
-	mongocryptOpts := options.MongoCrypt().SetKmsProviders(opts.KmsProviders).SetLocalSchemaMap(opts.SchemaMap)
-	mc, err := mongocrypt.NewMongoCrypt(mongocryptOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	c.mongoCrypt = mc
-	return c, nil
+	return c
 }
 
 // Encrypt encrypts the given command.
@@ -135,6 +134,57 @@ func (c *crypt) CreateDataKey(ctx context.Context, kmsProvider string, opts *opt
 	return c.executeStateMachine(ctx, cryptCtx, "")
 }
 
+// RewrapDataKey attempts to rewrap the document data keys matching the filter, preparing the re-wrapped documents to
+// be returned as a slice of bsoncore.Document.
+func (c *crypt) RewrapDataKey(ctx context.Context, filter []byte,
+	opts *options.RewrapManyDataKeyOptions) ([]bsoncore.Document, error) {
+
+	cryptCtx, err := c.mongoCrypt.RewrapDataKeyContext(filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cryptCtx.Close()
+
+	rewrappedBSON, err := c.executeStateMachine(ctx, cryptCtx, "")
+	if err != nil {
+		return nil, err
+	}
+	if rewrappedBSON == nil {
+		return nil, nil
+	}
+
+	// mongocrypt_ctx_rewrap_many_datakey_init wraps the documents in a BSON of the form { "v": [(BSON document), ...] }
+	// where each BSON document in the slice is a document containing a rewrapped datakey.
+	rewrappedDocumentBytes, err := rewrappedBSON.LookupErr("v")
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the resulting BSON as individual documents.
+	rewrappedDocsArray, ok := rewrappedDocumentBytes.ArrayOK()
+	if !ok {
+		return nil, fmt.Errorf("expected results from mongocrypt_ctx_rewrap_many_datakey_init to be an array")
+	}
+
+	rewrappedDocumentValues, err := rewrappedDocsArray.Values()
+	if err != nil {
+		return nil, err
+	}
+
+	rewrappedDocuments := []bsoncore.Document{}
+	for _, rewrappedDocumentValue := range rewrappedDocumentValues {
+		if rewrappedDocumentValue.Type != bsontype.EmbeddedDocument {
+			// If a value in the document's array returned by mongocrypt is anything other than an embedded document,
+			// then something is wrong and we should terminate the routine.
+			return nil, fmt.Errorf("expected value of type %q, got: %q",
+				bsontype.EmbeddedDocument.String(),
+				rewrappedDocumentValue.Type.String())
+		}
+		rewrappedDocuments = append(rewrappedDocuments, rewrappedDocumentValue.Document())
+	}
+	return rewrappedDocuments, nil
+}
+
 // EncryptExplicit encrypts the given value with the given options.
 func (c *crypt) EncryptExplicit(ctx context.Context, val bsoncore.Value, opts *options.ExplicitEncryptionOptions) (byte, []byte, error) {
 	idx, doc := bsoncore.AppendDocumentStart(nil)
@@ -154,6 +204,27 @@ func (c *crypt) EncryptExplicit(ctx context.Context, val bsoncore.Value, opts *o
 
 	sub, data := res.Lookup("v").Binary()
 	return sub, data, nil
+}
+
+// EncryptExplicitExpression encrypts the given expression with the given options.
+func (c *crypt) EncryptExplicitExpression(ctx context.Context, expr bsoncore.Document, opts *options.ExplicitEncryptionOptions) (bsoncore.Document, error) {
+	idx, doc := bsoncore.AppendDocumentStart(nil)
+	doc = bsoncore.AppendDocumentElement(doc, "v", expr)
+	doc, _ = bsoncore.AppendDocumentEnd(doc, idx)
+
+	cryptCtx, err := c.mongoCrypt.CreateExplicitEncryptionExpressionContext(doc, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cryptCtx.Close()
+
+	res, err := c.executeStateMachine(ctx, cryptCtx, "")
+	if err != nil {
+		return nil, err
+	}
+
+	encryptedExpr := res.Lookup("v").Document()
+	return encryptedExpr, nil
 }
 
 // DecryptExplicit decrypts the given encrypted value.
@@ -197,9 +268,13 @@ func (c *crypt) executeStateMachine(ctx context.Context, cryptCtx *mongocrypt.Co
 		case mongocrypt.NeedMongoKeys:
 			err = c.retrieveKeys(ctx, cryptCtx)
 		case mongocrypt.NeedKms:
-			err = c.decryptKeys(ctx, cryptCtx)
+			err = c.decryptKeys(cryptCtx)
 		case mongocrypt.Ready:
 			return cryptCtx.Finish()
+		case mongocrypt.Done:
+			return nil, nil
+		case mongocrypt.NeedKmsCredentials:
+			err = c.provideKmsProviders(ctx, cryptCtx)
 		default:
 			return nil, fmt.Errorf("invalid Crypt state: %v", state)
 		}
@@ -265,14 +340,14 @@ func (c *crypt) retrieveKeys(ctx context.Context, cryptCtx *mongocrypt.Context) 
 	return cryptCtx.CompleteOperation()
 }
 
-func (c *crypt) decryptKeys(ctx context.Context, cryptCtx *mongocrypt.Context) error {
+func (c *crypt) decryptKeys(cryptCtx *mongocrypt.Context) error {
 	for {
 		kmsCtx := cryptCtx.NextKmsContext()
 		if kmsCtx == nil {
 			break
 		}
 
-		if err := c.decryptKey(ctx, kmsCtx); err != nil {
+		if err := c.decryptKey(kmsCtx); err != nil {
 			return err
 		}
 	}
@@ -280,7 +355,7 @@ func (c *crypt) decryptKeys(ctx context.Context, cryptCtx *mongocrypt.Context) e
 	return cryptCtx.FinishKmsContexts()
 }
 
-func (c *crypt) decryptKey(ctx context.Context, kmsCtx *mongocrypt.KmsContext) error {
+func (c *crypt) decryptKey(kmsCtx *mongocrypt.KmsContext) error {
 	host, err := kmsCtx.HostName()
 	if err != nil {
 		return err
@@ -332,4 +407,12 @@ func (c *crypt) decryptKey(ctx context.Context, kmsCtx *mongocrypt.KmsContext) e
 			return err
 		}
 	}
+}
+
+func (c *crypt) provideKmsProviders(ctx context.Context, cryptCtx *mongocrypt.Context) error {
+	kmsProviders, err := c.mongoCrypt.GetKmsProviders(ctx)
+	if err != nil {
+		return err
+	}
+	return cryptCtx.ProvideKmsProviders(kmsProviders)
 }
