@@ -28,15 +28,19 @@ func (container *Container) GetKafkaProducer() *kafkaconfluent.Producer {
 
 func (container *Container) GetKafkaClient() kafka.Client {
 	if container.kafkaClient == nil {
-		container.kafkaClient = container.decorateKafkaClientWithMetrics(
-			container.decorateKafkaClientWithLogger(
-				container.decorateKafkaClientWithTracer(
-					container.decorateKafkaClientWithDebugger(
-						container.getKafkaBaseClient(),
+		if container.Cfg.Kafka.WithDecorators {
+			container.kafkaClient = container.decorateKafkaClientWithMetrics(
+				container.decorateKafkaClientWithLogger(
+					container.decorateKafkaClientWithTracer(
+						container.decorateKafkaClientWithDebugger(
+							container.getKafkaBaseClient(),
+						),
 					),
 				),
-			),
-		)
+			)
+		} else {
+			container.kafkaClient = container.getKafkaBaseClient()
+		}
 	}
 
 	return container.kafkaClient
@@ -46,7 +50,7 @@ func (container *Container) getKafkaBaseClient() kafka.Client {
 	originalKafkaProducer := container.GetKafkaProducer()
 	var kafkaProducer kafka.KafkaProducer = originalKafkaProducer
 
-	if container.Cfg.OtelCollectorEndpoint != "" {
+	if container.Cfg.OtelCollectorEndpoint != "" && container.Cfg.Kafka.WithDecorators {
 		// In case OpenTelemetry endpoint is enabled, decorate the Kafka producer.
 		kafkaProducer = container.decorateKafkaClientWithOpenTelemetry(originalKafkaProducer)
 	}

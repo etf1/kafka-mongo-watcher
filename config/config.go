@@ -69,6 +69,7 @@ type Kafka struct {
 	BootstrapServers   string `config:"KAFKA_BOOTSTRAP_SERVERS"`
 	Topic              string `config:"KAFKA_TOPIC"`
 	ProduceChannelSize int    `config:"KAFKA_PRODUCE_CHANNEL_SIZE"`
+	WithDecorators     bool   `config:"KAFKA_WITH_DECORATORS"`
 }
 
 // NewBase returns a new base configuration
@@ -104,6 +105,7 @@ func NewBase(ctx context.Context, configPrefix string) *Base {
 			BootstrapServers:   "127.0.0.1:9092",
 			Topic:              "kafka-mongo-watcher",
 			ProduceChannelSize: 10000,
+			WithDecorators:     true,
 		},
 	}
 
