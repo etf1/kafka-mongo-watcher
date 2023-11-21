@@ -41,6 +41,7 @@ var cfg = &Base{
 		BootstrapServers:   "127.0.0.1:9092",
 		Topic:              "kafka-mongo-watcher",
 		ProduceChannelSize: 10000,
+		WithDecorators:     true,
 	},
 }
 
