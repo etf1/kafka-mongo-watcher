@@ -49,10 +49,12 @@ func (container *Container) getKafkaBaseClient() kafka.Client {
 	originalKafkaProducer := container.GetKafkaProducer()
 	var kafkaProducer kafka.KafkaProducer = originalKafkaProducer
 
-	if container.Cfg.OtelCollectorEndpoint != "" {
-		// In case OpenTelemetry endpoint is enabled, decorate the Kafka producer.
-		kafkaProducer = container.decorateKafkaClientWithOpenTelemetry(originalKafkaProducer)
-	}
+	/*
+		if container.Cfg.OtelCollectorEndpoint != "" {
+			// In case OpenTelemetry endpoint is enabled, decorate the Kafka producer.
+			kafkaProducer = container.decorateKafkaClientWithOpenTelemetry(originalKafkaProducer)
+		}
+	*/
 
 	return kafka.NewClient(kafkaProducer)
 }
