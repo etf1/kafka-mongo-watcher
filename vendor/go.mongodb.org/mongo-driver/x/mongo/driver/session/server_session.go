@@ -9,9 +9,9 @@ package session
 import (
 	"time"
 
+	"go.mongodb.org/mongo-driver/internal/uuid"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
 )
 
 // Server is an open session with the server.
@@ -31,11 +31,11 @@ func (ss *Server) expired(topoDesc topologyDescription) bool {
 		return false
 	}
 
-	if topoDesc.timeoutMinutes <= 0 {
+	if topoDesc.timeoutMinutes == nil || *topoDesc.timeoutMinutes <= 0 {
 		return true
 	}
 	timeUnused := time.Since(ss.LastUsed).Minutes()
-	return timeUnused > float64(topoDesc.timeoutMinutes-1)
+	return timeUnused > float64(*topoDesc.timeoutMinutes-1)
 }
 
 // update the last used time for this session.

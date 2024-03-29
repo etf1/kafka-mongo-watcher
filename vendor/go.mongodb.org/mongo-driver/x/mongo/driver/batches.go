@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package driver
 
 import (
@@ -11,7 +17,7 @@ import (
 var ErrDocumentTooLarge = errors.New("an inserted document is too large")
 
 // Batches contains the necessary information to batch split an operation. This is only used for write
-// oeprations.
+// operations.
 type Batches struct {
 	Identifier string
 	Documents  []bsoncore.Document

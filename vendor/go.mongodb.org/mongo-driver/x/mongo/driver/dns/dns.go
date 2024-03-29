@@ -80,13 +80,15 @@ func (r *Resolver) fetchSeedlistFromSRV(host string, srvName string, stopOnErr b
 		srvName = "mongodb"
 	}
 	_, addresses, err := r.LookupSRV(srvName, "tcp", host)
-	if err != nil {
+	if err != nil && strings.Contains(err.Error(), "cannot unmarshal DNS message") {
+		return nil, fmt.Errorf("see https://pkg.go.dev/go.mongodb.org/mongo-driver/mongo#hdr-Potential_DNS_Issues: %w", err)
+	} else if err != nil {
 		return nil, err
 	}
 
 	trimmedHost := strings.TrimSuffix(host, ".")
 
-	var parsedHosts []string
+	parsedHosts := make([]string, 0, len(addresses))
 	for _, address := range addresses {
 		trimmedAddressTarget := strings.TrimSuffix(address.Target, ".")
 		err := validateSRVResult(trimmedAddressTarget, trimmedHost)
@@ -102,8 +104,8 @@ func (r *Resolver) fetchSeedlistFromSRV(host string, srvName string, stopOnErr b
 }
 
 func validateSRVResult(recordFromSRV, inputHostName string) error {
-	separatedInputDomain := strings.Split(inputHostName, ".")
-	separatedRecord := strings.Split(recordFromSRV, ".")
+	separatedInputDomain := strings.Split(strings.ToLower(inputHostName), ".")
+	separatedRecord := strings.Split(strings.ToLower(recordFromSRV), ".")
 	if len(separatedRecord) < 2 {
 		return errors.New("DNS name must contain at least 2 labels")
 	}

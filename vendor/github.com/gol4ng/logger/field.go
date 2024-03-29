@@ -3,8 +3,8 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/valyala/bytebufferpool"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -54,6 +54,9 @@ type Field struct {
 
 // String will return Field as string
 func (f *Field) String() string {
+	if f.Value == nil {
+		return "<nil>"
+	}
 	switch f.Type {
 	case SkipType:
 		return "<skipped>"
@@ -113,6 +116,9 @@ func (f *Field) MarshalJSON() ([]byte, error) {
 	if marshallable, ok := f.Value.(json.Marshaler); ok {
 		return marshallable.MarshalJSON()
 	}
+	if f.Type == ErrorType && f.Value == nil {
+		return []byte("null"), nil
+	}
 	switch f.Type {
 	case BoolType, Int8Type, Int16Type, Int32Type, Int64Type, Uint8Type, Uint16Type, Uint32Type, Uint64Type, UintptrType, Float32Type, Float64Type:
 		return []byte(f.String()), nil
@@ -126,15 +132,17 @@ func (f *Field) MarshalJSON() ([]byte, error) {
 // GoString was called by fmt.Printf("%#v", Fields)
 // fmt GoStringer interface
 func (f *Field) GoString() string {
-	builder := &strings.Builder{}
-	builder.WriteString("logger.Field{Name: ")
-	builder.WriteString(f.Name)
-	builder.WriteString(", Value: ")
-	builder.WriteString(f.String())
-	builder.WriteString(", Type: ")
-	builder.WriteString(strconv.FormatUint(uint64(f.Type), 10))
-	builder.WriteString("}")
-	return builder.String()
+	byteBuffer := bytebufferpool.Get()
+	defer bytebufferpool.Put(byteBuffer)
+
+	byteBuffer.WriteString("logger.Field{Name: ")
+	byteBuffer.WriteString(f.Name)
+	byteBuffer.WriteString(", Value: ")
+	byteBuffer.WriteString(f.String())
+	byteBuffer.WriteString(", Type: ")
+	byteBuffer.WriteString(strconv.FormatUint(uint64(f.Type), 10))
+	byteBuffer.WriteString("}")
+	return byteBuffer.String()
 }
 
 // Skip will create Skip Field

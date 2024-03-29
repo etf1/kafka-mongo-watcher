@@ -1,29 +1,46 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package driver
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/codecutil"
+	"go.mongodb.org/mongo-driver/internal/csot"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
+
+// ErrNoCursor is returned by NewCursorResponse when the database response does
+// not contain a cursor.
+var ErrNoCursor = errors.New("database response does not contain a cursor")
 
 // BatchCursor is a batch implementation of a cursor. It returns documents in entire batches instead
 // of one at a time. An individual document cursor can be built on top of this batch cursor.
 type BatchCursor struct {
 	clientSession        *session.Client
 	clock                *session.ClusterClock
+	comment              interface{}
+	encoderFn            codecutil.EncoderFn
 	database             string
 	collection           string
 	id                   int64
 	err                  error
 	server               Server
+	serverDescription    description.Server
 	errorProcessor       ErrorProcessor // This will only be set when pinning to a connection.
 	connection           PinnedConnection
 	batchSize            int32
@@ -36,7 +53,6 @@ type BatchCursor struct {
 	serverAPI            *ServerAPIOptions
 
 	// legacy server (< 3.2) fields
-	legacy      bool // This field is provided for ListCollectionsBatchCursor.
 	limit       int32
 	numReturned int32 // number of docs returned by server
 }
@@ -55,17 +71,27 @@ type CursorResponse struct {
 	postBatchResumeToken bsoncore.Document
 }
 
-// NewCursorResponse constructs a cursor response from the given response and server. This method
-// can be used within the ProcessResponse method for an operation.
+// NewCursorResponse constructs a cursor response from the given response and
+// server. If the provided database response does not contain a cursor, it
+// returns ErrNoCursor.
+//
+// NewCursorResponse can be used within the ProcessResponse method for an operation.
 func NewCursorResponse(info ResponseInfo) (CursorResponse, error) {
 	response := info.ServerResponse
-	cur, ok := response.Lookup("cursor").DocumentOK()
-	if !ok {
-		return CursorResponse{}, fmt.Errorf("cursor should be an embedded document but is of BSON type %s", response.Lookup("cursor").Type)
+	cur, err := response.LookupErr("cursor")
+	if errors.Is(err, bsoncore.ErrElementNotFound) {
+		return CursorResponse{}, ErrNoCursor
 	}
-	elems, err := cur.Elements()
 	if err != nil {
-		return CursorResponse{}, err
+		return CursorResponse{}, fmt.Errorf("error getting cursor from database response: %w", err)
+	}
+	curDoc, ok := cur.DocumentOK()
+	if !ok {
+		return CursorResponse{}, fmt.Errorf("cursor should be an embedded document but is BSON type %s", cur.Type)
+	}
+	elems, err := curDoc.Elements()
+	if err != nil {
+		return CursorResponse{}, fmt.Errorf("error getting elements from cursor: %w", err)
 	}
 	curresp := CursorResponse{Server: info.Server, Desc: info.ConnectionDescription}
 
@@ -116,7 +142,7 @@ func NewCursorResponse(info ResponseInfo) (CursorResponse, error) {
 			return CursorResponse{}, fmt.Errorf("expected Connection used to establish a cursor to implement PinnedConnection, but got %T", info.Connection)
 		}
 		if err := refConn.PinToCursor(); err != nil {
-			return CursorResponse{}, fmt.Errorf("error incrementing connection reference count when creating a cursor: %v", err)
+			return CursorResponse{}, fmt.Errorf("error incrementing connection reference count when creating a cursor: %w", err)
 		}
 		curresp.Connection = refConn
 	}
@@ -126,12 +152,14 @@ func NewCursorResponse(info ResponseInfo) (CursorResponse, error) {
 
 // CursorOptions are extra options that are required to construct a BatchCursor.
 type CursorOptions struct {
-	BatchSize      int32
-	MaxTimeMS      int64
-	Limit          int32
-	CommandMonitor *event.CommandMonitor
-	Crypt          Crypt
-	ServerAPI      *ServerAPIOptions
+	BatchSize             int32
+	Comment               bsoncore.Value
+	MaxTimeMS             int64
+	Limit                 int32
+	CommandMonitor        *event.CommandMonitor
+	Crypt                 Crypt
+	ServerAPI             *ServerAPIOptions
+	MarshalValueEncoderFn func(io.Writer) (*bson.Encoder, error)
 }
 
 // NewBatchCursor creates a new BatchCursor from the provided parameters.
@@ -140,6 +168,7 @@ func NewBatchCursor(cr CursorResponse, clientSession *session.Client, clock *ses
 	bc := &BatchCursor{
 		clientSession:        clientSession,
 		clock:                clock,
+		comment:              opts.Comment,
 		database:             cr.Database,
 		collection:           cr.Collection,
 		id:                   cr.ID,
@@ -153,13 +182,14 @@ func NewBatchCursor(cr CursorResponse, clientSession *session.Client, clock *ses
 		postBatchResumeToken: cr.postBatchResumeToken,
 		crypt:                opts.Crypt,
 		serverAPI:            opts.ServerAPI,
+		serverDescription:    cr.Desc,
+		encoderFn:            opts.MarshalValueEncoderFn,
 	}
 
 	if ds != nil {
 		bc.numReturned = int32(ds.DocumentCount())
 	}
-	if cr.Desc.WireVersion == nil || cr.Desc.WireVersion.Max < 4 {
-		bc.legacy = true
+	if cr.Desc.WireVersion == nil {
 		bc.limit = opts.Limit
 
 		// Take as many documents from the batch as needed.
@@ -182,6 +212,21 @@ func NewBatchCursor(cr CursorResponse, clientSession *session.Client, clock *ses
 // NewEmptyBatchCursor returns a batch cursor that is empty.
 func NewEmptyBatchCursor() *BatchCursor {
 	return &BatchCursor{currentBatch: new(bsoncore.DocumentSequence)}
+}
+
+// NewBatchCursorFromDocuments returns a batch cursor with current batch set to a sequence-style
+// DocumentSequence containing the provided documents.
+func NewBatchCursorFromDocuments(documents []byte) *BatchCursor {
+	return &BatchCursor{
+		currentBatch: &bsoncore.DocumentSequence{
+			Data:  documents,
+			Style: bsoncore.SequenceStyle,
+		},
+		// BatchCursors created with this function have no associated ID nor server, so no getMore
+		// calls will be made.
+		id:     0,
+		server: nil,
+	}
 }
 
 // ID returns the cursor ID for this batch cursor.
@@ -281,7 +326,31 @@ func (bc *BatchCursor) KillCursor(ctx context.Context) error {
 		Legacy:         LegacyKillCursors,
 		CommandMonitor: bc.cmdMonitor,
 		ServerAPI:      bc.serverAPI,
-	}.Execute(ctx, nil)
+
+		// No read preference is passed to the killCursor command,
+		// resulting in the default read preference: "primaryPreferred".
+		// Since this could be confusing, and there is no requirement
+		// to use a read preference here, we omit it.
+		omitReadPreference: true,
+	}.Execute(ctx)
+}
+
+// calcGetMoreBatchSize calculates the number of documents to return in the
+// response of a "getMore" operation based on the given limit, batchSize, and
+// number of documents already returned. Returns false if a non-trivial limit is
+// lower than or equal to the number of documents already returned.
+func calcGetMoreBatchSize(bc BatchCursor) (int32, bool) {
+	gmBatchSize := bc.batchSize
+
+	// Account for legacy operations that don't support setting a limit.
+	if bc.limit != 0 && bc.numReturned+bc.batchSize >= bc.limit {
+		gmBatchSize = bc.limit - bc.numReturned
+		if gmBatchSize <= 0 {
+			return gmBatchSize, false
+		}
+	}
+
+	return gmBatchSize, true
 }
 
 func (bc *BatchCursor) getMore(ctx context.Context) {
@@ -290,17 +359,13 @@ func (bc *BatchCursor) getMore(ctx context.Context) {
 		return
 	}
 
-	// Required for legacy operations which don't support limit.
-	numToReturn := bc.batchSize
-	if bc.limit != 0 && bc.numReturned+bc.batchSize >= bc.limit {
-		numToReturn = bc.limit - bc.numReturned
-		if numToReturn <= 0 {
-			err := bc.Close(ctx)
-			if err != nil {
-				bc.err = err
-			}
-			return
+	numToReturn, ok := calcGetMoreBatchSize(*bc)
+	if !ok {
+		if err := bc.Close(ctx); err != nil {
+			bc.err = err
 		}
+
+		return
 	}
 
 	bc.err = Operation{
@@ -313,6 +378,17 @@ func (bc *BatchCursor) getMore(ctx context.Context) {
 			if bc.maxTimeMS > 0 {
 				dst = bsoncore.AppendInt64Element(dst, "maxTimeMS", bc.maxTimeMS)
 			}
+
+			comment, err := codecutil.MarshalValue(bc.comment, bc.encoderFn)
+			if err != nil {
+				return nil, fmt.Errorf("error marshaling comment as a BSON value: %w", err)
+			}
+
+			// The getMore command does not support commenting pre-4.4.
+			if comment.Type != bsontype.Type(0) && bc.serverDescription.WireVersion.Max >= 9 {
+				dst = bsoncore.AppendValueElement(dst, "comment", comment)
+			}
+
 			return dst, nil
 		},
 		Database:   bc.database,
@@ -356,7 +432,13 @@ func (bc *BatchCursor) getMore(ctx context.Context) {
 		CommandMonitor: bc.cmdMonitor,
 		Crypt:          bc.crypt,
 		ServerAPI:      bc.serverAPI,
-	}.Execute(ctx, nil)
+
+		// No read preference is passed to the getMore command,
+		// resulting in the default read preference: "primaryPreferred".
+		// Since this could be confusing, and there is no requirement
+		// to use a read preference here, we omit it.
+		omitReadPreference: true,
+	}.Execute(ctx)
 
 	// Once the cursor has been drained, we can unpin the connection if one is currently pinned.
 	if bc.id == 0 {
@@ -388,9 +470,24 @@ func (bc *BatchCursor) PostBatchResumeToken() bsoncore.Document {
 	return bc.postBatchResumeToken
 }
 
-// SetBatchSize sets the batchSize for future getMores.
+// SetBatchSize sets the batchSize for future getMore operations.
 func (bc *BatchCursor) SetBatchSize(size int32) {
 	bc.batchSize = size
+}
+
+// SetMaxTime will set the maximum amount of time the server will allow the
+// operations to execute. The server will error if this field is set but the
+// cursor is not configured with awaitData=true.
+//
+// The time.Duration value passed by this setter will be converted and rounded
+// down to the nearest millisecond.
+func (bc *BatchCursor) SetMaxTime(dur time.Duration) {
+	bc.maxTimeMS = int64(dur / time.Millisecond)
+}
+
+// SetComment sets the comment for future getMore operations.
+func (bc *BatchCursor) SetComment(comment interface{}) {
+	bc.comment = comment
 }
 
 func (bc *BatchCursor) getOperationDeployment() Deployment {
@@ -427,9 +524,9 @@ func (lbcd *loadBalancedCursorDeployment) Connection(_ context.Context) (Connect
 	return lbcd.conn, nil
 }
 
-// MinRTT always returns 0. It implements the driver.Server interface.
-func (lbcd *loadBalancedCursorDeployment) MinRTT() time.Duration {
-	return 0
+// RTTMonitor implements the driver.Server interface.
+func (lbcd *loadBalancedCursorDeployment) RTTMonitor() RTTMonitor {
+	return &csot.ZeroRTTMonitor{}
 }
 
 func (lbcd *loadBalancedCursorDeployment) ProcessError(err error, conn Connection) ProcessErrorResult {

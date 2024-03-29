@@ -9,10 +9,11 @@ package operation
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo/description"
-	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
@@ -22,7 +23,6 @@ import (
 // Command is used to run a generic operation.
 type Command struct {
 	command        bsoncore.Document
-	readConcern    *readconcern.ReadConcern
 	database       string
 	deployment     driver.Deployment
 	selector       description.ServerSelector
@@ -36,6 +36,8 @@ type Command struct {
 	serverAPI      *driver.ServerAPIOptions
 	createCursor   bool
 	cursorOpts     driver.CursorOptions
+	timeout        *time.Duration
+	logger         *logger.Logger
 }
 
 // NewCommand constructs and returns a new Command. Once the operation is executed, the result may only be accessed via
@@ -69,7 +71,7 @@ func (c *Command) ResultCursor() (*driver.BatchCursor, error) {
 	return c.resultCursor, nil
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (c *Command) Execute(ctx context.Context) error {
 	if c.deployment == nil {
 		return errors.New("the Command operation must have a Deployment set before Execute can be called")
@@ -103,7 +105,9 @@ func (c *Command) Execute(ctx context.Context) error {
 		Selector:       c.selector,
 		Crypt:          c.crypt,
 		ServerAPI:      c.serverAPI,
-	}.Execute(ctx, nil)
+		Timeout:        c.timeout,
+		Logger:         c.logger,
+	}.Execute(ctx)
 }
 
 // Session sets the session for this operation.
@@ -156,17 +160,7 @@ func (c *Command) Deployment(deployment driver.Deployment) *Command {
 	return c
 }
 
-// ReadConcern specifies the read concern for this operation.
-func (c *Command) ReadConcern(readConcern *readconcern.ReadConcern) *Command {
-	if c == nil {
-		c = new(Command)
-	}
-
-	c.readConcern = readConcern
-	return c
-}
-
-// ReadPreference set the read prefernce used with this operation.
+// ReadPreference set the read preference used with this operation.
 func (c *Command) ReadPreference(readPreference *readpref.ReadPref) *Command {
 	if c == nil {
 		c = new(Command)
@@ -203,5 +197,25 @@ func (c *Command) ServerAPI(serverAPI *driver.ServerAPIOptions) *Command {
 	}
 
 	c.serverAPI = serverAPI
+	return c
+}
+
+// Timeout sets the timeout for this operation.
+func (c *Command) Timeout(timeout *time.Duration) *Command {
+	if c == nil {
+		c = new(Command)
+	}
+
+	c.timeout = timeout
+	return c
+}
+
+// Logger sets the logger for this operation.
+func (c *Command) Logger(logger *logger.Logger) *Command {
+	if c == nil {
+		c = new(Command)
+	}
+
+	c.logger = logger
 	return c
 }
