@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/debug"
 	"github.com/etf1/kafka-mongo-watcher/internal/http"

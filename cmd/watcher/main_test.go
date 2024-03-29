@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package main
@@ -9,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"

@@ -1,7 +1,7 @@
 package service
 
 import (
-	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/opentelemetry-go-contrib/instrumentation/github.com/confluentinc/confluent-kafka-go/otelconfluent"
 	"github.com/gol4ng/logger"
