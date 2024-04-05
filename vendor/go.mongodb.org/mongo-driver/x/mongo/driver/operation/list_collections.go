@@ -9,8 +9,10 @@ package operation
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -20,20 +22,22 @@ import (
 
 // ListCollections performs a listCollections operation.
 type ListCollections struct {
-	filter         bsoncore.Document
-	nameOnly       *bool
-	session        *session.Client
-	clock          *session.ClusterClock
-	monitor        *event.CommandMonitor
-	crypt          driver.Crypt
-	database       string
-	deployment     driver.Deployment
-	readPreference *readpref.ReadPref
-	selector       description.ServerSelector
-	retry          *driver.RetryMode
-	result         driver.CursorResponse
-	batchSize      *int32
-	serverAPI      *driver.ServerAPIOptions
+	filter                bsoncore.Document
+	nameOnly              *bool
+	authorizedCollections *bool
+	session               *session.Client
+	clock                 *session.ClusterClock
+	monitor               *event.CommandMonitor
+	crypt                 driver.Crypt
+	database              string
+	deployment            driver.Deployment
+	readPreference        *readpref.ReadPref
+	selector              description.ServerSelector
+	retry                 *driver.RetryMode
+	result                driver.CursorResponse
+	batchSize             *int32
+	serverAPI             *driver.ServerAPIOptions
+	timeout               *time.Duration
 }
 
 // NewListCollections constructs and returns a new ListCollections.
@@ -44,17 +48,10 @@ func NewListCollections(filter bsoncore.Document) *ListCollections {
 }
 
 // Result returns the result of executing this operation.
-func (lc *ListCollections) Result(opts driver.CursorOptions) (*driver.ListCollectionsBatchCursor, error) {
+func (lc *ListCollections) Result(opts driver.CursorOptions) (*driver.BatchCursor, error) {
 	opts.ServerAPI = lc.serverAPI
-	bc, err := driver.NewBatchCursor(lc.result, lc.session, lc.clock, opts)
-	if err != nil {
-		return nil, err
-	}
-	desc := lc.result.Desc
-	if desc.WireVersion == nil || desc.WireVersion.Max < 3 {
-		return driver.NewLegacyListCollectionsBatchCursor(bc)
-	}
-	return driver.NewListCollectionsBatchCursor(bc)
+
+	return driver.NewBatchCursor(lc.result, lc.session, lc.clock, opts)
 }
 
 func (lc *ListCollections) processResponse(info driver.ResponseInfo) error {
@@ -63,7 +60,7 @@ func (lc *ListCollections) processResponse(info driver.ResponseInfo) error {
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (lc *ListCollections) Execute(ctx context.Context) error {
 	if lc.deployment == nil {
 		return errors.New("the ListCollections operation must have a Deployment set before Execute can be called")
@@ -84,12 +81,13 @@ func (lc *ListCollections) Execute(ctx context.Context) error {
 		Selector:          lc.selector,
 		Legacy:            driver.LegacyListCollections,
 		ServerAPI:         lc.serverAPI,
-	}.Execute(ctx, nil)
+		Timeout:           lc.timeout,
+		Name:              driverutil.ListCollectionsOp,
+	}.Execute(ctx)
 
 }
 
-func (lc *ListCollections) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
-
+func (lc *ListCollections) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	dst = bsoncore.AppendInt32Element(dst, "listCollections", 1)
 	if lc.filter != nil {
 		dst = bsoncore.AppendDocumentElement(dst, "filter", lc.filter)
@@ -97,6 +95,10 @@ func (lc *ListCollections) command(dst []byte, desc description.SelectedServer) 
 	if lc.nameOnly != nil {
 		dst = bsoncore.AppendBooleanElement(dst, "nameOnly", *lc.nameOnly)
 	}
+	if lc.authorizedCollections != nil {
+		dst = bsoncore.AppendBooleanElement(dst, "authorizedCollections", *lc.authorizedCollections)
+	}
+
 	cursorDoc := bsoncore.NewDocumentBuilder()
 	if lc.batchSize != nil {
 		cursorDoc.AppendInt32("batchSize", *lc.batchSize)
@@ -123,6 +125,17 @@ func (lc *ListCollections) NameOnly(nameOnly bool) *ListCollections {
 	}
 
 	lc.nameOnly = &nameOnly
+	return lc
+}
+
+// AuthorizedCollections specifies whether to only return collections the user
+// is authorized to use.
+func (lc *ListCollections) AuthorizedCollections(authorizedCollections bool) *ListCollections {
+	if lc == nil {
+		lc = new(ListCollections)
+	}
+
+	lc.authorizedCollections = &authorizedCollections
 	return lc
 }
 
@@ -186,7 +199,7 @@ func (lc *ListCollections) Deployment(deployment driver.Deployment) *ListCollect
 	return lc
 }
 
-// ReadPreference set the read prefernce used with this operation.
+// ReadPreference set the read preference used with this operation.
 func (lc *ListCollections) ReadPreference(readPreference *readpref.ReadPref) *ListCollections {
 	if lc == nil {
 		lc = new(ListCollections)
@@ -234,5 +247,15 @@ func (lc *ListCollections) ServerAPI(serverAPI *driver.ServerAPIOptions) *ListCo
 	}
 
 	lc.serverAPI = serverAPI
+	return lc
+}
+
+// Timeout sets the timeout for this operation.
+func (lc *ListCollections) Timeout(timeout *time.Duration) *ListCollections {
+	if lc == nil {
+		lc = new(ListCollections)
+	}
+
+	lc.timeout = timeout
 	return lc
 }

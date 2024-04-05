@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package wiremessage
 
 import (
@@ -13,9 +19,6 @@ type WireMessage []byte
 
 var globalRequestID int32
 
-// CurrentRequestID returns the current request ID.
-func CurrentRequestID() int32 { return atomic.LoadInt32(&globalRequestID) }
-
 // NextRequestID returns the next request ID.
 func NextRequestID() int32 { return atomic.AddInt32(&globalRequestID, 1) }
 
@@ -26,11 +29,12 @@ type OpCode int32
 // supported by this library. The skipped OpCodes are historical OpCodes that
 // are no longer used.
 const (
-	OpReply        OpCode = 1
-	_              OpCode = 1001
-	OpUpdate       OpCode = 2001
-	OpInsert       OpCode = 2002
-	_              OpCode = 2003
+	OpReply  OpCode = 1
+	_        OpCode = 1001
+	OpUpdate OpCode = 2001
+	OpInsert OpCode = 2002
+	_        OpCode = 2003
+	// Deprecated: Use OpMsg instead.
 	OpQuery        OpCode = 2004
 	OpGetMore      OpCode = 2005
 	OpDelete       OpCode = 2006
@@ -168,9 +172,6 @@ const (
 	DocumentSequence
 )
 
-// OpmsgWireVersion is the minimum wire version needed to use OP_MSG
-const OpmsgWireVersion = 6
-
 // CompressorID is the ID for each type of Compressor.
 type CompressorID uint8
 
@@ -181,6 +182,22 @@ const (
 	CompressorZLib
 	CompressorZstd
 )
+
+// String implements the fmt.Stringer interface.
+func (id CompressorID) String() string {
+	switch id {
+	case CompressorNoOp:
+		return "CompressorNoOp"
+	case CompressorSnappy:
+		return "CompressorSnappy"
+	case CompressorZLib:
+		return "CompressorZLib"
+	case CompressorZstd:
+		return "CompressorZstd"
+	default:
+		return "CompressorInvalid"
+	}
+}
 
 const (
 	// DefaultZlibLevel is the default level for zlib compression
@@ -391,7 +408,7 @@ func ReadMsgSectionRawDocumentSequence(src []byte) (identifier string, data []by
 		return "", nil, rem, false
 	}
 
-	// After these assignments, rem will be the data containing the identifer string + the document sequence bytes and
+	// After these assignments, rem will be the data containing the identifier string + the document sequence bytes and
 	// rest will be the rest of the wire message after this document sequence.
 	rem, rest := rem[:length-4], rem[length-4:]
 
@@ -410,32 +427,50 @@ func ReadMsgChecksum(src []byte) (checksum uint32, rem []byte, ok bool) {
 }
 
 // ReadQueryFlags reads OP_QUERY flags from src.
+//
+// Deprecated: Construct wiremessages with OpMsg and use the ReadMsg* functions
+// instead.
 func ReadQueryFlags(src []byte) (flags QueryFlag, rem []byte, ok bool) {
 	i32, rem, ok := readi32(src)
 	return QueryFlag(i32), rem, ok
 }
 
 // ReadQueryFullCollectionName reads the full collection name from src.
+//
+// Deprecated: Construct wiremessages with OpMsg and use the ReadMsg* functions
+// instead.
 func ReadQueryFullCollectionName(src []byte) (collname string, rem []byte, ok bool) {
 	return readcstring(src)
 }
 
 // ReadQueryNumberToSkip reads the number to skip from src.
+//
+// Deprecated: Construct wiremessages with OpMsg and use the ReadMsg* functions
+// instead.
 func ReadQueryNumberToSkip(src []byte) (nts int32, rem []byte, ok bool) {
 	return readi32(src)
 }
 
 // ReadQueryNumberToReturn reads the number to return from src.
+//
+// Deprecated: Construct wiremessages with OpMsg and use the ReadMsg* functions
+// instead.
 func ReadQueryNumberToReturn(src []byte) (ntr int32, rem []byte, ok bool) {
 	return readi32(src)
 }
 
 // ReadQueryQuery reads the query from src.
+//
+// Deprecated: Construct wiremessages with OpMsg and use the ReadMsg* functions
+// instead.
 func ReadQueryQuery(src []byte) (query bsoncore.Document, rem []byte, ok bool) {
 	return bsoncore.ReadDocument(src)
 }
 
 // ReadQueryReturnFieldsSelector reads a return fields selector document from src.
+//
+// Deprecated: Construct wiremessages with OpMsg and use the ReadMsg* functions
+// instead.
 func ReadQueryReturnFieldsSelector(src []byte) (rfs bsoncore.Document, rem []byte, ok bool) {
 	return bsoncore.ReadDocument(src)
 }

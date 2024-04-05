@@ -11,6 +11,7 @@ import (
 	"errors"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
@@ -42,7 +43,7 @@ func (es *EndSessions) processResponse(driver.ResponseInfo) error {
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (es *EndSessions) Execute(ctx context.Context) error {
 	if es.deployment == nil {
 		return errors.New("the EndSessions operation must have a Deployment set before Execute can be called")
@@ -59,18 +60,19 @@ func (es *EndSessions) Execute(ctx context.Context) error {
 		Deployment:        es.deployment,
 		Selector:          es.selector,
 		ServerAPI:         es.serverAPI,
-	}.Execute(ctx, nil)
+		Name:              driverutil.EndSessionsOp,
+	}.Execute(ctx)
 
 }
 
-func (es *EndSessions) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (es *EndSessions) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 	if es.sessionIDs != nil {
 		dst = bsoncore.AppendArrayElement(dst, "endSessions", es.sessionIDs)
 	}
 	return dst, nil
 }
 
-// sessionIDs specify the sessions to be expired.
+// SessionIDs specifies the sessions to be expired.
 func (es *EndSessions) SessionIDs(sessionIDs bsoncore.Document) *EndSessions {
 	if es == nil {
 		es = new(EndSessions)

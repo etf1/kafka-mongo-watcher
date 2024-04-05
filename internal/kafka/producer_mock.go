@@ -5,47 +5,48 @@
 package kafka
 
 import (
-	kafka "github.com/confluentinc/confluent-kafka-go/kafka"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	kafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	gomock "github.com/golang/mock/gomock"
 )
 
-// MockKafkaProducer is a mock of KafkaProducer interface
+// MockKafkaProducer is a mock of KafkaProducer interface.
 type MockKafkaProducer struct {
 	ctrl     *gomock.Controller
 	recorder *MockKafkaProducerMockRecorder
 }
 
-// MockKafkaProducerMockRecorder is the mock recorder for MockKafkaProducer
+// MockKafkaProducerMockRecorder is the mock recorder for MockKafkaProducer.
 type MockKafkaProducerMockRecorder struct {
 	mock *MockKafkaProducer
 }
 
-// NewMockKafkaProducer creates a new mock instance
+// NewMockKafkaProducer creates a new mock instance.
 func NewMockKafkaProducer(ctrl *gomock.Controller) *MockKafkaProducer {
 	mock := &MockKafkaProducer{ctrl: ctrl}
 	mock.recorder = &MockKafkaProducerMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockKafkaProducer) EXPECT() *MockKafkaProducerMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method
+// Close mocks base method.
 func (m *MockKafkaProducer) Close() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Close")
 }
 
-// Close indicates an expected call of Close
+// Close indicates an expected call of Close.
 func (mr *MockKafkaProducerMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockKafkaProducer)(nil).Close))
 }
 
-// Events mocks base method
+// Events mocks base method.
 func (m *MockKafkaProducer) Events() chan kafka.Event {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Events")
@@ -53,13 +54,13 @@ func (m *MockKafkaProducer) Events() chan kafka.Event {
 	return ret0
 }
 
-// Events indicates an expected call of Events
+// Events indicates an expected call of Events.
 func (mr *MockKafkaProducerMockRecorder) Events() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Events", reflect.TypeOf((*MockKafkaProducer)(nil).Events))
 }
 
-// Len mocks base method
+// Len mocks base method.
 func (m *MockKafkaProducer) Len() int {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Len")
@@ -67,13 +68,13 @@ func (m *MockKafkaProducer) Len() int {
 	return ret0
 }
 
-// Len indicates an expected call of Len
+// Len indicates an expected call of Len.
 func (mr *MockKafkaProducerMockRecorder) Len() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Len", reflect.TypeOf((*MockKafkaProducer)(nil).Len))
 }
 
-// Produce mocks base method
+// Produce mocks base method.
 func (m *MockKafkaProducer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Produce", msg, deliveryChan)
@@ -81,13 +82,13 @@ func (m *MockKafkaProducer) Produce(msg *kafka.Message, deliveryChan chan kafka.
 	return ret0
 }
 
-// Produce indicates an expected call of Produce
+// Produce indicates an expected call of Produce.
 func (mr *MockKafkaProducerMockRecorder) Produce(msg, deliveryChan interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Produce", reflect.TypeOf((*MockKafkaProducer)(nil).Produce), msg, deliveryChan)
 }
 
-// ProduceChannel mocks base method
+// ProduceChannel mocks base method.
 func (m *MockKafkaProducer) ProduceChannel() chan *kafka.Message {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ProduceChannel")
@@ -95,7 +96,7 @@ func (m *MockKafkaProducer) ProduceChannel() chan *kafka.Message {
 	return ret0
 }
 
-// ProduceChannel indicates an expected call of ProduceChannel
+// ProduceChannel indicates an expected call of ProduceChannel.
 func (mr *MockKafkaProducerMockRecorder) ProduceChannel() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProduceChannel", reflect.TypeOf((*MockKafkaProducer)(nil).ProduceChannel))

@@ -11,6 +11,7 @@ import (
 	"errors"
 
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal/driverutil"
 	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
@@ -44,7 +45,7 @@ func (at *AbortTransaction) processResponse(driver.ResponseInfo) error {
 	return err
 }
 
-// Execute runs this operations and returns an error if the operaiton did not execute successfully.
+// Execute runs this operations and returns an error if the operation did not execute successfully.
 func (at *AbortTransaction) Execute(ctx context.Context) error {
 	if at.deployment == nil {
 		return errors.New("the AbortTransaction operation must have a Deployment set before Execute can be called")
@@ -64,11 +65,12 @@ func (at *AbortTransaction) Execute(ctx context.Context) error {
 		Selector:          at.selector,
 		WriteConcern:      at.writeConcern,
 		ServerAPI:         at.serverAPI,
-	}.Execute(ctx, nil)
+		Name:              driverutil.AbortTransactionOp,
+	}.Execute(ctx)
 
 }
 
-func (at *AbortTransaction) command(dst []byte, desc description.SelectedServer) ([]byte, error) {
+func (at *AbortTransaction) command(dst []byte, _ description.SelectedServer) ([]byte, error) {
 
 	dst = bsoncore.AppendInt32Element(dst, "abortTransaction", 1)
 	if at.recoveryToken != nil {

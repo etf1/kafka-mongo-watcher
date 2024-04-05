@@ -3,7 +3,7 @@ package kafka
 import (
 	"testing"
 
-	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/kafka"
+	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
