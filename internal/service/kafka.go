@@ -12,6 +12,7 @@ func (container *Container) GetKafkaProducer() *kafkaconfluent.Producer {
 		producer, err := kafkaconfluent.NewProducer(&kafkaconfluent.ConfigMap{
 			"bootstrap.servers":       container.Cfg.Kafka.BootstrapServers,
 			"go.produce.channel.size": container.Cfg.Kafka.ProduceChannelSize,
+			"message.max.bytes":       container.Cfg.Kafka.MessageMaxBytes,
 		})
 		if err != nil {
 			panic(err)

@@ -177,6 +177,11 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 
 A big value here can increase the heap memory of the application as all the payload that have to be sent to Kafka will be maintained in channel.
 
+#### KAFKA_MESSAGE_MAX_BYTES
+*Type*: integer
+
+*Description*: The maximum message size in bytes at the producer level (default: 1024*1024)
+
 #### LOG_CLI_VERBOSE
 *Type*: boolean
 

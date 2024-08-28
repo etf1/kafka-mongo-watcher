@@ -42,6 +42,7 @@ var cfg = &Base{
 		Topic:              "kafka-mongo-watcher",
 		ProduceChannelSize: 10000,
 		WithDecorators:     true,
+		MessageMaxBytes:    1024 * 1024,
 	},
 }
 
