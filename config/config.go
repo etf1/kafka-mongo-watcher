@@ -71,6 +71,7 @@ type Kafka struct {
 	Topic              string `config:"KAFKA_TOPIC"`
 	ProduceChannelSize int    `config:"KAFKA_PRODUCE_CHANNEL_SIZE"`
 	WithDecorators     bool   `config:"KAFKA_WITH_DECORATORS"`
+	MessageMaxBytes    int    `config:"KAFKA_MESSAGE_MAX_BYTES"`
 }
 
 // NewBase returns a new base configuration
@@ -107,6 +108,7 @@ func NewBase(ctx context.Context, configPrefix string) *Base {
 			Topic:              "kafka-mongo-watcher",
 			ProduceChannelSize: 10000,
 			WithDecorators:     true,
+			MessageMaxBytes:    1024 * 1024,
 		},
 	}
 
