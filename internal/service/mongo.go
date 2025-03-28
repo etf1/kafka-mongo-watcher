@@ -55,19 +55,33 @@ func (container *Container) getWatchProducer() *mongo.WatchProducer {
 
 func (container *Container) getWatchOptions() []mongo.WatchOption {
 	configOptions := container.Cfg.MongoDB.Options
-	return []mongo.WatchOption{
+	options := []mongo.WatchOption{
 		mongo.WithBatchSize(configOptions.BatchSize),
 		mongo.WithFullDocument(configOptions.FullDocument),
 		mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
 		mongo.WithResumeAfter([]byte(configOptions.ResumeAfter)),
-		mongo.WithStartAtOperationTime(primitive.Timestamp{
-			I: configOptions.StartAtOperationTimeI,
-			T: configOptions.StartAtOperationTimeT,
-		}),
 		mongo.WithMaxRetries(configOptions.WatchMaxRetries),
 		mongo.WithRetryDelay(configOptions.WatchRetryDelay),
 		mongo.WithIgnoreUpdateDescription(configOptions.IgnoreUpdateDescription),
 	}
+
+	switch {
+	case configOptions.StartAtOperationTimeT > 0:
+		startAt := primitive.Timestamp{
+			T: configOptions.StartAtOperationTimeT,
+			I: configOptions.StartAtOperationTimeI,
+		}
+		options = append(options, mongo.WithStartAtOperationTime(startAt))
+	case configOptions.StartAtDelay > 0:
+		from := time.Now().Add(-1 * configOptions.StartAtDelay)
+		startAt := primitive.Timestamp{
+			T: uint32(from.Unix()),
+			I: 0,
+		}
+		options = append(options, mongo.WithStartAtOperationTime(startAt))
+	}
+
+	return options
 }
 
 func (container *Container) GetMongoCollection() mongo.CollectionAdapter {

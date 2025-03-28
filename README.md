@@ -142,6 +142,11 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 
 *Description*: In case you want to set a logical starting point for the change stream (example : `{"_data": <hex string>}`)
 
+#### MONGODB_OPTION_START_AT_DELAY
+*Type*: duration
+
+*Description*: In case you want to set a starting point in the past (now - delay) for the change stream
+
 #### MONGODB_OPTION_START_AT_OPERATION_TIME_I
 *Type*: uint32 *(increment value)*
 
