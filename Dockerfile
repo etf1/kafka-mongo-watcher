@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine as builder
+FROM golang:1.23-alpine as builder
 
 ARG VERSION
 
@@ -9,7 +9,7 @@ RUN apk --no-cache add gcc libc-dev
 
 RUN GOOS=linux GOARCH=amd64 go build -tags 'musl' -ldflags "-s -w -X github.com/etf1/kafka-mongo-watcher/config.AppVersion=$VERSION" -o kafka-mongo-watcher ./cmd/watcher/
 
-FROM alpine:3.19
+FROM alpine:3.21
 LABEL name="kafka-mongo-watcher"
 
 WORKDIR /

@@ -145,6 +145,13 @@ error_by_idx(const rd_kafka_error_t **errors, size_t cnt, size_t idx) {
 		return NULL;
 	return errors[idx];
 }
+
+static const rd_kafka_topic_partition_result_t *
+TopicPartitionResult_by_idx(const rd_kafka_topic_partition_result_t **results, size_t cnt, size_t idx) {
+	if (idx >= cnt)
+		return NULL;
+	return results[idx];
+}
 */
 import "C"
 
@@ -211,17 +218,17 @@ type ConsumerGroupState int
 
 const (
 	// ConsumerGroupStateUnknown - Unknown ConsumerGroupState
-	ConsumerGroupStateUnknown = ConsumerGroupState(C.RD_KAFKA_CONSUMER_GROUP_STATE_UNKNOWN)
+	ConsumerGroupStateUnknown ConsumerGroupState = C.RD_KAFKA_CONSUMER_GROUP_STATE_UNKNOWN
 	// ConsumerGroupStatePreparingRebalance - preparing rebalance
-	ConsumerGroupStatePreparingRebalance = ConsumerGroupState(C.RD_KAFKA_CONSUMER_GROUP_STATE_PREPARING_REBALANCE)
+	ConsumerGroupStatePreparingRebalance ConsumerGroupState = C.RD_KAFKA_CONSUMER_GROUP_STATE_PREPARING_REBALANCE
 	// ConsumerGroupStateCompletingRebalance - completing rebalance
-	ConsumerGroupStateCompletingRebalance = ConsumerGroupState(C.RD_KAFKA_CONSUMER_GROUP_STATE_COMPLETING_REBALANCE)
+	ConsumerGroupStateCompletingRebalance ConsumerGroupState = C.RD_KAFKA_CONSUMER_GROUP_STATE_COMPLETING_REBALANCE
 	// ConsumerGroupStateStable - stable
-	ConsumerGroupStateStable = ConsumerGroupState(C.RD_KAFKA_CONSUMER_GROUP_STATE_STABLE)
+	ConsumerGroupStateStable ConsumerGroupState = C.RD_KAFKA_CONSUMER_GROUP_STATE_STABLE
 	// ConsumerGroupStateDead - dead group
-	ConsumerGroupStateDead = ConsumerGroupState(C.RD_KAFKA_CONSUMER_GROUP_STATE_DEAD)
+	ConsumerGroupStateDead ConsumerGroupState = C.RD_KAFKA_CONSUMER_GROUP_STATE_DEAD
 	// ConsumerGroupStateEmpty - empty group
-	ConsumerGroupStateEmpty = ConsumerGroupState(C.RD_KAFKA_CONSUMER_GROUP_STATE_EMPTY)
+	ConsumerGroupStateEmpty ConsumerGroupState = C.RD_KAFKA_CONSUMER_GROUP_STATE_EMPTY
 )
 
 // String returns the human-readable representation of a consumer_group_state
@@ -231,12 +238,39 @@ func (t ConsumerGroupState) String() string {
 }
 
 // ConsumerGroupStateFromString translates a consumer group state name/string to
-// a ConsumerGroupStateFromString value.
+// a ConsumerGroupState value.
 func ConsumerGroupStateFromString(stateString string) (ConsumerGroupState, error) {
 	cStr := C.CString(stateString)
 	defer C.free(unsafe.Pointer(cStr))
 	state := ConsumerGroupState(C.rd_kafka_consumer_group_state_code(cStr))
 	return state, nil
+}
+
+// ConsumerGroupType represents a consumer group type
+type ConsumerGroupType int
+
+const (
+	// ConsumerGroupTypeUnknown - Unknown ConsumerGroupType
+	ConsumerGroupTypeUnknown ConsumerGroupType = C.RD_KAFKA_CONSUMER_GROUP_TYPE_UNKNOWN
+	// ConsumerGroupTypeConsumer - Consumer ConsumerGroupType
+	ConsumerGroupTypeConsumer ConsumerGroupType = C.RD_KAFKA_CONSUMER_GROUP_TYPE_CONSUMER
+	// ConsumerGroupTypeClassic - Classic ConsumerGroupType
+	ConsumerGroupTypeClassic ConsumerGroupType = C.RD_KAFKA_CONSUMER_GROUP_TYPE_CLASSIC
+)
+
+// String returns the human-readable representation of a ConsumerGroupType
+func (t ConsumerGroupType) String() string {
+	return C.GoString(C.rd_kafka_consumer_group_type_name(
+		C.rd_kafka_consumer_group_type_t(t)))
+}
+
+// ConsumerGroupTypeFromString translates a consumer group type name/string to
+// a ConsumerGroupType value.
+func ConsumerGroupTypeFromString(typeString string) ConsumerGroupType {
+	cStr := C.CString(typeString)
+	defer C.free(unsafe.Pointer(cStr))
+	groupType := ConsumerGroupType(C.rd_kafka_consumer_group_type_code(cStr))
+	return groupType
 }
 
 // ConsumerGroupListing represents the result of ListConsumerGroups for a single
@@ -248,6 +282,8 @@ type ConsumerGroupListing struct {
 	IsSimpleConsumerGroup bool
 	// Group state.
 	State ConsumerGroupState
+	// Group type.
+	Type ConsumerGroupType
 }
 
 // ListConsumerGroupsResult represents ListConsumerGroups results and errors.
@@ -256,6 +292,29 @@ type ListConsumerGroupsResult struct {
 	Valid []ConsumerGroupListing
 	// List of errors.
 	Errors []error
+}
+
+// DeletedRecords contains information about deleted
+// records of a single partition
+type DeletedRecords struct {
+	// Low-watermark offset after deletion
+	LowWatermark Offset
+}
+
+// DeleteRecordsResult represents the result of a DeleteRecords call
+// for a single partition.
+type DeleteRecordsResult struct {
+	// One of requested partitions.
+	// The Error field is set if any occurred for that partition.
+	TopicPartition TopicPartition
+	// Deleted records information, or nil if an error occurred.
+	DeletedRecords *DeletedRecords
+}
+
+// DeleteRecordsResults represents the results of a DeleteRecords call.
+type DeleteRecordsResults struct {
+	// A slice of DeleteRecordsResult, one for each requested topic partition.
+	DeleteRecordsResults []DeleteRecordsResult
 }
 
 // MemberAssignment represents the assignment of a consumer group member.
@@ -431,15 +490,15 @@ type ResourceType int
 
 const (
 	// ResourceUnknown - Unknown
-	ResourceUnknown = ResourceType(C.RD_KAFKA_RESOURCE_UNKNOWN)
+	ResourceUnknown ResourceType = C.RD_KAFKA_RESOURCE_UNKNOWN
 	// ResourceAny - match any resource type (DescribeConfigs)
-	ResourceAny = ResourceType(C.RD_KAFKA_RESOURCE_ANY)
+	ResourceAny ResourceType = C.RD_KAFKA_RESOURCE_ANY
 	// ResourceTopic - Topic
-	ResourceTopic = ResourceType(C.RD_KAFKA_RESOURCE_TOPIC)
+	ResourceTopic ResourceType = C.RD_KAFKA_RESOURCE_TOPIC
 	// ResourceGroup - Group
-	ResourceGroup = ResourceType(C.RD_KAFKA_RESOURCE_GROUP)
+	ResourceGroup ResourceType = C.RD_KAFKA_RESOURCE_GROUP
 	// ResourceBroker - Broker
-	ResourceBroker = ResourceType(C.RD_KAFKA_RESOURCE_BROKER)
+	ResourceBroker ResourceType = C.RD_KAFKA_RESOURCE_BROKER
 )
 
 // String returns the human-readable representation of a ResourceType
@@ -469,17 +528,17 @@ type ConfigSource int
 
 const (
 	// ConfigSourceUnknown is the default value
-	ConfigSourceUnknown = ConfigSource(C.RD_KAFKA_CONFIG_SOURCE_UNKNOWN_CONFIG)
+	ConfigSourceUnknown ConfigSource = C.RD_KAFKA_CONFIG_SOURCE_UNKNOWN_CONFIG
 	// ConfigSourceDynamicTopic is dynamic topic config that is configured for a specific topic
-	ConfigSourceDynamicTopic = ConfigSource(C.RD_KAFKA_CONFIG_SOURCE_DYNAMIC_TOPIC_CONFIG)
+	ConfigSourceDynamicTopic ConfigSource = C.RD_KAFKA_CONFIG_SOURCE_DYNAMIC_TOPIC_CONFIG
 	// ConfigSourceDynamicBroker is dynamic broker config that is configured for a specific broker
-	ConfigSourceDynamicBroker = ConfigSource(C.RD_KAFKA_CONFIG_SOURCE_DYNAMIC_BROKER_CONFIG)
+	ConfigSourceDynamicBroker ConfigSource = C.RD_KAFKA_CONFIG_SOURCE_DYNAMIC_BROKER_CONFIG
 	// ConfigSourceDynamicDefaultBroker is dynamic broker config that is configured as default for all brokers in the cluster
-	ConfigSourceDynamicDefaultBroker = ConfigSource(C.RD_KAFKA_CONFIG_SOURCE_DYNAMIC_DEFAULT_BROKER_CONFIG)
+	ConfigSourceDynamicDefaultBroker ConfigSource = C.RD_KAFKA_CONFIG_SOURCE_DYNAMIC_DEFAULT_BROKER_CONFIG
 	// ConfigSourceStaticBroker is static broker config provided as broker properties at startup (e.g. from server.properties file)
-	ConfigSourceStaticBroker = ConfigSource(C.RD_KAFKA_CONFIG_SOURCE_STATIC_BROKER_CONFIG)
+	ConfigSourceStaticBroker ConfigSource = C.RD_KAFKA_CONFIG_SOURCE_STATIC_BROKER_CONFIG
 	// ConfigSourceDefault is built-in default configuration for configs that have a default value
-	ConfigSourceDefault = ConfigSource(C.RD_KAFKA_CONFIG_SOURCE_DEFAULT_CONFIG)
+	ConfigSourceDefault ConfigSource = C.RD_KAFKA_CONFIG_SOURCE_DEFAULT_CONFIG
 )
 
 // String returns the human-readable representation of a ConfigSource type
@@ -531,16 +590,16 @@ type AlterConfigOpType int
 const (
 	// AlterConfigOpTypeSet sets/overwrites the configuration
 	// setting.
-	AlterConfigOpTypeSet = AlterConfigOpType(C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_SET)
+	AlterConfigOpTypeSet AlterConfigOpType = C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_SET
 	// AlterConfigOpTypeDelete sets the configuration setting
 	// to default or NULL.
-	AlterConfigOpTypeDelete = AlterConfigOpType(C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_DELETE)
+	AlterConfigOpTypeDelete AlterConfigOpType = C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_DELETE
 	// AlterConfigOpTypeAppend appends the value to existing
 	// configuration settings.
-	AlterConfigOpTypeAppend = AlterConfigOpType(C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_APPEND)
+	AlterConfigOpTypeAppend AlterConfigOpType = C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_APPEND
 	// AlterConfigOpTypeSubtract subtracts the value from
 	// existing configuration settings.
-	AlterConfigOpTypeSubtract = AlterConfigOpType(C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_SUBTRACT)
+	AlterConfigOpTypeSubtract AlterConfigOpType = C.RD_KAFKA_ALTER_CONFIG_OP_TYPE_SUBTRACT
 )
 
 // String returns the human-readable representation of an AlterOperation
@@ -682,15 +741,15 @@ type ResourcePatternType int
 
 const (
 	// ResourcePatternTypeUnknown is a resource pattern type not known or not set.
-	ResourcePatternTypeUnknown = ResourcePatternType(C.RD_KAFKA_RESOURCE_PATTERN_UNKNOWN)
+	ResourcePatternTypeUnknown ResourcePatternType = C.RD_KAFKA_RESOURCE_PATTERN_UNKNOWN
 	// ResourcePatternTypeAny matches any resource, used for lookups.
-	ResourcePatternTypeAny = ResourcePatternType(C.RD_KAFKA_RESOURCE_PATTERN_ANY)
+	ResourcePatternTypeAny ResourcePatternType = C.RD_KAFKA_RESOURCE_PATTERN_ANY
 	// ResourcePatternTypeMatch will perform pattern matching
-	ResourcePatternTypeMatch = ResourcePatternType(C.RD_KAFKA_RESOURCE_PATTERN_MATCH)
+	ResourcePatternTypeMatch ResourcePatternType = C.RD_KAFKA_RESOURCE_PATTERN_MATCH
 	// ResourcePatternTypeLiteral matches a literal resource name
-	ResourcePatternTypeLiteral = ResourcePatternType(C.RD_KAFKA_RESOURCE_PATTERN_LITERAL)
+	ResourcePatternTypeLiteral ResourcePatternType = C.RD_KAFKA_RESOURCE_PATTERN_LITERAL
 	// ResourcePatternTypePrefixed matches a prefixed resource name
-	ResourcePatternTypePrefixed = ResourcePatternType(C.RD_KAFKA_RESOURCE_PATTERN_PREFIXED)
+	ResourcePatternTypePrefixed ResourcePatternType = C.RD_KAFKA_RESOURCE_PATTERN_PREFIXED
 )
 
 // String returns the human-readable representation of a ResourcePatternType
@@ -720,31 +779,31 @@ type ACLOperation int
 
 const (
 	// ACLOperationUnknown represents an unknown or unset operation
-	ACLOperationUnknown = ACLOperation(C.RD_KAFKA_ACL_OPERATION_UNKNOWN)
+	ACLOperationUnknown ACLOperation = C.RD_KAFKA_ACL_OPERATION_UNKNOWN
 	// ACLOperationAny in a filter, matches any ACLOperation
-	ACLOperationAny = ACLOperation(C.RD_KAFKA_ACL_OPERATION_ANY)
+	ACLOperationAny ACLOperation = C.RD_KAFKA_ACL_OPERATION_ANY
 	// ACLOperationAll represents all the operations
-	ACLOperationAll = ACLOperation(C.RD_KAFKA_ACL_OPERATION_ALL)
+	ACLOperationAll ACLOperation = C.RD_KAFKA_ACL_OPERATION_ALL
 	// ACLOperationRead a read operation
-	ACLOperationRead = ACLOperation(C.RD_KAFKA_ACL_OPERATION_READ)
+	ACLOperationRead ACLOperation = C.RD_KAFKA_ACL_OPERATION_READ
 	// ACLOperationWrite represents a write operation
-	ACLOperationWrite = ACLOperation(C.RD_KAFKA_ACL_OPERATION_WRITE)
+	ACLOperationWrite ACLOperation = C.RD_KAFKA_ACL_OPERATION_WRITE
 	// ACLOperationCreate represents a create operation
-	ACLOperationCreate = ACLOperation(C.RD_KAFKA_ACL_OPERATION_CREATE)
+	ACLOperationCreate ACLOperation = C.RD_KAFKA_ACL_OPERATION_CREATE
 	// ACLOperationDelete represents a delete operation
-	ACLOperationDelete = ACLOperation(C.RD_KAFKA_ACL_OPERATION_DELETE)
+	ACLOperationDelete ACLOperation = C.RD_KAFKA_ACL_OPERATION_DELETE
 	// ACLOperationAlter represents an alter operation
-	ACLOperationAlter = ACLOperation(C.RD_KAFKA_ACL_OPERATION_ALTER)
+	ACLOperationAlter ACLOperation = C.RD_KAFKA_ACL_OPERATION_ALTER
 	// ACLOperationDescribe represents a describe operation
-	ACLOperationDescribe = ACLOperation(C.RD_KAFKA_ACL_OPERATION_DESCRIBE)
+	ACLOperationDescribe ACLOperation = C.RD_KAFKA_ACL_OPERATION_DESCRIBE
 	// ACLOperationClusterAction represents a cluster action operation
-	ACLOperationClusterAction = ACLOperation(C.RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION)
+	ACLOperationClusterAction ACLOperation = C.RD_KAFKA_ACL_OPERATION_CLUSTER_ACTION
 	// ACLOperationDescribeConfigs represents a describe configs operation
-	ACLOperationDescribeConfigs = ACLOperation(C.RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS)
+	ACLOperationDescribeConfigs ACLOperation = C.RD_KAFKA_ACL_OPERATION_DESCRIBE_CONFIGS
 	// ACLOperationAlterConfigs represents an alter configs operation
-	ACLOperationAlterConfigs = ACLOperation(C.RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS)
+	ACLOperationAlterConfigs ACLOperation = C.RD_KAFKA_ACL_OPERATION_ALTER_CONFIGS
 	// ACLOperationIdempotentWrite represents an idempotent write operation
-	ACLOperationIdempotentWrite = ACLOperation(C.RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE)
+	ACLOperationIdempotentWrite ACLOperation = C.RD_KAFKA_ACL_OPERATION_IDEMPOTENT_WRITE
 )
 
 // String returns the human-readable representation of an ACLOperation
@@ -790,13 +849,13 @@ type ACLPermissionType int
 
 const (
 	// ACLPermissionTypeUnknown represents an unknown ACLPermissionType
-	ACLPermissionTypeUnknown = ACLPermissionType(C.RD_KAFKA_ACL_PERMISSION_TYPE_UNKNOWN)
+	ACLPermissionTypeUnknown ACLPermissionType = C.RD_KAFKA_ACL_PERMISSION_TYPE_UNKNOWN
 	// ACLPermissionTypeAny in a filter, matches any ACLPermissionType
-	ACLPermissionTypeAny = ACLPermissionType(C.RD_KAFKA_ACL_PERMISSION_TYPE_ANY)
+	ACLPermissionTypeAny ACLPermissionType = C.RD_KAFKA_ACL_PERMISSION_TYPE_ANY
 	// ACLPermissionTypeDeny disallows access
-	ACLPermissionTypeDeny = ACLPermissionType(C.RD_KAFKA_ACL_PERMISSION_TYPE_DENY)
+	ACLPermissionTypeDeny ACLPermissionType = C.RD_KAFKA_ACL_PERMISSION_TYPE_DENY
 	// ACLPermissionTypeAllow grants access
-	ACLPermissionTypeAllow = ACLPermissionType(C.RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW)
+	ACLPermissionTypeAllow ACLPermissionType = C.RD_KAFKA_ACL_PERMISSION_TYPE_ALLOW
 )
 
 // String returns the human-readable representation of an ACLPermissionType
@@ -903,11 +962,11 @@ type ScramMechanism int
 
 const (
 	// ScramMechanismUnknown - Unknown SASL/SCRAM mechanism
-	ScramMechanismUnknown = ScramMechanism(C.RD_KAFKA_SCRAM_MECHANISM_UNKNOWN)
+	ScramMechanismUnknown ScramMechanism = C.RD_KAFKA_SCRAM_MECHANISM_UNKNOWN
 	// ScramMechanismSHA256 - SCRAM-SHA-256 mechanism
-	ScramMechanismSHA256 = ScramMechanism(C.RD_KAFKA_SCRAM_MECHANISM_SHA_256)
+	ScramMechanismSHA256 ScramMechanism = C.RD_KAFKA_SCRAM_MECHANISM_SHA_256
 	// ScramMechanismSHA512 - SCRAM-SHA-512 mechanism
-	ScramMechanismSHA512 = ScramMechanism(C.RD_KAFKA_SCRAM_MECHANISM_SHA_512)
+	ScramMechanismSHA512 ScramMechanism = C.RD_KAFKA_SCRAM_MECHANISM_SHA_512
 )
 
 // String returns the human-readable representation of an ScramMechanism
@@ -1000,11 +1059,11 @@ type OffsetSpec int64
 
 const (
 	// MaxTimestampOffsetSpec is used to describe the offset with the Max Timestamp which may be different then LatestOffsetSpec as Timestamp can be set client side.
-	MaxTimestampOffsetSpec = OffsetSpec(C.RD_KAFKA_OFFSET_SPEC_MAX_TIMESTAMP)
+	MaxTimestampOffsetSpec OffsetSpec = C.RD_KAFKA_OFFSET_SPEC_MAX_TIMESTAMP
 	// EarliestOffsetSpec is used to describe the earliest offset for the TopicPartition.
-	EarliestOffsetSpec = OffsetSpec(C.RD_KAFKA_OFFSET_SPEC_EARLIEST)
+	EarliestOffsetSpec OffsetSpec = C.RD_KAFKA_OFFSET_SPEC_EARLIEST
 	// LatestOffsetSpec is used to describe the latest offset for the TopicPartition.
-	LatestOffsetSpec = OffsetSpec(C.RD_KAFKA_OFFSET_SPEC_LATEST)
+	LatestOffsetSpec OffsetSpec = C.RD_KAFKA_OFFSET_SPEC_LATEST
 )
 
 // NewOffsetSpecForTimestamp creates an OffsetSpec corresponding to the timestamp.
@@ -1023,6 +1082,54 @@ type ListOffsetsResultInfo struct {
 // ListOffsetsResult holds the map of TopicPartition to ListOffsetsResultInfo for a request.
 type ListOffsetsResult struct {
 	ResultInfos map[TopicPartition]ListOffsetsResultInfo
+}
+
+// ElectionType represents the type of election to be performed
+type ElectionType int
+
+const (
+	// ElectionTypePreferred - Preferred election type
+	ElectionTypePreferred ElectionType = C.RD_KAFKA_ELECTION_TYPE_PREFERRED
+	// ElectionTypeUnclean - Unclean election type
+	ElectionTypeUnclean ElectionType = C.RD_KAFKA_ELECTION_TYPE_UNCLEAN
+)
+
+// ElectionTypeFromString translates an election type name to
+// an ElectionType value.
+func ElectionTypeFromString(electionTypeString string) (ElectionType, error) {
+	switch strings.ToUpper(electionTypeString) {
+	case "PREFERRED":
+		return ElectionTypePreferred, nil
+	case "UNCLEAN":
+		return ElectionTypeUnclean, nil
+	default:
+		return ElectionTypePreferred, NewError(ErrInvalidArg, "Unknown election type", false)
+	}
+}
+
+// ElectLeadersRequest holds parameters for the type of election to be performed and
+// the topic partitions for which election has to be performed
+type ElectLeadersRequest struct {
+	// Election type to be performed
+	electionType ElectionType
+	// TopicPartitions for which election has to be performed
+	partitions []TopicPartition
+}
+
+// NewElectLeadersRequest creates a new ElectLeadersRequest with the given election type
+// and topic partitions
+func NewElectLeadersRequest(electionType ElectionType, partitions []TopicPartition) ElectLeadersRequest {
+	return ElectLeadersRequest{
+		electionType: electionType,
+		partitions:   partitions,
+	}
+}
+
+// ElectLeadersResult holds the result of the election performed
+type ElectLeadersResult struct {
+	// TopicPartitions for which election has been performed and the per-partition error, if any
+	// that occurred while running the election for the specific TopicPartition.
+	TopicPartitions []TopicPartition
 }
 
 // waitResult waits for a result event on cQueue or the ctx to be cancelled, whichever happens
@@ -1453,16 +1560,16 @@ func (a *AdminClient) cToConsumerGroupListings(
 			C.ConsumerGroupListing_by_idx(cGroups, cGroupCount, C.size_t(idx))
 		state := ConsumerGroupState(
 			C.rd_kafka_ConsumerGroupListing_state(cGroup))
-
+		groupType := ConsumerGroupType(C.rd_kafka_ConsumerGroupListing_type(cGroup))
 		result[idx] = ConsumerGroupListing{
 			GroupID: C.GoString(
 				C.rd_kafka_ConsumerGroupListing_group_id(cGroup)),
-			State: state,
 			IsSimpleConsumerGroup: cint2bool(
 				C.rd_kafka_ConsumerGroupListing_is_simple_consumer_group(cGroup)),
+			State: state,
+			Type:  groupType,
 		}
 	}
-
 	return result
 }
 
@@ -1503,6 +1610,45 @@ func (a *AdminClient) cConfigResourceToResult(cRes **C.rd_kafka_ConfigResource_t
 	}
 
 	return result, nil
+}
+
+// setupTopicPartitionFromCtopicPartitionResult sets up a Go TopicPartition from a C rd_kafka_topic_partition_t & C.rd_kafka_error_t.
+func setupTopicPartitionFromCtopicPartitionResult(partition *TopicPartition, ctopicPartRes *C.rd_kafka_topic_partition_result_t) {
+
+	setupTopicPartitionFromCrktpar(partition, C.rd_kafka_topic_partition_result_partition(ctopicPartRes))
+	partition.Error = newErrorFromCError(C.rd_kafka_topic_partition_result_error(ctopicPartRes))
+}
+
+// Convert a C rd_kafka_topic_partition_result_t array to a Go TopicPartition list.
+func newTopicPartitionsFromCTopicPartitionResult(cResponse **C.rd_kafka_topic_partition_result_t, size C.size_t) (partitions []TopicPartition) {
+
+	partCnt := int(size)
+
+	partitions = make([]TopicPartition, partCnt)
+
+	for i := 0; i < partCnt; i++ {
+		setupTopicPartitionFromCtopicPartitionResult(&partitions[i], C.TopicPartitionResult_by_idx(cResponse, C.size_t(partCnt), C.size_t(i)))
+	}
+
+	return partitions
+}
+
+// cToDeletedRecordResult converts a C topic partitions list to a Go DeleteRecordsResult slice.
+func cToDeletedRecordResult(
+	cparts *C.rd_kafka_topic_partition_list_t) (results []DeleteRecordsResult) {
+	partitions := newTopicPartitionsFromCparts(cparts)
+	partitionsLen := len(partitions)
+	results = make([]DeleteRecordsResult, partitionsLen)
+
+	for i := 0; i < partitionsLen; i++ {
+		results[i].TopicPartition = partitions[i]
+		if results[i].TopicPartition.Error == nil {
+			results[i].DeletedRecords = &DeletedRecords{
+				LowWatermark: results[i].TopicPartition.Offset}
+		}
+	}
+
+	return results
 }
 
 // ClusterID returns the cluster ID as reported in broker metadata.
@@ -3393,6 +3539,155 @@ func (a *AdminClient) AlterUserScramCredentials(
 		err := newErrorFromCError(C.rd_kafka_AlterUserScramCredentials_result_response_error(cResponse))
 		result.Errors[user] = err
 	}
+
+	return result, nil
+}
+
+// DeleteRecords deletes records (messages) in topic partitions older than the offsets provided.
+//
+// Parameters:
+//   - `ctx` - context with the maximum amount of time to block, or nil for
+//     indefinite.
+//   - `recordsToDelete` - A slice of TopicPartitions with the offset field set.
+//     For each partition, delete all messages up to but not including the specified offset.
+//     The offset could be set to kafka.OffsetEnd to delete all the messages in the partition.
+//   - `options` - DeleteRecordsAdminOptions options.
+//
+// Returns a DeleteRecordsResults, which contains a slice of
+// DeleteRecordsResult, each representing the result for one topic partition.
+// Individual TopicPartitions inside the DeleteRecordsResult should be checked for errors.
+// If successful, the DeletedRecords within the DeleteRecordsResult will be non-nil,
+// and contain the low-watermark offset (smallest available offset of all live replicas).
+func (a *AdminClient) DeleteRecords(ctx context.Context,
+	recordsToDelete []TopicPartition,
+	options ...DeleteRecordsAdminOption) (result DeleteRecordsResults, err error) {
+	err = a.verifyClient()
+	if err != nil {
+		return result, err
+	}
+
+	if len(recordsToDelete) == 0 {
+		return result, newErrorFromString(ErrInvalidArg, "No records to delete")
+	}
+
+	// convert recordsToDelete to rd_kafka_DeleteRecords_t** required by implementation
+	cRecordsToDelete := newCPartsFromTopicPartitions(recordsToDelete)
+	defer C.rd_kafka_topic_partition_list_destroy(cRecordsToDelete)
+
+	cDelRecords := make([]*C.rd_kafka_DeleteRecords_t, 1)
+	defer C.rd_kafka_DeleteRecords_destroy_array(&cDelRecords[0], C.size_t(1))
+
+	cDelRecords[0] = C.rd_kafka_DeleteRecords_new(cRecordsToDelete)
+
+	// Convert Go AdminOptions (if any) to C AdminOptions.
+	genericOptions := make([]AdminOption, len(options))
+	for i := range options {
+		genericOptions[i] = options[i]
+	}
+	cOptions, err := adminOptionsSetup(
+		a.handle, C.RD_KAFKA_ADMIN_OP_DELETERECORDS, genericOptions)
+	if err != nil {
+		return result, err
+	}
+	defer C.rd_kafka_AdminOptions_destroy(cOptions)
+
+	// Create temporary queue for async operation.
+	cQueue := C.rd_kafka_queue_new(a.handle.rk)
+	defer C.rd_kafka_queue_destroy(cQueue)
+
+	// Call rd_kafka_DeleteRecords (asynchronous).
+	C.rd_kafka_DeleteRecords(
+		a.handle.rk,
+		&cDelRecords[0],
+		C.size_t(1),
+		cOptions,
+		cQueue)
+
+	// Wait for result, error or context timeout.
+	rkev, err := a.waitResult(
+		ctx, cQueue, C.RD_KAFKA_EVENT_DELETERECORDS_RESULT)
+	if err != nil {
+		return result, err
+	}
+	defer C.rd_kafka_event_destroy(rkev)
+
+	cRes := C.rd_kafka_event_DeleteRecords_result(rkev)
+	cDeleteRecordsResultList := C.rd_kafka_DeleteRecords_result_offsets(cRes)
+
+	// Convert result from C to Go.
+	result.DeleteRecordsResults =
+		cToDeletedRecordResult(cDeleteRecordsResultList)
+
+	return result, nil
+}
+
+// ElectLeaders performs Preferred or Unclean Elections for the specified topic Partitions or for all of them.
+//
+// Parameters:
+//   - `ctx` - context with the maximum amount of time to block, or nil for
+//     indefinite.
+//   - `electLeaderRequest` - ElectLeadersRequest containing the election type
+//     and the partitions to elect leaders for or nil for election in all the
+//     partitions.
+//   - `options` - ElectLeadersAdminOption options.
+//
+// Returns ElectLeadersResult, which contains a slice of TopicPartitions containing the partitions for which the leader election was performed.
+// If we are passing partitions as nil, the broker will perform leader elections for all partitions,
+// but the results will only contain partitions for which there was an election or resulted in an error.
+// Individual TopicPartitions inside the ElectLeadersResult should be checked for errors.
+// Additionally, an error that is not nil for client-level errors is returned.
+func (a *AdminClient) ElectLeaders(ctx context.Context, electLeaderRequest ElectLeadersRequest, options ...ElectLeadersAdminOption) (result ElectLeadersResult, err error) {
+
+	err = a.verifyClient()
+	if err != nil {
+		return result, err
+	}
+
+	var cTopicPartitions *C.rd_kafka_topic_partition_list_t
+	if electLeaderRequest.partitions != nil {
+		cTopicPartitions = newCPartsFromTopicPartitions(electLeaderRequest.partitions)
+		defer C.rd_kafka_topic_partition_list_destroy(cTopicPartitions)
+	}
+
+	cElectLeadersRequest := C.rd_kafka_ElectLeaders_new(C.rd_kafka_ElectionType_t(electLeaderRequest.electionType), cTopicPartitions)
+	defer C.rd_kafka_ElectLeaders_destroy(cElectLeadersRequest)
+
+	// Convert Go AdminOptions (if any) to C AdminOptions.
+	genericOptions := make([]AdminOption, len(options))
+	for i := range options {
+		genericOptions[i] = options[i]
+	}
+	cOptions, err := adminOptionsSetup(
+		a.handle, C.RD_KAFKA_ADMIN_OP_ELECTLEADERS, genericOptions)
+	if err != nil {
+		return result, err
+	}
+	defer C.rd_kafka_AdminOptions_destroy(cOptions)
+
+	// Create temporary queue for async operation.
+	cQueue := C.rd_kafka_queue_new(a.handle.rk)
+	defer C.rd_kafka_queue_destroy(cQueue)
+
+	// Call rd_kafka_ElectLeader (asynchronous).
+	C.rd_kafka_ElectLeaders(
+		a.handle.rk,
+		cElectLeadersRequest,
+		cOptions,
+		cQueue)
+
+	// Wait for result, error or context timeout.
+	rkev, err := a.waitResult(
+		ctx, cQueue, C.RD_KAFKA_EVENT_ELECTLEADERS_RESULT)
+	if err != nil {
+		return result, err
+	}
+	defer C.rd_kafka_event_destroy(rkev)
+
+	cRes := C.rd_kafka_event_ElectLeaders_result(rkev)
+	var cResponseSize C.size_t
+
+	cResultPartitions := C.rd_kafka_ElectLeaders_result_partitions(cRes, &cResponseSize)
+	result.TopicPartitions = newTopicPartitionsFromCTopicPartitionResult(cResultPartitions, cResponseSize)
 
 	return result, nil
 }
