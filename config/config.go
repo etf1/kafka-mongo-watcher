@@ -59,6 +59,7 @@ type MongoDBOptions struct {
 	IgnoreUpdateDescription bool          `config:"MONGODB_OPTION_IGNORE_UPDATE_DESCRIPTION"`
 	MaxAwaitTime            time.Duration `config:"MONGODB_OPTION_MAX_AWAIT_TIME"`
 	ResumeAfter             string        `config:"MONGODB_OPTION_RESUME_AFTER"`
+	StartAtDelay            time.Duration `config:"MONGODB_OPTION_START_AT_DELAY"`
 	StartAtOperationTimeI   uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_I"`
 	StartAtOperationTimeT   uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
 	WatchRetryDelay         time.Duration `config:"MONGODB_OPTION_WATCH_RETRY_DELAY"`
