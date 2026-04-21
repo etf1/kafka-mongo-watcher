@@ -35,7 +35,7 @@ func TestWatchProduceWhenNoResults(t *testing.T) {
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
-	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
+	mongoCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
 	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
@@ -73,7 +73,7 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	var expectedErr = errors.New("aggregate error")
 	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, expectedErr)
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
-	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
+	mongoCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
@@ -186,7 +186,7 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
 	mongoCursor.EXPECT().Err().Return(nil).AnyTimes()
 	mongoCursor.EXPECT().ResumeToken().Return(bson.Raw{}).AnyTimes()
-	mongoCursor.EXPECT().Close(ctx).Return(nil).AnyTimes()
+	mongoCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), customPipeline)
 

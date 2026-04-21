@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/service"
@@ -43,9 +44,13 @@ func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container 
 		log := container.GetLogger()
 		log.Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
 
+		// Disconnect MongoDB before cancelling context so killCursors/endSessions commands reach the server.
+		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer disconnectCancel()
+		container.GetMongoConnection().Client().Disconnect(disconnectCtx)
+
 		cancel()
 		container.GetKafkaClient().Close()
-		container.GetMongoConnection().Client().Disconnect(ctx)
-		container.GetHttpServer().Close(ctx)
+		container.GetHttpServer().Close(disconnectCtx)
 	}, os.Interrupt, syscall.SIGTERM)
 }
