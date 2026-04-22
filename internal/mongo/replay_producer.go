@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo/variables"
 	"github.com/gol4ng/logger"
@@ -58,11 +57,7 @@ func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error)
 	var events = make(chan *ChangeEvent)
 
 	go func() {
-		defer func() {
-			closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer closeCancel()
-			_ = cursor.Close(closeCtx)
-		}()
+		defer func() { closeCursor(cursor) }()
 		defer close(events)
 
 		r.sendEvents(ctx, cursor, events)

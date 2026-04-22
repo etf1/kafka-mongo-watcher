@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
@@ -43,6 +44,16 @@ type CollectionAdapter interface {
 
 type collectionAdapter struct {
 	collection *mongodriver.Collection
+}
+
+type cursorCloser interface {
+	Close(context.Context) error
+}
+
+func closeCursor(cursor cursorCloser) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = cursor.Close(ctx)
 }
 
 // NewCollectionAdapter returns a mongo-driver/mongo collection wrapper

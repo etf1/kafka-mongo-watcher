@@ -44,9 +44,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 			defer close(events)
 			defer func() {
 				if cursor != nil {
-					closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
-					defer closeCancel()
-					_ = cursor.Close(closeCtx)
+					closeCursor(cursor)
 				}
 			}()
 			for {
@@ -56,9 +54,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 					return
 				case startAfter := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription):
 					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter))
-					closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
-					_ = cursor.Close(closeCtx)
-					closeCancel()
+					closeCursor(cursor)
 					cursor = nil
 					if config.maxRetries == 0 {
 						return
@@ -100,9 +96,7 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 			break
 		}
 		if cursor != nil {
-			closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
-			_ = cursor.Close(closeCtx)
-			closeCancel()
+			closeCursor(cursor)
 			cursor = nil
 		}
 		if attempt >= config.maxRetries {

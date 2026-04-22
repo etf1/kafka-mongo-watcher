@@ -51,10 +51,14 @@ func handleExitSignal(cancel context.CancelFunc, container *service.Container) f
 		// Use independent background contexts so these calls succeed even after cancel().
 		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer disconnectCancel()
-		container.GetMongoConnection().Client().Disconnect(disconnectCtx)
+		if err := container.GetMongoConnection().Client().Disconnect(disconnectCtx); err != nil {
+			log.Error("Failed to disconnect MongoDB client", logger.Error("error", err))
+		}
 
 		httpShutdownCtx, httpShutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer httpShutdownCancel()
-		container.GetHttpServer().Close(httpShutdownCtx)
+		if err := container.GetHttpServer().Close(httpShutdownCtx); err != nil {
+			log.Error("Failed to close HTTP server", logger.Error("error", err))
+		}
 	}, os.Interrupt, syscall.SIGTERM)
 }
