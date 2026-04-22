@@ -28,7 +28,7 @@ func main() {
 	container := service.NewContainer(ctx, cfg)
 	go container.GetHttpServer().Start(ctx)
 
-	defer handleExitSignal(ctx, cancel, container)()
+	defer handleExitSignal(cancel, container)()
 
 	changeEventChan, err := container.GetChangeEventProducer()(ctx)
 	if err != nil {
@@ -39,18 +39,22 @@ func main() {
 }
 
 // Handle for an exit signal in order to quit application on a proper way (shutting down connections and servers)
-func handleExitSignal(ctx context.Context, cancel context.CancelFunc, container *service.Container) func() {
+func handleExitSignal(cancel context.CancelFunc, container *service.Container) func() {
 	return signal_subscriber.SubscribeWithKiller(func(signal os.Signal) {
 		log := container.GetLogger()
 		log.Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
 
-		// Disconnect MongoDB before cancelling context so killCursors/endSessions commands reach the server.
+		// Cancel the main context immediately so all goroutines start shutting down.
+		cancel()
+		container.GetKafkaClient().Close()
+
+		// Use independent background contexts so these calls succeed even after cancel().
 		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer disconnectCancel()
 		container.GetMongoConnection().Client().Disconnect(disconnectCtx)
 
-		cancel()
-		container.GetKafkaClient().Close()
-		container.GetHttpServer().Close(disconnectCtx)
+		httpShutdownCtx, httpShutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer httpShutdownCancel()
+		container.GetHttpServer().Close(httpShutdownCtx)
 	}, os.Interrupt, syscall.SIGTERM)
 }
