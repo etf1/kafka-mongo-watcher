@@ -46,14 +46,17 @@ func handleExitSignal(cancel context.CancelFunc, container *service.Container) f
 
 		// Cancel the main context immediately so all goroutines start shutting down.
 		cancel()
-		container.GetKafkaClient().Close()
 
 		// Use independent background contexts so these calls succeed even after cancel().
+		// Disconnect MongoDB before Kafka close: Kafka.Close() busy-waits with no timeout
+		// and could block indefinitely, preventing Disconnect() from running.
 		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer disconnectCancel()
 		if err := container.GetMongoConnection().Client().Disconnect(disconnectCtx); err != nil {
 			log.Error("Failed to disconnect MongoDB client", logger.Error("error", err))
 		}
+
+		container.GetKafkaClient().Close()
 
 		httpShutdownCtx, httpShutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer httpShutdownCancel()

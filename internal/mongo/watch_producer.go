@@ -42,11 +42,7 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 
 		go func() {
 			defer close(events)
-			defer func() {
-				if cursor != nil {
-					closeCursor(cursor)
-				}
-			}()
+			defer func() { closeCursor(cursor) }()
 			for {
 				select {
 				case <-ctx.Done():
