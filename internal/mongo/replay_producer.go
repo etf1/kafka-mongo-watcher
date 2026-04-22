@@ -74,7 +74,11 @@ func (r *ReplayProducer) sendEvents(ctx context.Context, cursor AggregateCursor,
 			continue
 		}
 
-		events <- event
+		select {
+		case events <- event:
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

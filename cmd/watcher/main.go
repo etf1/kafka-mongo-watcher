@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/config"
+	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/etf1/kafka-mongo-watcher/internal/service"
 	"github.com/gol4ng/logger"
 	signal_subscriber "github.com/gol4ng/signal"
@@ -28,25 +29,54 @@ func main() {
 	container := service.NewContainer(ctx, cfg)
 	go container.GetHttpServer().Start(ctx)
 
-	// The signal handler only cancels the context. All cleanup happens after
-	// Produce() returns, which guarantees that cursors have been closed by
-	// the watch goroutine (via defer) before we disconnect the MongoDB client.
 	defer handleExitSignal(cancel, container)()
+	defer cleanup(container)
 
-	changeEventChan, err := container.GetChangeEventProducer()(ctx)
+	const producerStartTimeout = 2 * time.Minute
+	changeEventChan, err := startProducerWithRetry(ctx, container, producerStartTimeout)
 	if err != nil {
-		panic(err)
+		container.GetLogger().Error("Giving up: unable to start change event producer", logger.Error("error", err))
+		return
 	}
 	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
 	container.GetKafkaClient().Produce(kafkaMessageChan)
+}
 
-	// Produce() has returned: all cursors are already closed by watch/replay
-	// goroutines. Now it is safe to tear down the underlying connections.
-	cleanup(container)
+// startProducerWithRetry retries the change event producer creation with
+// exponential backoff until it succeeds or the timeout / context expires.
+// This handles transient errors such as "too many cursors" from previous
+// pods that left orphaned change streams on the MongoDB server.
+func startProducerWithRetry(ctx context.Context, container *service.Container, timeout time.Duration) (chan *mongo.ChangeEvent, error) {
+	log := container.GetLogger()
+	producer := container.GetChangeEventProducer()
+
+	delay := 1 * time.Second
+	const maxDelay = 30 * time.Second
+	deadline := time.After(timeout)
+
+	for {
+		ch, err := producer(ctx)
+		if err == nil {
+			return ch, nil
+		}
+		log.Warning("Failed to start change event producer, retrying…",
+			logger.Error("error", err), logger.Duration("retry_in", delay))
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-deadline:
+			return nil, err
+		case <-time.After(delay):
+			delay *= 2
+			if delay > maxDelay {
+				delay = maxDelay
+			}
+		}
+	}
 }
 
 // cleanup disconnects MongoDB, then shuts down the HTTP server.
-// Kafka client is already closed by Produce()'s own defer.
 func cleanup(container *service.Container) {
 	log := container.GetLogger()
 
