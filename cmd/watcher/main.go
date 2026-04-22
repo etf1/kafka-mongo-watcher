@@ -31,7 +31,7 @@ func main() {
 	// The signal handler only cancels the context. All cleanup happens after
 	// Produce() returns, which guarantees that cursors have been closed by
 	// the watch goroutine (via defer) before we disconnect the MongoDB client.
-	defer handleExitSignal(cancel)()
+	defer handleExitSignal(cancel, container)()
 
 	changeEventChan, err := container.GetChangeEventProducer()(ctx)
 	if err != nil {
@@ -65,8 +65,9 @@ func cleanup(container *service.Container) {
 
 // handleExitSignal registers a signal handler that only cancels the main
 // context. The returned function is an unsubscriber to be deferred.
-func handleExitSignal(cancel context.CancelFunc) func() {
+func handleExitSignal(cancel context.CancelFunc, container *service.Container) func() {
 	return signal_subscriber.SubscribeWithKiller(func(signal os.Signal) {
+		container.GetLogger().Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
 		cancel()
 	}, os.Interrupt, syscall.SIGTERM)
 }
