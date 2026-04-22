@@ -57,8 +57,8 @@ func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error)
 	var events = make(chan *ChangeEvent)
 
 	go func() {
-		defer closeCursor(cursor)
 		defer close(events)
+		defer closeCursor(cursor)
 
 		r.sendEvents(ctx, cursor, events)
 	}()
