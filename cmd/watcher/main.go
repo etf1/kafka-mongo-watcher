@@ -28,7 +28,10 @@ func main() {
 	container := service.NewContainer(ctx, cfg)
 	go container.GetHttpServer().Start(ctx)
 
-	defer handleExitSignal(cancel, container)()
+	// The signal handler only cancels the context. All cleanup happens after
+	// Produce() returns, which guarantees that cursors have been closed by
+	// the watch goroutine (via defer) before we disconnect the MongoDB client.
+	defer handleExitSignal(cancel)()
 
 	changeEventChan, err := container.GetChangeEventProducer()(ctx)
 	if err != nil {
@@ -36,32 +39,34 @@ func main() {
 	}
 	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
 	container.GetKafkaClient().Produce(kafkaMessageChan)
+
+	// Produce() has returned: all cursors are already closed by watch/replay
+	// goroutines. Now it is safe to tear down the underlying connections.
+	cleanup(container)
 }
 
-// Handle for an exit signal in order to quit application on a proper way (shutting down connections and servers)
-func handleExitSignal(cancel context.CancelFunc, container *service.Container) func() {
+// cleanup disconnects MongoDB, then shuts down the HTTP server.
+// Kafka client is already closed by Produce()'s own defer.
+func cleanup(container *service.Container) {
+	log := container.GetLogger()
+
+	disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer disconnectCancel()
+	if err := container.GetMongoConnection().Client().Disconnect(disconnectCtx); err != nil {
+		log.Error("Failed to disconnect MongoDB client", logger.Error("error", err))
+	}
+
+	httpShutdownCtx, httpShutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer httpShutdownCancel()
+	if err := container.GetHttpServer().Close(httpShutdownCtx); err != nil {
+		log.Error("Failed to close HTTP server", logger.Error("error", err))
+	}
+}
+
+// handleExitSignal registers a signal handler that only cancels the main
+// context. The returned function is an unsubscriber to be deferred.
+func handleExitSignal(cancel context.CancelFunc) func() {
 	return signal_subscriber.SubscribeWithKiller(func(signal os.Signal) {
-		log := container.GetLogger()
-		log.Info("Signal received: gracefully stopping application", logger.String("signal", signal.String()))
-
-		// Cancel the main context immediately so all goroutines start shutting down.
 		cancel()
-
-		// Use independent background contexts so these calls succeed even after cancel().
-		// Disconnect MongoDB before Kafka close: Kafka.Close() busy-waits with no timeout
-		// and could block indefinitely, preventing Disconnect() from running.
-		disconnectCtx, disconnectCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer disconnectCancel()
-		if err := container.GetMongoConnection().Client().Disconnect(disconnectCtx); err != nil {
-			log.Error("Failed to disconnect MongoDB client", logger.Error("error", err))
-		}
-
-		container.GetKafkaClient().Close()
-
-		httpShutdownCtx, httpShutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer httpShutdownCancel()
-		if err := container.GetHttpServer().Close(httpShutdownCtx); err != nil {
-			log.Error("Failed to close HTTP server", logger.Error("error", err))
-		}
 	}, os.Interrupt, syscall.SIGTERM)
 }
