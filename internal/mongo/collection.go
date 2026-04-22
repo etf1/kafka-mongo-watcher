@@ -55,8 +55,15 @@ func closeCursor(cursor cursorCloser) {
 	// Guard against both nil interface and typed nil (e.g. (*mongo.ChangeStream)(nil)
 	// returned alongside an error by the driver — the interface is non-nil but the
 	// underlying pointer is nil, which would panic on Close).
-	if cursor == nil || reflect.ValueOf(cursor).IsNil() {
+	if cursor == nil {
 		return
+	}
+	v := reflect.ValueOf(cursor)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		if v.IsNil() {
+			return
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
