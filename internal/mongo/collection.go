@@ -51,6 +51,9 @@ type cursorCloser interface {
 }
 
 func closeCursor(cursor cursorCloser) {
+	if cursor == nil {
+		return
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = cursor.Close(ctx)
