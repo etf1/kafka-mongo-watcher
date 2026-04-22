@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -51,11 +52,16 @@ type cursorCloser interface {
 }
 
 func closeCursor(cursor cursorCloser) {
-	if cursor == nil {
+	// Guard against both nil interface and typed nil (e.g. (*mongo.ChangeStream)(nil)
+	// returned alongside an error by the driver — the interface is non-nil but the
+	// underlying pointer is nil, which would panic on Close).
+	if cursor == nil || reflect.ValueOf(cursor).IsNil() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	// Error is intentionally ignored: Close() during cleanup typically fails only when
+	// the cursor or connection is already gone, which is acceptable in a shutdown path.
 	_ = cursor.Close(ctx)
 }
 
