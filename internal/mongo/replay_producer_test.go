@@ -45,7 +45,7 @@ func TestReplayProduceWhenNoResults(t *testing.T) {
 
 	mongoCursor := NewMockAggregateCursor(ctrl)
 	mongoCursor.EXPECT().Next(ctx).Return(false)
-	mongoCursor.EXPECT().Close(ctx)
+	mongoCursor.EXPECT().Close(gomock.Any())
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
@@ -108,7 +108,7 @@ func TestReplayProduceWhenHaveResults(t *testing.T) {
 	mongoCursor := NewMockAggregateCursor(ctrl)
 	firstCall := mongoCursor.EXPECT().Next(ctx).Return(true)
 	mongoCursor.EXPECT().Next(ctx).Return(false).After(firstCall)
-	mongoCursor.EXPECT().Close(ctx)
+	mongoCursor.EXPECT().Close(gomock.Any())
 
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(nil)
@@ -149,7 +149,7 @@ func TestReplayProduceWhenResultsWithDecodeError(t *testing.T) {
 
 	var e ChangeEvent
 	mongoCursor.EXPECT().Decode(&e).Return(errors.New("decode error"))
-	mongoCursor.EXPECT().Close(ctx)
+	mongoCursor.EXPECT().Close(gomock.Any())
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)
@@ -183,7 +183,7 @@ func TestReplayProduceWhenCustomPipeline(t *testing.T) {
 
 	mongoCursor := NewMockAggregateCursor(ctrl)
 	mongoCursor.EXPECT().Next(ctx).Return(false)
-	mongoCursor.EXPECT().Close(ctx)
+	mongoCursor.EXPECT().Close(gomock.Any())
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCollection.EXPECT().Database().Return(mongoDatabase)

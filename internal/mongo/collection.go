@@ -2,6 +2,8 @@ package mongo
 
 import (
 	"context"
+	"reflect"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
@@ -43,6 +45,31 @@ type CollectionAdapter interface {
 
 type collectionAdapter struct {
 	collection *mongodriver.Collection
+}
+
+type cursorCloser interface {
+	Close(context.Context) error
+}
+
+func closeCursor(cursor cursorCloser) {
+	// Guard against both nil interface and typed nil (e.g. (*mongo.ChangeStream)(nil)
+	// returned alongside an error by the driver — the interface is non-nil but the
+	// underlying pointer is nil, which would panic on Close).
+	if cursor == nil {
+		return
+	}
+	v := reflect.ValueOf(cursor)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		if v.IsNil() {
+			return
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// Error is intentionally ignored: Close() during cleanup typically fails only when
+	// the cursor or connection is already gone, which is acceptable in a shutdown path.
+	_ = cursor.Close(ctx)
 }
 
 // NewCollectionAdapter returns a mongo-driver/mongo collection wrapper

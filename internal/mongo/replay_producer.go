@@ -57,8 +57,8 @@ func (r *ReplayProducer) Produce(ctx context.Context) (chan *ChangeEvent, error)
 	var events = make(chan *ChangeEvent)
 
 	go func() {
-		defer cursor.Close(ctx)
 		defer close(events)
+		defer closeCursor(cursor)
 
 		r.sendEvents(ctx, cursor, events)
 	}()
@@ -74,7 +74,11 @@ func (r *ReplayProducer) sendEvents(ctx context.Context, cursor AggregateCursor,
 			continue
 		}
 
-		events <- event
+		select {
+		case events <- event:
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

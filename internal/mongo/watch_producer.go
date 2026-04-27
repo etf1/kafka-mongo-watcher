@@ -42,23 +42,24 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 
 		go func() {
 			defer close(events)
+			defer func() { closeCursor(cursor) }()
 			for {
-				select {
-				case <-ctx.Done():
+				startAfter := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription)
+				// sendEvents exited: either the cursor broke or the context was canceled.
+				if ctx.Err() != nil {
 					w.logger.Info("Context canceled")
-					cursor.Close(ctx)
 					return
-				case startAfter := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription):
-					w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter))
-					cursor.Close(ctx)
-					if config.maxRetries == 0 {
-						return
-					}
-					cursor, err = w.watch(ctx, pipeline, config, nil, startAfter)
-					if err != nil {
-						w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
-						return
-					}
+				}
+				w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter))
+				closeCursor(cursor)
+				cursor = nil
+				if config.maxRetries == 0 {
+					return
+				}
+				cursor, err = w.watch(ctx, pipeline, config, nil, startAfter)
+				if err != nil {
+					w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+					return
 				}
 			}
 		}()
@@ -90,6 +91,10 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 		if err == nil {
 			break
 		}
+		if cursor != nil {
+			closeCursor(cursor)
+			cursor = nil
+		}
 		if attempt >= config.maxRetries {
 			w.logger.Warning("failed to open cursor on collection, reach max retries", logger.String("collection", w.collection.Name()), logger.Int32("max_retries", config.maxRetries), logger.Error("error", err))
 			break
@@ -97,7 +102,11 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 		attempt++
 		w.logger.Warning("failed to open cursor on collection", logger.String("collection", w.collection.Name()), logger.Int32("attempt", attempt), logger.Duration("retry_delay", config.retryDelay), logger.Error("error", err))
 		if config.retryDelay > 0 {
-			time.Sleep(config.retryDelay)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(config.retryDelay):
+			}
 		}
 	}
 	return
@@ -125,7 +134,12 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 			if ignoreUpdateDescription {
 				event.Updates = nil
 			}
-			events <- event
+			select {
+			case events <- event:
+			case <-ctx.Done():
+				resumeToken <- cursor.ResumeToken()
+				return
+			}
 		}
 		resumeToken <- cursor.ResumeToken()
 	}()
