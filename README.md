@@ -187,6 +187,13 @@ A big value here can increase the heap memory of the application as all the payl
 
 *Description*: The maximum message size in bytes at the producer level (default: 1024*1024)
 
+#### KAFKA_DOCUMENT_HEADERS
+*Type*: string
+
+*Description*: Comma-separated list of `header=field` pairs. For each produced message, the header is added with the value of the field taken from the full document of the change event (use a dot-separated path for a nested field). The header is omitted when the field is missing, empty or not a string, or when the event carries no full document (see `MONGODB_OPTION_FULL_DOCUMENT`). (default: "")
+
+*Example value*: `KAFKA_DOCUMENT_HEADERS=x-update-source=last_update_source`
+
 #### LOG_CLI_VERBOSE
 *Type*: boolean
 

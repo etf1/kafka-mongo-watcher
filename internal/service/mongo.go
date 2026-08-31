@@ -4,13 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/etf1/kafka-mongo-watcher/config"
-	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/gol4ng/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+
+	"github.com/etf1/kafka-mongo-watcher/config"
+	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 )
 
 func (container *Container) GetChangeEventProducer() mongo.ChangeEventProducer {
@@ -23,8 +24,14 @@ func (container *Container) GetChangeEventProducer() mongo.ChangeEventProducer {
 
 func (container *Container) GetChangeEventKafkaMessageTransformer() *mongo.ChangeEventKafkaMessageTransformer {
 	if container.changeEventTransformerToKafkaMessage == nil {
+		headers, err := mongo.ParseDocumentHeaders(container.Cfg.Kafka.DocumentHeaders)
+		if err != nil {
+			panic(err)
+		}
+
 		container.changeEventTransformerToKafkaMessage = mongo.NewChangeEventKafkaMessageTransformer(
 			container.Cfg.Topic,
+			headers,
 			container.GetLogger(),
 		)
 	}

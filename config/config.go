@@ -73,6 +73,7 @@ type Kafka struct {
 	ProduceChannelSize int    `config:"KAFKA_PRODUCE_CHANNEL_SIZE"`
 	WithDecorators     bool   `config:"KAFKA_WITH_DECORATORS"`
 	MessageMaxBytes    int    `config:"KAFKA_MESSAGE_MAX_BYTES"`
+	DocumentHeaders    string `config:"KAFKA_DOCUMENT_HEADERS"`
 }
 
 // NewBase returns a new base configuration
