@@ -56,7 +56,8 @@ func (container *Container) getKafkaBaseClient() kafka.Client {
 		kafkaProducer = container.decorateKafkaClientWithOpenTelemetry(originalKafkaProducer)
 	}
 
-	return kafka.NewClient(kafkaProducer)
+	client := kafka.NewClient(kafkaProducer)
+	return container.decorateKafkaClientWithOrigin(client)
 }
 
 func (container *Container) decorateKafkaClientWithOpenTelemetry(producer *kafkaconfluent.Producer) *otelconfluent.Producer {
@@ -88,4 +89,12 @@ func (container *Container) decorateKafkaClientWithMetrics(client kafka.Client) 
 	go clientMetric.Record()
 
 	return clientMetric
+}
+
+func (container *Container) decorateKafkaClientWithOrigin(client kafka.Client) kafka.Client {
+	origin := "watcher"
+	if container.Cfg.Replay {
+		origin = "replay"
+	}
+	return kafka.NewClientOrigin(client, origin, kafka.AddOriginHeader)
 }
