@@ -100,9 +100,9 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 
 **Hint 1**: You can also use some built-in variables such as `%currentTimestamp%` that will put the current timestamp value right in the aggregation pipeline.
 
-**Hint 2**: Each kafka message include an `x-origin` header with two possible values. `watcher` in normal mode and `replay` when replay is enabled.
-
 *Example value with variables*: `[ { "$match": { "date": { "$gt": { "$date": { "$numberLong": "%currentTimestamp%" } } } } } ]`
+
+**Hint 2**: Each kafka message include an `x-origin` header with two possible values. `watcher` in normal mode and `replay` when replay is enabled.
 
 #### MONGODB_URI
 *Type*: string
