@@ -2,7 +2,7 @@ name: Push (PR)
 
 on:
   pull_request:
-    types: [opened, labeled, unlabeled, synchronize, reopened]
+    types: [opened, synchronize, reopened]
     branches: [ master ]
 
 jobs:
