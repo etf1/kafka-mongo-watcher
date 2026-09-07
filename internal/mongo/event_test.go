@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-func giveValidEvent(docKey primitive.ObjectID) ChangeEvent {
+func giveValidEvent(docKey bson.ObjectID) ChangeEvent {
 	e := ChangeEvent{
 		DocumentKey: documentKey{
 			ID: docKey,
@@ -21,7 +21,7 @@ func giveInvalidEvent() ChangeEvent {
 }
 
 func Test_documentID(t *testing.T) {
-	docKey := primitive.NewObjectID()
+	docKey := bson.NewObjectID()
 	event := giveValidEvent(docKey)
 	id, err := event.documentID()
 	assert.NoError(t, err)

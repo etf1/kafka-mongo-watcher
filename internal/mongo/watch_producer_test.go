@@ -3,27 +3,60 @@ package mongo
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/gol4ng/logger"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
+
+type changeStreamOptionsMatcher struct {
+	expected options.ChangeStreamOptions
+}
+
+func (m changeStreamOptionsMatcher) Matches(value interface{}) bool {
+	actual, ok := value.(options.Lister[options.ChangeStreamOptions])
+	if !ok {
+		return false
+	}
+
+	var actualOptions options.ChangeStreamOptions
+	for _, setter := range actual.List() {
+		if err := setter(&actualOptions); err != nil {
+			return false
+		}
+	}
+
+	return reflect.DeepEqual(m.expected, actualOptions)
+}
+
+func (m changeStreamOptionsMatcher) String() string {
+	return "matches change stream options"
+}
+
+func matchesChangeStreamOptions(builder options.Lister[options.ChangeStreamOptions]) gomock.Matcher {
+	var expected options.ChangeStreamOptions
+	for _, setter := range builder.List() {
+		if err := setter(&expected); err != nil {
+			panic(err)
+		}
+	}
+	return changeStreamOptionsMatcher{expected: expected}
+}
 
 func TestWatchProduceWhenNoResults(t *testing.T) {
 	ctx := context.Background()
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 
-	opts := &options.ChangeStreamOptions{
-		BatchSize:    &batchSize,
-		MaxAwaitTime: &maxAwaitTime,
-	}
-	opts.SetFullDocument(options.UpdateLookup)
+	opts := options.ChangeStream().
+		SetBatchSize(batchSize).
+		SetMaxAwaitTime(maxAwaitTime).
+		SetFullDocument(options.UpdateLookup)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -32,7 +65,7 @@ func TestWatchProduceWhenNoResults(t *testing.T) {
 	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
-	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, matchesChangeStreamOptions(opts)).Return(mongoCursor, nil)
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
 	mongoCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
@@ -56,11 +89,10 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 
-	opts := &options.ChangeStreamOptions{
-		BatchSize:    &batchSize,
-		MaxAwaitTime: &maxAwaitTime,
-	}
-	opts.SetFullDocument(options.UpdateLookup)
+	opts := options.ChangeStream().
+		SetBatchSize(batchSize).
+		SetMaxAwaitTime(maxAwaitTime).
+		SetFullDocument(options.UpdateLookup)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -71,7 +103,7 @@ func TestWatchProduceWhenWatchError(t *testing.T) {
 	var emptyPipeline = bson.A{}
 
 	var expectedErr = errors.New("aggregate error")
-	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, expectedErr)
+	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, matchesChangeStreamOptions(opts)).Return(mongoCursor, expectedErr)
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
 
@@ -94,26 +126,25 @@ func TestWatchProduceWhenHaveResults(t *testing.T) {
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 	resumeAfter := []byte(`{"_data":"1234567890987654321"}`)
-	startAtOperationTime := primitive.Timestamp{
+	startAtOperationTime := bson.Timestamp{
 		I: uint32(10),
 		T: uint32(10),
 	}
 
 	ctx := context.Background()
 
-	opts := &options.ChangeStreamOptions{
-		BatchSize:            &batchSize,
-		MaxAwaitTime:         &maxAwaitTime,
-		StartAtOperationTime: &startAtOperationTime,
-	}
-	opts.SetFullDocument(options.UpdateLookup)
-	opts.SetResumeAfter(bson.M{"_data": "1234567890987654321"})
+	opts := options.ChangeStream().
+		SetBatchSize(batchSize).
+		SetMaxAwaitTime(maxAwaitTime).
+		SetStartAtOperationTime(&startAtOperationTime).
+		SetFullDocument(options.UpdateLookup).
+		SetResumeAfter(bson.M{"_data": "1234567890987654321"})
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
-	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, opts).Return(mongoCursor, nil).AnyTimes()
+	mongoCollection.EXPECT().Watch(ctx, emptyPipeline, matchesChangeStreamOptions(opts)).Return(mongoCursor, nil).AnyTimes()
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
@@ -151,11 +182,10 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 	batchSize := int32(10)
 	maxAwaitTime := time.Duration(10)
 
-	opts := &options.ChangeStreamOptions{
-		BatchSize:    &batchSize,
-		MaxAwaitTime: &maxAwaitTime,
-	}
-	opts.SetFullDocument(options.UpdateLookup)
+	opts := options.ChangeStream().
+		SetBatchSize(batchSize).
+		SetMaxAwaitTime(maxAwaitTime).
+		SetFullDocument(options.UpdateLookup)
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -180,7 +210,7 @@ func TestWatchProduceWhenCustomPipeline(t *testing.T) {
 		},
 	}, pipeline...)
 
-	mongoCollection.EXPECT().Watch(ctx, pipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Watch(ctx, pipeline, matchesChangeStreamOptions(opts)).Return(mongoCursor, nil)
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()
@@ -211,17 +241,16 @@ func TestWatchProduceWhenCtxCanceledDuringSend(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := &options.ChangeStreamOptions{
-		BatchSize:    &batchSize,
-		MaxAwaitTime: &maxAwaitTime,
-	}
-	opts.SetFullDocument(options.UpdateLookup)
+	opts := options.ChangeStream().
+		SetBatchSize(batchSize).
+		SetMaxAwaitTime(maxAwaitTime).
+		SetFullDocument(options.UpdateLookup)
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockStreamCursor(ctrl)
 
 	var emptyPipeline = bson.A{}
-	mongoCollection.EXPECT().Watch(gomock.Any(), emptyPipeline, opts).Return(mongoCursor, nil)
+	mongoCollection.EXPECT().Watch(gomock.Any(), emptyPipeline, matchesChangeStreamOptions(opts)).Return(mongoCursor, nil)
 	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
 
 	mongoCursor.EXPECT().ID().Return(int64(1234)).AnyTimes()

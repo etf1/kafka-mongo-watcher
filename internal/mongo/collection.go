@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodriver "go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // AggregateCursor represents a mongo-driver/mongo Cursor object
@@ -37,9 +37,9 @@ type DriverDatabase interface {
 // CollectionAdapter is a wrapper over the mongo-driver/mongo collection object
 // mainly allowing us to use interfaces
 type CollectionAdapter interface {
-	Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (AggregateCursor, error)
+	Aggregate(ctx context.Context, pipeline interface{}, opts ...options.Lister[options.AggregateOptions]) (AggregateCursor, error)
 	Database() DriverDatabase
-	Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (StreamCursor, error)
+	Watch(ctx context.Context, pipeline interface{}, opts ...options.Lister[options.ChangeStreamOptions]) (StreamCursor, error)
 	Name() string
 }
 
@@ -80,7 +80,7 @@ func NewCollectionAdapter(collection *mongodriver.Collection) *collectionAdapter
 }
 
 // Aggregate sends an aggregate query using mongo-driver/mongo
-func (c *collectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...*options.AggregateOptions) (AggregateCursor, error) {
+func (c *collectionAdapter) Aggregate(ctx context.Context, pipeline interface{}, opts ...options.Lister[options.AggregateOptions]) (AggregateCursor, error) {
 	return c.collection.Aggregate(ctx, pipeline, opts...)
 }
 
@@ -90,7 +90,7 @@ func (c *collectionAdapter) Database() DriverDatabase {
 }
 
 // Watch sends an watch query using mongo-driver/mongo
-func (c *collectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...*options.ChangeStreamOptions) (StreamCursor, error) {
+func (c *collectionAdapter) Watch(ctx context.Context, pipeline interface{}, opts ...options.Lister[options.ChangeStreamOptions]) (StreamCursor, error) {
 	return c.collection.Watch(ctx, pipeline, opts...)
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo/variables"
 	"github.com/gol4ng/logger"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type ReplayProducer struct {

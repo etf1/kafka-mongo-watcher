@@ -11,7 +11,7 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/internal/metrics"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/gol4ng/logger"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
+	mongodriver "go.mongodb.org/mongo-driver/v2/mongo"
 	"go.opentelemetry.io/otel/trace"
 )
 

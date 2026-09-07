@@ -5,9 +5,8 @@ import (
 	"time"
 
 	"github.com/gol4ng/logger"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type WatchProducer struct {
@@ -72,13 +71,14 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 	// retries loop
 	attempt := int32(0)
 	for {
-		opts := &options.ChangeStreamOptions{
-			BatchSize:            &config.batchSize,
-			MaxAwaitTime:         &config.maxAwaitTime,
-			StartAtOperationTime: config.startAtOperationTime,
-		}
+		opts := options.ChangeStream().
+			SetBatchSize(config.batchSize).
+			SetMaxAwaitTime(config.maxAwaitTime)
 		if config.fullDocumentEnabled {
 			opts.SetFullDocument(options.UpdateLookup)
+		}
+		if config.startAtOperationTime != nil {
+			opts.SetStartAtOperationTime(config.startAtOperationTime)
 		}
 
 		if startAfter != nil {
@@ -163,7 +163,7 @@ type WatchConfig struct {
 	ignoreUpdateDescription bool
 	maxAwaitTime            time.Duration
 	resumeAfter             bson.M
-	startAtOperationTime    *primitive.Timestamp
+	startAtOperationTime    *bson.Timestamp
 	maxRetries              int32
 	retryDelay              time.Duration
 }
@@ -233,7 +233,7 @@ func WithIgnoreUpdateDescription(ignore bool) WatchOption {
 
 // WithStartAtOperationTime allows to specify the timestamp for the change stream to only
 // return changes that occurred at or after the given timestamp.
-func WithStartAtOperationTime(startAtOperationTime primitive.Timestamp) WatchOption {
+func WithStartAtOperationTime(startAtOperationTime bson.Timestamp) WatchOption {
 	return func(w *WatchConfig) {
 		if startAtOperationTime.I != 0 || startAtOperationTime.T != 0 {
 			w.startAtOperationTime = &startAtOperationTime

@@ -8,7 +8,7 @@ import (
 	"github.com/gol4ng/logger"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 var pipeline = bson.A{
