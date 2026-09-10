@@ -4,10 +4,79 @@ Welcome to the OpenTelemetry Go contrib repository!
 Thank you for your interest in contributing to this project.
 Before you start please be sure to read through these contributing requirements and recommendations.
 
+## OpenTelemetry Go SIG
+
+The Go special interest group (SIG) meets regularly. See the
+OpenTelemetry
+[community](https://github.com/open-telemetry/community#implementation-sigs)
+repo for information on this and other language SIGs.
+
+See the [public meeting
+notes](https://docs.google.com/document/d/1E5e7Ld0NuU1iVvf-42tOBpu2VBBLYnh73GJuITGJTTU/edit)
+for a summary description of past meetings. To request edit access,
+join the meeting or get in touch on the
+[#otel-go](https://cloud-native.slack.com/archives/C01NPAXACKT)
+channel on CNCF Slack. If you are new to the CNCF Slack community,
+you can [create an account](https://slack.cncf.io/).
+
+The meeting is open for all to join. We invite everyone to join our
+meeting, regardless of your experience level. Whether you're a
+seasoned OpenTelemetry developer, just starting your journey, or
+simply curious about the work we do, you're more than welcome to
+participate!
+
 ## Become a Contributor
 
 All contributions to this project MUST be licensed under this project's [license](LICENSE).
 You will need to sign the [CNCF CLA](https://identity.linuxfoundation.org/projects/cncf) before your contributions will be accepted.
+
+## Code Owners
+
+To ensure code that lives in this repository is not abandoned, all modules added are required to have a Code Owner.
+A Code Owner is responsible for a module within this repository.
+This status is identified in the [CODEOWNERS file](./CODEOWNERS).
+That responsibility includes maintaining the component, triaging and responding to issues, and reviewing pull requests.
+
+### Requirements
+
+To become a Code Owner, you will need to meet the following requirements.
+
+1. You will need to be a [member of the OpenTelemetry organization] and maintain that membership.
+2. You need to have good working knowledge of the code you are sponsoring and any project that that code instruments or is based on.
+
+If you are not an existing member, this is not an immediate disqualification.
+You will need to engage with the OpenTelemetry community so you can achieve this membership in the process of becoming a Code Owner.
+
+It is best to have resolved at least an issue related to the module, contributed directly to the module, and/or reviewed module PRs.
+How much interaction with the module is required before becoming a Code Owner is up to the existing Code Owners.
+
+Code Ownership is ultimately up to the judgement of the existing Code Owners and Maintainers of this repository.
+Meeting the above requirements is not a guarantee to be granted Code Ownership.
+
+[member of the OpenTelemetry organization]: https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#member
+
+### Responsibilities
+
+As a Code Owner you will be responsible for the following:
+
+- You will be responsible for keeping up with the instrumented library. Any "upstream" changes that impact this module need to be proactively handle by you.
+- You will be expected to review any Pull Requests or Issues created that relate to this module.
+- You will be responsible for the stability and versioning compliance of the module.
+- You will be responsible for deciding any additional Code Owners of the module.
+
+### How to become a Code Owner
+
+To become a Code Owner, open [an Issue](https://github.com/open-telemetry/opentelemetry-go-contrib/issues/new?assignees=&labels=&projects=&template=owner.md&title=).
+
+### Removing Code Ownership
+
+Code Owners are expected to remove their ownership if they cannot fulfill their responsibilities anymore.
+
+It is at the discretion of the repository Maintainers and fellow Code Owners to decide if a Code Owner should be considered for removal.
+If a Code Owner is determined to be unable to perform their duty, a repository Maintainer will remove their ownership.
+
+Inactivity greater than 5 months, during which time there are active Issues or Pull Requests to address, is deemed an automatic disqualification from being a Code Owner.
+A repository Maintainer may remove an Code Owner inactive for this length.
 
 ## Filing Issues
 
@@ -28,74 +97,76 @@ For instrumentation requests, please see the [instrumentation documentation](./i
 The project welcomes code patches, but to make sure things are well coordinated you should discuss any significant change before starting the work.
 It's recommended that you signal your intention to contribute in the issue tracker, either by [filing a new issue](https://github.com/open-telemetry/opentelemetry-go-contrib/issues/new) or by claiming an [existing one](https://github.com/open-telemetry/opentelemetry-go-contrib/issues).
 
-### Style Guide
+Please follow [Contributing to opentelemetry-go](https://github.com/open-telemetry/opentelemetry-go/blob/main/CONTRIBUTING.md).
 
-* Code should conform to the [opentelemetry-go Style Guide](https://github.com/open-telemetry/opentelemetry-go/blob/main/CONTRIBUTING.md#style-guide).
-* Make sure to run `make precommit` - this will find and fix issues with the code formatting.
+## New Component
 
-### Pull Requests
+**Do not submit pull requests for new components without reading the following.**
 
-All pull requests need to be made from [a fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) of this repository.
-Changes should be made using [the GitHub flow](https://guides.github.com/introduction/flow/) and submitted as a pull request to this repository.
+This project is dedicated to promoting the development of quality components, such as instrumentation libraries, bridges, detectors, propagators, samplers, processors, using OpenTelemetry.
+To achieve this goal, we recognize that the components needs to be written using the best practices of OpenTelemetry.
+Additionally, the produced component needs to be maintained and evolved.
 
-A pull request is considered ready to merge when the following criteria are meet.
+The size of the OpenTelemetry Go developer community is not large enough to support an ever growing amount of components.
+Therefore, to reach our goal, we have the following recommendations for where components should live.
 
-* It has received two approvals from Approvers/Maintainers (at different companies), unless the change is for an exempt module[^1].
-* All feedback has been addressed. Be sure to "Resolve" all comments that have been addressed to signal this.
-* Any substantive changes submitted after an Approval removes that Approval.
-  You will need to manually clear these prior Approval reviews to indicate to the reviewer that they need to resubmit their review.
-  This includes changes resulting from other feedback.
-  Unless the approver explicitly stated that their approval will persist across changes it should be assumed that the pull request needs their review again.
-  Other project members (e.g. approvers, maintainers) can help with this if there are any questions or if you forget to clear reviews.
-* If the changes are not trivial, cosmetic, exempt[^1], or for documentation or dependencies only, the pull request will need to be open for review for at least one working day.
-  This gives people reasonable time to review.
-* `CHANGELOG.md` has been updated to reflect what has been added, changed, removed, or fixed from the end users perspective.
-  See [how to keep a changelog](https://keepachangelog.com/en/1.0.0/).
-* Urgent fixes can take exception as long as it has been actively communicated.
+1. Native to the instrumented package
+2. A dedicated public repository
+3. Here in the opentelemetry-go-contrib repository
 
-Any Maintainer can merge the pull request once it is ready to merge.
+If possible, OpenTelemetry instrumentation should be included in the instrumented package.
+This will ensure the instrumentation reaches all package users, and is continuously maintained by developers that understand the package.
 
-[^1]: The `go.opentelemetry.io/contrib/instrgen` module is exempt from the two approvals and one day requirement.
-  Only one approval is needed to merge a Pull Request for that module and there is no minimum amout of time required for the PR to be open before merging.
-  This exemption is to be removed when that package makes its first tagged release.
+If component cannot be directly included in the package it is related to, it should be hosted in a dedicated public repository owned by its maintainer(s).
+This will appropriately assign maintenance responsibilities for the instrumentation and ensure these maintainers have the needed privilege to maintain the code.
 
-### Draft Pull Requests
+The last place component should be hosted is here in this repository as a separate Go module.
+Maintaining components here hampers the development of OpenTelemetry for Go and therefore should be avoided.
+When instrumentation cannot be included in a target package and there is good reason to not host it in a separate and dedicated repository a [new component or instrumentation request](https://github.com/open-telemetry/opentelemetry-go-contrib/issues/new/choose) should be filed.
+The request needs to be accepted before any pull requests for the component can be considered for merging.
 
-It can be helpful at times to publish your incomplete changes.
-To do this create [a draft pull request](https://github.blog/2019-02-14-introducing-draft-pull-requests/).
-Additionally, you can prefix the pull request title with `[WIP]`.
-
-## Where to Get Help
-
-You can connect with us in our [slack channel](https://cloud-native.slack.com/archives/C01NPAXACKT).
-
-The Go special interest group (SIG) meets regularly.
-See the OpenTelemetry [community](https://github.com/open-telemetry/community#golang-sdk) repo for information on this and other language SIGs.
-See the [public meeting notes](https://docs.google.com/document/d/1E5e7Ld0NuU1iVvf-42tOBpu2VBBLYnh73GJuITGJTTU/edit#heading=h.ru7kpkv1rxlh) for a summary description of past meetings.
+Regardless of where component is hosted, it needs to be discoverable.
+The [OpenTelemetry registry](https://opentelemetry.io/registry/)
+exists to ensure that component is discoverable.
+You can find out how to add component to the registry [here](https://github.com/open-telemetry/opentelemetry.io#adding-a-project-to-the-opentelemetry-registry).
 
 ## Approvers and Maintainers
 
-Approvers:
+### Maintainers
 
-- [Evan Torrie](https://github.com/evantorrie), Verizon Media
-- [Josh MacDonald](https://github.com/jmacd), LightStep
-- [Sam Xie](https://github.com/XSAM), Cisco/AppDynamics
-- [Chester Cheung](https://github.com/hanyuancheung), Tencent
 - [Damien Mathieu](https://github.com/dmathieu), Elastic
-- [Anthony Mirabella](https://github.com/Aneurysm9), Amazon
-
-Maintainers:
-
 - [David Ashpole](https://github.com/dashpole), Google
-- [Aaron Clawson](https://github.com/MadVikingGod), LightStep
 - [Robert Pająk](https://github.com/pellared), Splunk
+- [Sam Xie](https://github.com/XSAM), Cisco/AppDynamics
 - [Tyler Yahn](https://github.com/MrAlias), Splunk
 
-Emeritus:
+For more information about the maintainer role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#maintainer).
 
-- [Gustavo Silva Paiva](https://github.com/paivagustavo), LightStep
+### Approvers
+
+- [Flc](https://github.com/flc1125), Independent
+
+For more information about the approver role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#approver).
+
+### Triagers
+
+- [Alex Kats](https://github.com/akats7), Capital One
+
+For more information about the triager role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#triager).
+
+### Emeritus
+
+- [Aaron Clawson](https://github.com/MadVikingGod)
+- [Anthony Mirabella](https://github.com/Aneurysm9)
+- [Chester Cheung](https://github.com/hanyuancheung)
+- [Cheng-Zhen Yang](https://github.com/scorpionknifes)
+- [Evan Torrie](https://github.com/evantorrie)
+- [Gustavo Silva Paiva](https://github.com/paivagustavo)
+- [Josh MacDonald](https://github.com/jmacd)
+
+For more information about the emeritus role, see the [community repository](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md#emeritus-maintainerapprovertriager).
 
 ### Become an Approver or a Maintainer
 
 See the [community membership document in OpenTelemetry community
-repo](https://github.com/open-telemetry/community/blob/main/community-membership.md).
+repo](https://github.com/open-telemetry/community/blob/main/guides/contributor/membership.md).
