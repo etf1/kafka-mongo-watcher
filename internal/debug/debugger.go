@@ -4,7 +4,7 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type Debugger struct {

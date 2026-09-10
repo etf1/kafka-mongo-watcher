@@ -7,10 +7,10 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/config"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/gol4ng/logger"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodriver "go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 func (container *Container) GetChangeEventProducer() mongo.ChangeEventProducer {
@@ -67,14 +67,14 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 
 	switch {
 	case configOptions.StartAtOperationTimeT > 0:
-		startAt := primitive.Timestamp{
+		startAt := bson.Timestamp{
 			T: configOptions.StartAtOperationTimeT,
 			I: configOptions.StartAtOperationTimeI,
 		}
 		options = append(options, mongo.WithStartAtOperationTime(startAt))
 	case configOptions.StartAtDelay > 0:
 		from := time.Now().Add(-1 * configOptions.StartAtDelay)
-		startAt := primitive.Timestamp{
+		startAt := bson.Timestamp{
 			T: uint32(from.Unix()),
 			I: 0,
 		}
@@ -111,15 +111,16 @@ func newMongoClient(ctx context.Context, log logger.LoggerInterface, uri, databa
 		SetReadPreference(readpref.Primary()).
 		SetServerSelectionTimeout(serverSelectionTimeout).
 		SetAppName(config.AppName)
-	mongoClient, err := mongodriver.NewClient(opts)
+	mongoClient, err := mongodriver.Connect(opts)
 	if err != nil {
 		log.Error("Failed to create mongodb client", logger.String("uri", uri), logger.Error("error", err))
 		return nil, err
 	}
 
-	err = mongoClient.Connect(ctx)
+	err = mongoClient.Ping(ctx, readpref.Primary())
 	if err != nil {
 		log.Error("Failed to connect to mongodb database", logger.String("uri", uri), logger.Error("error", err))
+		_ = mongoClient.Disconnect(ctx)
 		return nil, err
 	}
 

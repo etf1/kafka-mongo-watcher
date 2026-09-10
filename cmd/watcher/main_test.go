@@ -16,9 +16,8 @@ import (
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/etf1/kafka-mongo-watcher/internal/service"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	mongodriver "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	mongodriver "go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type fixture struct {
@@ -126,7 +125,7 @@ func prepareFixturesDocumentsInMongoDB(ctx context.Context, t *testing.T, collec
 			t.Fatal(err)
 		}
 
-		mongoID := result.InsertedID.(primitive.ObjectID).Hex()
+		mongoID := result.InsertedID.(bson.ObjectID).Hex()
 
 		fixture.expected = strings.Replace(fixture.expected, "%mongo_id%", mongoID, -1)
 		fixture.mongoID = mongoID
@@ -137,7 +136,7 @@ func prepareFixturesDocumentsInMongoDB(ctx context.Context, t *testing.T, collec
 
 func updateFixturesDocumentsInMongoDB(ctx context.Context, t *testing.T, fixtures []*fixture, collection string, connection *mongodriver.Database) []*fixture {
 	for _, fixture := range fixtures {
-		objectID, err := primitive.ObjectIDFromHex(fixture.mongoID)
+		objectID, err := bson.ObjectIDFromHex(fixture.mongoID)
 		if err != nil {
 			t.Fatal(err)
 		}

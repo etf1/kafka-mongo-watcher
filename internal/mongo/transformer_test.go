@@ -5,8 +5,7 @@ import (
 
 	"github.com/gol4ng/logger"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestTransformChangeEventToKafkaMessageWhenHaveEvents(t *testing.T) {
@@ -15,13 +14,13 @@ func TestTransformChangeEventToKafkaMessageWhenHaveEvents(t *testing.T) {
 
 	events := make(chan *ChangeEvent)
 	go func() {
-		objectID, _ := primitive.ObjectIDFromHex("5ccfdbb519580ee49d50803c")
+		objectID, _ := bson.ObjectIDFromHex("5ccfdbb519580ee49d50803c")
 		events <- &ChangeEvent{
 			DocumentKey: documentKey{ID: objectID},
 			Document:    bson.M{"hello": "this-is-my-test"},
 		}
 
-		objectID, _ = primitive.ObjectIDFromHex("5ccfdbb519580ee49d50803d")
+		objectID, _ = bson.ObjectIDFromHex("5ccfdbb519580ee49d50803d")
 		events <- &ChangeEvent{
 			DocumentKey: documentKey{ID: objectID},
 			Document:    bson.M{"hello": "this-is-my-second-test-event"},
@@ -59,13 +58,13 @@ func TestTransformChangeEventToKafkaMessageWhenDocumentIDError(t *testing.T) {
 
 	events := make(chan *ChangeEvent)
 	go func() {
-		objectID, _ := primitive.ObjectIDFromHex("incorrect-document-id")
+		objectID, _ := bson.ObjectIDFromHex("incorrect-document-id")
 		events <- &ChangeEvent{
 			DocumentKey: documentKey{ID: objectID},
 			Document:    bson.M{"hello": "this-is-my-test"},
 		}
 
-		objectID, _ = primitive.ObjectIDFromHex("5ccfdbb519580ee49d50803d")
+		objectID, _ = bson.ObjectIDFromHex("5ccfdbb519580ee49d50803d")
 		events <- &ChangeEvent{
 			DocumentKey: documentKey{ID: objectID},
 			Document:    bson.M{"hello": "this-is-my-second-test-event"},

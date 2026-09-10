@@ -4,6 +4,7 @@ mocks:
 	mockgen -source=internal/kafka/producer.go -destination=internal/kafka/producer_mock.go -package=kafka
 	mockgen -source=internal/metrics/kafka.go -destination=internal/metrics/kafka_mock.go -package=metrics
 	mockgen -source=internal/mongo/collection.go -destination=internal/mongo/collection_mock.go -package=mongo
+	sed -i.bak 's|go.uber.org/mock/gomock|github.com/golang/mock/gomock|g' internal/kafka/client_mock.go internal/kafka/producer_mock.go internal/metrics/kafka_mock.go internal/mongo/collection_mock.go && rm -f internal/kafka/client_mock.go.bak internal/kafka/producer_mock.go.bak internal/metrics/kafka_mock.go.bak internal/mongo/collection_mock.go.bak
 
 clean:
 	@echo "> cleaning..."

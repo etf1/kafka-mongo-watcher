@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type documentKey struct {
-	ID primitive.ObjectID `bson:"_id"`
+	ID bson.ObjectID `bson:"_id"`
 }
 
 // ChangeEvent document according
