@@ -1,20 +1,9 @@
 # Copyright The OpenTelemetry Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: Apache-2.0
 
 module-sets:
   stable-v1:
-    version: v1.24.0
+    version: v1.46.0
     modules:
       - go.opentelemetry.io/contrib
       - go.opentelemetry.io/contrib/tools
@@ -23,71 +12,87 @@ module-sets:
       - go.opentelemetry.io/contrib/propagators/jaeger
       - go.opentelemetry.io/contrib/propagators/b3
       - go.opentelemetry.io/contrib/detectors/gcp
-      - go.opentelemetry.io/contrib/detectors/aws/ec2
       - go.opentelemetry.io/contrib/detectors/aws/ecs
       - go.opentelemetry.io/contrib/detectors/aws/eks
+  stable-v2:
+    version: v2.5.3
+    modules:
+      - go.opentelemetry.io/contrib/detectors/aws/ec2/v2
   experimental-instrumentation:
-    version: v0.49.0
+    version: v0.71.0
     modules:
       - go.opentelemetry.io/contrib/bridges/prometheus
       - go.opentelemetry.io/contrib/detectors/aws/lambda
       - go.opentelemetry.io/contrib/exporters/autoexport
       - go.opentelemetry.io/contrib/propagators/autoprop
+      - go.opentelemetry.io/contrib/propagators/envcar
       - go.opentelemetry.io/contrib/propagators/opencensus
       - go.opentelemetry.io/contrib/propagators/opencensus/examples
-      - go.opentelemetry.io/contrib/instrumentation/gopkg.in/macaron.v1/otelmacaron
-      - go.opentelemetry.io/contrib/instrumentation/gopkg.in/macaron.v1/otelmacaron/example
-      - go.opentelemetry.io/contrib/instrumentation/gopkg.in/macaron.v1/otelmacaron/test
       - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
       - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/example
-      - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/test
       - go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace
       - go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace/example
-      - go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace/test
       - go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
       - go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/example
-      - go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc/test
       - go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo
       - go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo/test
       - go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux
-      - go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux/example
-      - go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux/test
       - go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin
-      - go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin/example
-      - go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin/test
       - go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho
       - go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho/example
-      - go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho/test
       - go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda/xrayconfig
       - go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda
       - go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda/example
-      - go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-lambda-go/otellambda/test
       - go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws
       - go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws/example
-      - go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws/test
       - go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful
-      - go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful/example
-      - go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful/test
-      - go.opentelemetry.io/contrib/zpages
-  experimental-metrics:
-    version: v0.49.0
-    modules:
       - go.opentelemetry.io/contrib/instrumentation/host
       - go.opentelemetry.io/contrib/instrumentation/host/example
       - go.opentelemetry.io/contrib/instrumentation/runtime
-      - go.opentelemetry.io/contrib/instrumentation/runtime/example
+      - go.opentelemetry.io/contrib/zpages
   experimental-samplers:
-    version: v0.18.0
+    version: v0.37.3
     modules:
-      - go.opentelemetry.io/contrib/samplers/aws/xray
       - go.opentelemetry.io/contrib/samplers/jaegerremote
       - go.opentelemetry.io/contrib/samplers/jaegerremote/example
       - go.opentelemetry.io/contrib/samplers/probability/consistent
   experimental-config:
-    version: v0.4.0
+    version: v0.26.0
     modules:
-      - go.opentelemetry.io/contrib/config
+      - go.opentelemetry.io/contrib/otelconf
+  experimental-bridge:
+    version: v0.20.1
+    modules:
+      - go.opentelemetry.io/contrib/bridges/otellogr
+      - go.opentelemetry.io/contrib/bridges/otellogrus
+      - go.opentelemetry.io/contrib/bridges/otelslog
+      - go.opentelemetry.io/contrib/bridges/otelzap
+  experimental-processors:
+    version: v0.16.3
+    modules:
+      - go.opentelemetry.io/contrib/processors/baggagecopy
+      - go.opentelemetry.io/contrib/processors/minsev
+  experimental-detectors:
+    version: v0.18.0
+    modules:
+      - go.opentelemetry.io/contrib/detectors/autodetect
+      - go.opentelemetry.io/contrib/detectors/azure/azureappservice
+      - go.opentelemetry.io/contrib/detectors/azure/azurecontainerapps
+      - go.opentelemetry.io/contrib/detectors/azure/azurefunctions
+      - go.opentelemetry.io/contrib/detectors/azure/azurevm
+      - go.opentelemetry.io/contrib/detectors/docker
+      - go.opentelemetry.io/contrib/detectors/hetzner
+      - go.opentelemetry.io/contrib/detectors/ibmcloud/vpc
+      - go.opentelemetry.io/contrib/detectors/k8sapi
+      - go.opentelemetry.io/contrib/detectors/aws/elasticbeanstalk
+      - go.opentelemetry.io/contrib/detectors/vultr
 excluded-modules:
-  - go.opentelemetry.io/contrib/instrgen
-  - go.opentelemetry.io/contrib/instrgen/driver
-  - go.opentelemetry.io/contrib/instrgen/testdata/interface
+  - go.opentelemetry.io/contrib/examples/dice/instrumented
+  - go.opentelemetry.io/contrib/examples/dice/uninstrumented
+  - go.opentelemetry.io/contrib/examples/namedtracer
+  - go.opentelemetry.io/contrib/examples/opencensus
+  - go.opentelemetry.io/contrib/examples/otel-collector
+  - go.opentelemetry.io/contrib/examples/passthrough
+  - go.opentelemetry.io/contrib/examples/prometheus
+  - go.opentelemetry.io/contrib/examples/prometheus-compatibility
+  - go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/v2/mongo/otelmongo
