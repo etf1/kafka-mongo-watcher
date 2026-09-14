@@ -7,7 +7,7 @@ COPY . .
 
 RUN apk --no-cache add gcc libc-dev
 
-RUN GOOS=linux GOARCH=amd64 go build -tags 'musl' -ldflags "-s -w -X github.com/etf1/kafka-mongo-watcher/config.AppVersion=$VERSION" -o kafka-mongo-watcher ./cmd/watcher/
+RUN go build -tags 'musl' -ldflags "-s -w -X github.com/etf1/kafka-mongo-watcher/config.AppVersion=$VERSION" -o kafka-mongo-watcher ./cmd/watcher/
 
 FROM alpine:3.24
 LABEL name="kafka-mongo-watcher"
