@@ -58,6 +58,11 @@ const (
 	SpanFlags_SPAN_FLAGS_DO_NOT_USE SpanFlags = 0
 	// Bits 0-7 are used for trace flags.
 	SpanFlags_SPAN_FLAGS_TRACE_FLAGS_MASK SpanFlags = 255
+	// Bits 8 and 9 are used to indicate that the parent span or link span is remote.
+	// Bit 8 (`HAS_IS_REMOTE`) indicates whether the value is known.
+	// Bit 9 (`IS_REMOTE`) indicates whether the span or link is remote.
+	SpanFlags_SPAN_FLAGS_CONTEXT_HAS_IS_REMOTE_MASK SpanFlags = 256
+	SpanFlags_SPAN_FLAGS_CONTEXT_IS_REMOTE_MASK     SpanFlags = 512
 )
 
 // Enum value maps for SpanFlags.
@@ -65,10 +70,14 @@ var (
 	SpanFlags_name = map[int32]string{
 		0:   "SPAN_FLAGS_DO_NOT_USE",
 		255: "SPAN_FLAGS_TRACE_FLAGS_MASK",
+		256: "SPAN_FLAGS_CONTEXT_HAS_IS_REMOTE_MASK",
+		512: "SPAN_FLAGS_CONTEXT_IS_REMOTE_MASK",
 	}
 	SpanFlags_value = map[string]int32{
-		"SPAN_FLAGS_DO_NOT_USE":       0,
-		"SPAN_FLAGS_TRACE_FLAGS_MASK": 255,
+		"SPAN_FLAGS_DO_NOT_USE":                 0,
+		"SPAN_FLAGS_TRACE_FLAGS_MASK":           255,
+		"SPAN_FLAGS_CONTEXT_HAS_IS_REMOTE_MASK": 256,
+		"SPAN_FLAGS_CONTEXT_IS_REMOTE_MASK":     512,
 	}
 )
 
@@ -302,7 +311,8 @@ type ResourceSpans struct {
 	// A list of ScopeSpans that originate from a resource.
 	ScopeSpans []*ScopeSpans `protobuf:"bytes,2,rep,name=scope_spans,json=scopeSpans,proto3" json:"scope_spans,omitempty"`
 	// The Schema URL, if known. This is the identifier of the Schema that the resource data
-	// is recorded in. To learn more about Schema URL see
+	// is recorded in. Notably, the last part of the URL path is the version number of the
+	// schema: http[s]://server[:port]/path/<version>. To learn more about Schema URL see
 	// https://opentelemetry.io/docs/specs/otel/schemas/#schema-url
 	// This schema_url applies to the data in the "resource" field. It does not apply
 	// to the data in the "scope_spans" field which have their own schema_url field.
@@ -375,9 +385,11 @@ type ScopeSpans struct {
 	// A list of Spans that originate from an instrumentation scope.
 	Spans []*Span `protobuf:"bytes,2,rep,name=spans,proto3" json:"spans,omitempty"`
 	// The Schema URL, if known. This is the identifier of the Schema that the span data
-	// is recorded in. To learn more about Schema URL see
+	// is recorded in. Notably, the last part of the URL path is the version number of the
+	// schema: http[s]://server[:port]/path/<version>. To learn more about Schema URL see
 	// https://opentelemetry.io/docs/specs/otel/schemas/#schema-url
-	// This schema_url applies to all spans and span events in the "spans" field.
+	// This schema_url applies to the data in the "scope" field and all spans and span
+	// events in the "spans" field.
 	SchemaUrl string `protobuf:"bytes,3,opt,name=schema_url,json=schemaUrl,proto3" json:"schema_url,omitempty"`
 }
 
@@ -463,20 +475,27 @@ type Span struct {
 	// The `span_id` of this span's parent span. If this is a root span, then this
 	// field must be empty. The ID is an 8-byte array.
 	ParentSpanId []byte `protobuf:"bytes,4,opt,name=parent_span_id,json=parentSpanId,proto3" json:"parent_span_id,omitempty"`
-	// Flags, a bit field. 8 least significant bits are the trace
-	// flags as defined in W3C Trace Context specification. Readers
-	// MUST not assume that 24 most significant bits will be zero.
-	// To read the 8-bit W3C trace flag, use `flags & SPAN_FLAGS_TRACE_FLAGS_MASK`.
+	// Flags, a bit field.
+	//
+	// Bits 0-7 (8 least significant bits) are the trace flags as defined in W3C Trace
+	// Context specification. To read the 8-bit W3C trace flag, use
+	// `flags & SPAN_FLAGS_TRACE_FLAGS_MASK`.
+	//
+	// See https://www.w3.org/TR/trace-context-2/#trace-flags for the flag definitions.
+	//
+	// Bits 8 and 9 represent the 3 states of whether a span's parent
+	// is remote. The states are (unknown, is not remote, is remote).
+	// To read whether the value is known, use `(flags & SPAN_FLAGS_CONTEXT_HAS_IS_REMOTE_MASK) != 0`.
+	// To read whether the span is remote, use `(flags & SPAN_FLAGS_CONTEXT_IS_REMOTE_MASK) != 0`.
 	//
 	// When creating span messages, if the message is logically forwarded from another source
 	// with an equivalent flags fields (i.e., usually another OTLP span message), the field SHOULD
 	// be copied as-is. If creating from a source that does not have an equivalent flags field
-	// (such as a runtime representation of an OpenTelemetry span), the high 24 bits MUST
+	// (such as a runtime representation of an OpenTelemetry span), the high 22 bits MUST
 	// be set to zero.
+	// Readers MUST NOT assume that bits 10-31 (22 most significant bits) will be zero.
 	//
 	// [Optional].
-	//
-	// See https://www.w3.org/TR/trace-context-2/#trace-flags for the flag definitions.
 	Flags uint32 `protobuf:"fixed32,16,opt,name=flags,proto3" json:"flags,omitempty"`
 	// A description of the span's operation.
 	//
@@ -494,21 +513,21 @@ type Span struct {
 	// two spans with the same name may be distinguished using `CLIENT` (caller)
 	// and `SERVER` (callee) to identify queueing latency associated with the span.
 	Kind Span_SpanKind `protobuf:"varint,6,opt,name=kind,proto3,enum=opentelemetry.proto.trace.v1.Span_SpanKind" json:"kind,omitempty"`
-	// start_time_unix_nano is the start time of the span. On the client side, this is the time
+	// The start time of the span. On the client side, this is the time
 	// kept by the local machine where the span execution starts. On the server side, this
 	// is the time when the server's application handler starts running.
 	// Value is UNIX Epoch time in nanoseconds since 00:00:00 UTC on 1 January 1970.
 	//
 	// This field is semantically required and it is expected that end_time >= start_time.
 	StartTimeUnixNano uint64 `protobuf:"fixed64,7,opt,name=start_time_unix_nano,json=startTimeUnixNano,proto3" json:"start_time_unix_nano,omitempty"`
-	// end_time_unix_nano is the end time of the span. On the client side, this is the time
+	// The end time of the span. On the client side, this is the time
 	// kept by the local machine where the span execution ends. On the server side, this
 	// is the time when the server application handler stops running.
 	// Value is UNIX Epoch time in nanoseconds since 00:00:00 UTC on 1 January 1970.
 	//
 	// This field is semantically required and it is expected that end_time >= start_time.
 	EndTimeUnixNano uint64 `protobuf:"fixed64,8,opt,name=end_time_unix_nano,json=endTimeUnixNano,proto3" json:"end_time_unix_nano,omitempty"`
-	// attributes is a collection of key/value pairs. Note, global attributes
+	// A collection of key/value pairs. Note, global attributes
 	// like server name can be set using the resource API. Examples of attributes:
 	//
 	//     "/http/user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
@@ -516,24 +535,23 @@ type Span struct {
 	//     "example.com/myattribute": true
 	//     "example.com/score": 10.239
 	//
-	// The OpenTelemetry API specification further restricts the allowed value types:
-	// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/common/README.md#attribute
 	// Attribute keys MUST be unique (it is not allowed to have more than one
 	// attribute with the same key).
+	// The behavior of software that receives duplicated keys can be unpredictable.
 	Attributes []*v11.KeyValue `protobuf:"bytes,9,rep,name=attributes,proto3" json:"attributes,omitempty"`
-	// dropped_attributes_count is the number of attributes that were discarded. Attributes
+	// The number of attributes that were discarded. Attributes
 	// can be discarded because their keys are too long or because there are too many
 	// attributes. If this value is 0, then no attributes were dropped.
 	DroppedAttributesCount uint32 `protobuf:"varint,10,opt,name=dropped_attributes_count,json=droppedAttributesCount,proto3" json:"dropped_attributes_count,omitempty"`
-	// events is a collection of Event items.
+	// A collection of Event items.
 	Events []*Span_Event `protobuf:"bytes,11,rep,name=events,proto3" json:"events,omitempty"`
-	// dropped_events_count is the number of dropped events. If the value is 0, then no
+	// The number of dropped events. If the value is 0, then no
 	// events were dropped.
 	DroppedEventsCount uint32 `protobuf:"varint,12,opt,name=dropped_events_count,json=droppedEventsCount,proto3" json:"dropped_events_count,omitempty"`
-	// links is a collection of Links, which are references from this span to a span
+	// A collection of Links, which are references from this span to a span
 	// in the same or different trace.
 	Links []*Span_Link `protobuf:"bytes,13,rep,name=links,proto3" json:"links,omitempty"`
-	// dropped_links_count is the number of dropped links after the maximum size was
+	// The number of dropped links after the maximum size was
 	// enforced. If this value is 0, then no links were dropped.
 	DroppedLinksCount uint32 `protobuf:"varint,14,opt,name=dropped_links_count,json=droppedLinksCount,proto3" json:"dropped_links_count,omitempty"`
 	// An optional final status for this span. Semantically when Status isn't set, it means
@@ -751,16 +769,17 @@ type Span_Event struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// time_unix_nano is the time the event occurred.
+	// The time the event occurred.
 	TimeUnixNano uint64 `protobuf:"fixed64,1,opt,name=time_unix_nano,json=timeUnixNano,proto3" json:"time_unix_nano,omitempty"`
-	// name of the event.
+	// The name of the event.
 	// This field is semantically required to be set to non-empty string.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	// attributes is a collection of attribute key/value pairs on the event.
+	// A collection of attribute key/value pairs on the event.
 	// Attribute keys MUST be unique (it is not allowed to have more than one
 	// attribute with the same key).
+	// The behavior of software that receives duplicated keys can be unpredictable.
 	Attributes []*v11.KeyValue `protobuf:"bytes,3,rep,name=attributes,proto3" json:"attributes,omitempty"`
-	// dropped_attributes_count is the number of dropped attributes. If the value is 0,
+	// The number of dropped attributes. If the value is 0,
 	// then no attributes were dropped.
 	DroppedAttributesCount uint32 `protobuf:"varint,4,opt,name=dropped_attributes_count,json=droppedAttributesCount,proto3" json:"dropped_attributes_count,omitempty"`
 }
@@ -841,21 +860,31 @@ type Span_Link struct {
 	SpanId []byte `protobuf:"bytes,2,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
 	// The trace_state associated with the link.
 	TraceState string `protobuf:"bytes,3,opt,name=trace_state,json=traceState,proto3" json:"trace_state,omitempty"`
-	// attributes is a collection of attribute key/value pairs on the link.
+	// A collection of attribute key/value pairs on the link.
 	// Attribute keys MUST be unique (it is not allowed to have more than one
 	// attribute with the same key).
+	// The behavior of software that receives duplicated keys can be unpredictable.
 	Attributes []*v11.KeyValue `protobuf:"bytes,4,rep,name=attributes,proto3" json:"attributes,omitempty"`
-	// dropped_attributes_count is the number of dropped attributes. If the value is 0,
+	// The number of dropped attributes. If the value is 0,
 	// then no attributes were dropped.
 	DroppedAttributesCount uint32 `protobuf:"varint,5,opt,name=dropped_attributes_count,json=droppedAttributesCount,proto3" json:"dropped_attributes_count,omitempty"`
-	// Flags, a bit field. 8 least significant bits are the trace
-	// flags as defined in W3C Trace Context specification. Readers
-	// MUST not assume that 24 most significant bits will be zero.
-	// When creating new spans, the most-significant 24-bits MUST be
-	// zero.  To read the 8-bit W3C trace flag (use flags &
-	// SPAN_FLAGS_TRACE_FLAGS_MASK).  [Optional].
+	// Flags, a bit field.
+	//
+	// Bits 0-7 (8 least significant bits) are the trace flags as defined in W3C Trace
+	// Context specification. To read the 8-bit W3C trace flag, use
+	// `flags & SPAN_FLAGS_TRACE_FLAGS_MASK`.
 	//
 	// See https://www.w3.org/TR/trace-context-2/#trace-flags for the flag definitions.
+	//
+	// Bits 8 and 9 represent the 3 states of whether the link is remote.
+	// The states are (unknown, is not remote, is remote).
+	// To read whether the value is known, use `(flags & SPAN_FLAGS_CONTEXT_HAS_IS_REMOTE_MASK) != 0`.
+	// To read whether the link is remote, use `(flags & SPAN_FLAGS_CONTEXT_IS_REMOTE_MASK) != 0`.
+	//
+	// Readers MUST NOT assume that bits 10-31 (22 most significant bits) will be zero.
+	// When creating new spans, bits 10-31 (most-significant 22-bits) MUST be zero.
+	//
+	// [Optional].
 	Flags uint32 `protobuf:"fixed32,6,opt,name=flags,proto3" json:"flags,omitempty"`
 }
 
@@ -1073,19 +1102,24 @@ var file_opentelemetry_proto_trace_v1_trace_proto_rawDesc = []byte{
 	0x0a, 0x0e, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x43, 0x4f, 0x44, 0x45, 0x5f, 0x4f, 0x4b,
 	0x10, 0x01, 0x12, 0x15, 0x0a, 0x11, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x43, 0x4f, 0x44,
 	0x45, 0x5f, 0x45, 0x52, 0x52, 0x4f, 0x52, 0x10, 0x02, 0x4a, 0x04, 0x08, 0x01, 0x10, 0x02, 0x2a,
-	0x48, 0x0a, 0x09, 0x53, 0x70, 0x61, 0x6e, 0x46, 0x6c, 0x61, 0x67, 0x73, 0x12, 0x19, 0x0a, 0x15,
-	0x53, 0x50, 0x41, 0x4e, 0x5f, 0x46, 0x4c, 0x41, 0x47, 0x53, 0x5f, 0x44, 0x4f, 0x5f, 0x4e, 0x4f,
-	0x54, 0x5f, 0x55, 0x53, 0x45, 0x10, 0x00, 0x12, 0x20, 0x0a, 0x1b, 0x53, 0x50, 0x41, 0x4e, 0x5f,
-	0x46, 0x4c, 0x41, 0x47, 0x53, 0x5f, 0x54, 0x52, 0x41, 0x43, 0x45, 0x5f, 0x46, 0x4c, 0x41, 0x47,
-	0x53, 0x5f, 0x4d, 0x41, 0x53, 0x4b, 0x10, 0xff, 0x01, 0x42, 0x77, 0x0a, 0x1f, 0x69, 0x6f, 0x2e,
-	0x6f, 0x70, 0x65, 0x6e, 0x74, 0x65, 0x6c, 0x65, 0x6d, 0x65, 0x74, 0x72, 0x79, 0x2e, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x2e, 0x74, 0x72, 0x61, 0x63, 0x65, 0x2e, 0x76, 0x31, 0x42, 0x0a, 0x54, 0x72,
-	0x61, 0x63, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a, 0x27, 0x67, 0x6f, 0x2e, 0x6f,
-	0x70, 0x65, 0x6e, 0x74, 0x65, 0x6c, 0x65, 0x6d, 0x65, 0x74, 0x72, 0x79, 0x2e, 0x69, 0x6f, 0x2f,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x6f, 0x74, 0x6c, 0x70, 0x2f, 0x74, 0x72, 0x61, 0x63, 0x65,
-	0x2f, 0x76, 0x31, 0xaa, 0x02, 0x1c, 0x4f, 0x70, 0x65, 0x6e, 0x54, 0x65, 0x6c, 0x65, 0x6d, 0x65,
-	0x74, 0x72, 0x79, 0x2e, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x54, 0x72, 0x61, 0x63, 0x65, 0x2e,
-	0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x9c, 0x01, 0x0a, 0x09, 0x53, 0x70, 0x61, 0x6e, 0x46, 0x6c, 0x61, 0x67, 0x73, 0x12, 0x19, 0x0a,
+	0x15, 0x53, 0x50, 0x41, 0x4e, 0x5f, 0x46, 0x4c, 0x41, 0x47, 0x53, 0x5f, 0x44, 0x4f, 0x5f, 0x4e,
+	0x4f, 0x54, 0x5f, 0x55, 0x53, 0x45, 0x10, 0x00, 0x12, 0x20, 0x0a, 0x1b, 0x53, 0x50, 0x41, 0x4e,
+	0x5f, 0x46, 0x4c, 0x41, 0x47, 0x53, 0x5f, 0x54, 0x52, 0x41, 0x43, 0x45, 0x5f, 0x46, 0x4c, 0x41,
+	0x47, 0x53, 0x5f, 0x4d, 0x41, 0x53, 0x4b, 0x10, 0xff, 0x01, 0x12, 0x2a, 0x0a, 0x25, 0x53, 0x50,
+	0x41, 0x4e, 0x5f, 0x46, 0x4c, 0x41, 0x47, 0x53, 0x5f, 0x43, 0x4f, 0x4e, 0x54, 0x45, 0x58, 0x54,
+	0x5f, 0x48, 0x41, 0x53, 0x5f, 0x49, 0x53, 0x5f, 0x52, 0x45, 0x4d, 0x4f, 0x54, 0x45, 0x5f, 0x4d,
+	0x41, 0x53, 0x4b, 0x10, 0x80, 0x02, 0x12, 0x26, 0x0a, 0x21, 0x53, 0x50, 0x41, 0x4e, 0x5f, 0x46,
+	0x4c, 0x41, 0x47, 0x53, 0x5f, 0x43, 0x4f, 0x4e, 0x54, 0x45, 0x58, 0x54, 0x5f, 0x49, 0x53, 0x5f,
+	0x52, 0x45, 0x4d, 0x4f, 0x54, 0x45, 0x5f, 0x4d, 0x41, 0x53, 0x4b, 0x10, 0x80, 0x04, 0x42, 0x77,
+	0x0a, 0x1f, 0x69, 0x6f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x65, 0x6c, 0x65, 0x6d, 0x65, 0x74,
+	0x72, 0x79, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x74, 0x72, 0x61, 0x63, 0x65, 0x2e, 0x76,
+	0x31, 0x42, 0x0a, 0x54, 0x72, 0x61, 0x63, 0x65, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x50, 0x01, 0x5a,
+	0x27, 0x67, 0x6f, 0x2e, 0x6f, 0x70, 0x65, 0x6e, 0x74, 0x65, 0x6c, 0x65, 0x6d, 0x65, 0x74, 0x72,
+	0x79, 0x2e, 0x69, 0x6f, 0x2f, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x2f, 0x6f, 0x74, 0x6c, 0x70, 0x2f,
+	0x74, 0x72, 0x61, 0x63, 0x65, 0x2f, 0x76, 0x31, 0xaa, 0x02, 0x1c, 0x4f, 0x70, 0x65, 0x6e, 0x54,
+	0x65, 0x6c, 0x65, 0x6d, 0x65, 0x74, 0x72, 0x79, 0x2e, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x2e, 0x54,
+	0x72, 0x61, 0x63, 0x65, 0x2e, 0x56, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
