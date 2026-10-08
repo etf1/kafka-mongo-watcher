@@ -18,6 +18,11 @@ type Checkpoint struct {
 	ResumeToken bson.Raw `bson:"resumeToken,omitempty"`
 }
 
+// Age returns the time elapsed since the checkpoint event
+func (c Checkpoint) Age(now time.Time) time.Duration {
+	return now.Sub(time.Unix(int64(c.ClusterTime.T), 0))
+}
+
 // Store persists the change stream checkpoint
 type Store interface {
 	// Load returns the stored checkpoint, or nil if there is none

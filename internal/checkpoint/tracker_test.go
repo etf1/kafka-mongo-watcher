@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
@@ -137,4 +138,11 @@ func TestTrackerSkipsEventsWithoutClusterTime(t *testing.T) {
 
 	assert.Nil(t, tracker.Flush(ctx))
 	assert.Equal(t, "1", store.lastData(t))
+}
+
+func TestCheckpointAge(t *testing.T) {
+	now := time.Unix(1791463102, 0)
+	checkpoint := Checkpoint{ClusterTime: bson.Timestamp{T: 1791460981, I: 78}}
+
+	assert.Equal(t, 2121*time.Second, checkpoint.Age(now))
 }

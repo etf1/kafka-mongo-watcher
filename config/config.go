@@ -67,6 +67,7 @@ type MongoDBOptions struct {
 	CheckpointEnabled       bool          `config:"MONGODB_OPTION_CHECKPOINT_ENABLED"`
 	CheckpointCollection    string        `config:"MONGODB_OPTION_CHECKPOINT_COLLECTION"`
 	CheckpointInterval      time.Duration `config:"MONGODB_OPTION_CHECKPOINT_INTERVAL"`
+	CheckpointMaxAge        time.Duration `config:"MONGODB_OPTION_CHECKPOINT_MAX_AGE"`
 	ResumeOnHistoryLost     string        `config:"MONGODB_OPTION_RESUME_ON_HISTORY_LOST"`
 }
 

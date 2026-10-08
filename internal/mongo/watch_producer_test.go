@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -450,4 +451,12 @@ func TestWatchProduceWhenResumePointLost(t *testing.T) {
 		for range events {
 		}
 	})
+}
+
+func TestIsResumePointLost(t *testing.T) {
+	assert.True(t, IsResumePointLost(ErrResumePointTooOld))
+	assert.True(t, IsResumePointLost(fmt.Errorf("wrapped: %w", ErrResumePointTooOld)))
+	assert.True(t, IsResumePointLost(mongodriver.CommandError{Code: errorCodeChangeStreamHistoryLost}))
+	assert.False(t, IsResumePointLost(mongodriver.CommandError{Code: 11600}))
+	assert.False(t, IsResumePointLost(errors.New("connection lost")))
 }

@@ -182,10 +182,15 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 
 *Description*: Interval between two checkpoint saves, a last save is done on graceful shutdown (default: 1s)
 
+#### MONGODB_OPTION_CHECKPOINT_MAX_AGE
+*Type*: duration
+
+*Description*: Maximum age of the checkpoint to resume from. An older checkpoint is handled as a lost resume point, according to `MONGODB_OPTION_RESUME_ON_HISTORY_LOST` (default: 0 / disabled). Recommended on Amazon DocumentDB: resuming from a position about 30 minutes old (within the change stream retention) opens the stream without error but never returns any event.
+
 #### MONGODB_OPTION_RESUME_ON_HISTORY_LOST
 *Type*: string
 
-*Description*: Behaviour when the resume point is no longer available in the oplog: `fail` stops the application with an error, `now` logs an error and restarts the change stream from now, losing the missing events (default: "fail")
+*Description*: Behaviour when the resume point is no longer available in the oplog (or older than `MONGODB_OPTION_CHECKPOINT_MAX_AGE`): `fail` stops the application with an error, `now` logs an error and restarts the change stream from now, losing the missing events (default: "fail")
 
 #### KAFKA_BOOTSTRAP_SERVERS
 *Type*: string
