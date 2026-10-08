@@ -6,6 +6,7 @@ import (
 	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func TestClientCheckpointProduce(t *testing.T) {
@@ -13,7 +14,7 @@ func TestClientCheckpointProduce(t *testing.T) {
 	defer ctrl.Finish()
 
 	messages := make(chan *Message, 2)
-	messages <- &Message{Topic: "test-topic", ResumeToken: []byte(`{"_data":"1"}`)}
+	messages <- &Message{Topic: "test-topic", ResumeToken: []byte(`{"_data":"1"}`), ClusterTime: bson.Timestamp{T: 20, I: 3}}
 	messages <- &Message{Topic: "test-topic"}
 	close(messages)
 
@@ -26,13 +27,16 @@ func TestClientCheckpointProduce(t *testing.T) {
 	})
 
 	var tracked [][]byte
-	cli := NewClientCheckpoint(client, func(resumeToken []byte) {
+	var trackedClusterTimes []bson.Timestamp
+	cli := NewClientCheckpoint(client, func(resumeToken []byte, clusterTime bson.Timestamp) {
 		tracked = append(tracked, resumeToken)
+		trackedClusterTimes = append(trackedClusterTimes, clusterTime)
 	})
 
 	cli.Produce(messages)
 
 	assert.Equal(t, [][]byte{[]byte(`{"_data":"1"}`)}, tracked)
+	assert.Equal(t, []bson.Timestamp{{T: 20, I: 3}}, trackedClusterTimes)
 	assert.Len(t, produced, 2)
 	assert.Equal(t, []Header{{Key: XResumeTokenHeaderName, Value: []byte(`{"_data":"1"}`)}}, produced[0].Headers)
 	assert.Empty(t, produced[1].Headers)

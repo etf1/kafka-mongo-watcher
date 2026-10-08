@@ -14,11 +14,12 @@ import (
 
 type entry struct {
 	resumeToken string
+	clusterTime bson.Timestamp
 	acked       bool
 }
 
 // Tracker follows the produced events in the change stream order and only commits
-// the resume token of the last event of the contiguous acknowledged prefix: delivery
+// the position of the last event of the contiguous acknowledged prefix: delivery
 // reports of different partitions may arrive out of order.
 // A failed delivery blocks the checkpoint, the event will be replayed on restart.
 type Tracker struct {
@@ -27,8 +28,8 @@ type Tracker struct {
 	logger    logger.LoggerInterface
 	pending   *list.List
 	index     map[string]*list.Element
-	committed string
-	saved     string
+	committed *entry
+	saved     *entry
 }
 
 // NewTracker returns a new checkpoint tracker
@@ -41,8 +42,9 @@ func NewTracker(store Store, log logger.LoggerInterface) *Tracker {
 	}
 }
 
-// Track registers an event that is about to be produced, in the change stream order
-func (t *Tracker) Track(resumeToken []byte) {
+// Track registers an event that is about to be produced, in the change stream order.
+// The resume token identifies the event in its delivery report.
+func (t *Tracker) Track(resumeToken []byte, clusterTime bson.Timestamp) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -50,7 +52,7 @@ func (t *Tracker) Track(resumeToken []byte) {
 	if _, ok := t.index[key]; ok {
 		return
 	}
-	t.index[key] = t.pending.PushBack(&entry{resumeToken: key})
+	t.index[key] = t.pending.PushBack(&entry{resumeToken: key, clusterTime: clusterTime})
 }
 
 // OnDelivery handles a kafka delivery report
@@ -78,27 +80,32 @@ func (t *Tracker) ack(resumeToken []byte) {
 	element.Value.(*entry).acked = true
 
 	for front := t.pending.Front(); front != nil && front.Value.(*entry).acked; front = t.pending.Front() {
-		t.committed = front.Value.(*entry).resumeToken
-		delete(t.index, t.committed)
+		committed := front.Value.(*entry)
+		delete(t.index, committed.resumeToken)
 		t.pending.Remove(front)
+		// events without cluster time can not be used to resume
+		if !committed.clusterTime.IsZero() {
+			t.committed = committed
+		}
 	}
 }
 
-// Flush saves the last committed resume token if it changed since the last save
+// Flush saves the last committed position if it changed since the last save
 func (t *Tracker) Flush(ctx context.Context) error {
 	t.mu.Lock()
 	committed, saved := t.committed, t.saved
 	t.mu.Unlock()
 
-	if committed == "" || committed == saved {
+	if committed == nil || committed == saved {
 		return nil
 	}
 
+	checkpoint := Checkpoint{ClusterTime: committed.clusterTime}
 	var resumeToken bson.Raw
-	if err := bson.UnmarshalExtJSON([]byte(committed), true, &resumeToken); err != nil {
-		return err
+	if err := bson.UnmarshalExtJSON([]byte(committed.resumeToken), true, &resumeToken); err == nil {
+		checkpoint.ResumeToken = resumeToken
 	}
-	if err := t.store.Save(ctx, resumeToken); err != nil {
+	if err := t.store.Save(ctx, checkpoint); err != nil {
 		return err
 	}
 
@@ -118,7 +125,7 @@ func (t *Tracker) Run(ctx context.Context, interval time.Duration) {
 			return
 		case <-ticker.C:
 			if err := t.Flush(ctx); err != nil {
-				t.logger.Error("Checkpoint: unable to save resume token", logger.Error("error", err))
+				t.logger.Error("Checkpoint: unable to save checkpoint", logger.Error("error", err))
 			}
 		}
 	}

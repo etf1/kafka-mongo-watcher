@@ -24,6 +24,29 @@ type ChangeEvent struct {
 	ClusterTime       time.Time   `bson:"clusterTime"`
 	Transaction       int64       `bson:"txnNumber,omitempty"`
 	SessionID         bson.M      `bson:"lsid,omitempty"`
+
+	// clusterTimestamp is the raw clusterTime (seconds and increment), ClusterTime
+	// only keeps the seconds. It is not part of the produced message.
+	clusterTimestamp bson.Timestamp
+}
+
+// UnmarshalBSON decodes the event and keeps the raw clusterTime timestamp
+func (e *ChangeEvent) UnmarshalBSON(data []byte) error {
+	type rawChangeEvent ChangeEvent
+	if err := bson.Unmarshal(data, (*rawChangeEvent)(e)); err != nil {
+		return err
+	}
+	if value, err := bson.Raw(data).LookupErr("clusterTime"); err == nil {
+		if t, i, ok := value.TimestampOK(); ok {
+			e.clusterTimestamp = bson.Timestamp{T: t, I: i}
+		}
+	}
+	return nil
+}
+
+// ClusterTimestamp returns the operation time of the event
+func (e ChangeEvent) ClusterTimestamp() bson.Timestamp {
+	return e.clusterTimestamp
 }
 
 // marshall event to an array of bytes

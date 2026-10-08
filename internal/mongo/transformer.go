@@ -36,6 +36,7 @@ func (t *ChangeEventKafkaMessageTransformer) Transform(changeEvents chan *Change
 				Key:         []byte(documentID),
 				Value:       jsonBytes,
 				ResumeToken: t.resumeToken(event),
+				ClusterTime: event.ClusterTimestamp(),
 			}
 		}
 	}()

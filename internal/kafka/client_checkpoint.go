@@ -2,13 +2,14 @@ package kafka
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // XResumeTokenHeaderName corresponds to the header containing the MongoDB change stream
 // resume token of the event (extended JSON, usable as MONGODB_OPTION_RESUME_AFTER)
 const XResumeTokenHeaderName = "x-resume-token"
 
-type trackFunc func(resumeToken []byte)
+type trackFunc func(resumeToken []byte, clusterTime bson.Timestamp)
 
 type clientCheckpoint struct {
 	client Client
@@ -16,7 +17,8 @@ type clientCheckpoint struct {
 }
 
 // NewClientCheckpoint returns a kafka client that adds the resume token header on messages
-// and tracks them before production, so their delivery reports can be checkpointed
+// and tracks them before production, so their delivery reports can be checkpointed.
+// The resume token header identifies the message in its delivery report.
 func NewClientCheckpoint(cli Client, track trackFunc) *clientCheckpoint {
 	return &clientCheckpoint{
 		client: cli,
@@ -35,7 +37,7 @@ func (c *clientCheckpoint) Produce(messages chan *Message) {
 					Key:   XResumeTokenHeaderName,
 					Value: message.ResumeToken,
 				})
-				c.track(message.ResumeToken)
+				c.track(message.ResumeToken, message.ClusterTime)
 			}
 			next <- message
 		}

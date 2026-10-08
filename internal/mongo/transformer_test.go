@@ -94,8 +94,9 @@ func TestTransformChangeEventToKafkaMessageWithResumeToken(t *testing.T) {
 		defer close(events)
 		objectID, _ := bson.ObjectIDFromHex("5ccfdbb519580ee49d50803c")
 		events <- &ChangeEvent{
-			ID:          bson.D{{Key: "_data", Value: "826A1B2C3D"}},
-			DocumentKey: documentKey{ID: objectID},
+			ID:               bson.D{{Key: "_data", Value: "826A1B2C3D"}},
+			DocumentKey:      documentKey{ID: objectID},
+			clusterTimestamp: bson.Timestamp{T: 20, I: 3},
 		}
 	}()
 
@@ -103,4 +104,5 @@ func TestTransformChangeEventToKafkaMessageWithResumeToken(t *testing.T) {
 
 	message := <-transformer.Transform(events)
 	assert.Equal(t, []byte(`{"_data":"826A1B2C3D"}`), message.ResumeToken)
+	assert.Equal(t, bson.Timestamp{T: 20, I: 3}, message.ClusterTime)
 }

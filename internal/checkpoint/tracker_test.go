@@ -13,30 +13,43 @@ import (
 )
 
 type memoryStore struct {
-	saves []bson.Raw
+	saves []Checkpoint
 }
 
-func (s *memoryStore) Load(context.Context) (bson.Raw, error) {
+func (s *memoryStore) Load(context.Context) (*Checkpoint, error) {
 	if len(s.saves) == 0 {
 		return nil, nil
 	}
-	return s.saves[len(s.saves)-1], nil
+	return &s.saves[len(s.saves)-1], nil
 }
 
-func (s *memoryStore) Save(_ context.Context, resumeToken bson.Raw) error {
-	s.saves = append(s.saves, resumeToken)
+func (s *memoryStore) Save(_ context.Context, checkpoint Checkpoint) error {
+	s.saves = append(s.saves, checkpoint)
 	return nil
 }
 
+// lastData returns the resume token _data of the last saved checkpoint, and checks
+// that its cluster time matches the tracked one
 func (s *memoryStore) lastData(t *testing.T) string {
 	if len(s.saves) == 0 {
 		return ""
 	}
-	return s.saves[len(s.saves)-1].Lookup("_data").StringValue()
+	last := s.saves[len(s.saves)-1]
+	data := last.ResumeToken.Lookup("_data").StringValue()
+	assert.Equal(t, clusterTime(data), last.ClusterTime)
+	return data
 }
 
 func token(data string) []byte {
 	return []byte(`{"_data":"` + data + `"}`)
+}
+
+func clusterTime(data string) bson.Timestamp {
+	return bson.Timestamp{T: 100, I: uint32(data[0])}
+}
+
+func track(tracker *Tracker, data string) {
+	tracker.Track(token(data), clusterTime(data))
 }
 
 func delivery(resumeToken []byte, err error) *kafkaconfluent.Message {
@@ -52,9 +65,9 @@ func TestTrackerCommitsContiguousAckedPrefix(t *testing.T) {
 	store := &memoryStore{}
 	tracker := NewTracker(store, logger.NewNopLogger())
 
-	tracker.Track(token("1"))
-	tracker.Track(token("2"))
-	tracker.Track(token("3"))
+	track(tracker, "1")
+	track(tracker, "2")
+	track(tracker, "3")
 
 	// out of order ack: nothing can be committed yet
 	tracker.OnDelivery(delivery(token("2"), nil))
@@ -75,7 +88,7 @@ func TestTrackerFlushOnlyWhenChanged(t *testing.T) {
 	store := &memoryStore{}
 	tracker := NewTracker(store, logger.NewNopLogger())
 
-	tracker.Track(token("1"))
+	track(tracker, "1")
 	tracker.OnDelivery(delivery(token("1"), nil))
 
 	assert.Nil(t, tracker.Flush(ctx))
@@ -88,9 +101,9 @@ func TestTrackerFailedDeliveryBlocksCheckpoint(t *testing.T) {
 	store := &memoryStore{}
 	tracker := NewTracker(store, logger.NewNopLogger())
 
-	tracker.Track(token("1"))
-	tracker.Track(token("2"))
-	tracker.Track(token("3"))
+	track(tracker, "1")
+	track(tracker, "2")
+	track(tracker, "3")
 
 	tracker.OnDelivery(delivery(token("1"), nil))
 	tracker.OnDelivery(delivery(token("2"), errors.New("delivery failed")))
@@ -110,4 +123,18 @@ func TestTrackerIgnoresMessagesWithoutToken(t *testing.T) {
 
 	assert.Nil(t, tracker.Flush(context.Background()))
 	assert.Len(t, store.saves, 0)
+}
+
+func TestTrackerSkipsEventsWithoutClusterTime(t *testing.T) {
+	ctx := context.Background()
+	store := &memoryStore{}
+	tracker := NewTracker(store, logger.NewNopLogger())
+
+	track(tracker, "1")
+	tracker.Track(token("2"), bson.Timestamp{})
+	tracker.OnDelivery(delivery(token("1"), nil))
+	tracker.OnDelivery(delivery(token("2"), nil))
+
+	assert.Nil(t, tracker.Flush(ctx))
+	assert.Equal(t, "1", store.lastData(t))
 }

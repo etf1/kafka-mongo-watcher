@@ -72,14 +72,15 @@ func (container *Container) getWatchOptions(ctx context.Context) ([]mongo.WatchO
 
 	// The stored checkpoint takes precedence over the configured starting point
 	if tracker := container.GetCheckpointTracker(); tracker != nil {
-		resumeToken, err := container.getCheckpointStore().Load(ctx)
+		checkpoint, err := container.getCheckpointStore().Load(ctx)
 		if err != nil {
 			container.GetLogger().Error("Unable to load checkpoint", logger.Error("error", err))
 			return nil, err
 		}
-		if len(resumeToken) > 0 {
-			container.GetLogger().Info("Resuming change stream from checkpoint", logger.String("resume_token", resumeToken.String()))
-			return append(options, mongo.WithResumeToken(resumeToken)), nil
+		if checkpoint != nil {
+			container.GetLogger().Info("Resuming change stream from checkpoint",
+				logger.Any("cluster_time", checkpoint.ClusterTime), logger.String("resume_token", checkpoint.ResumeToken.String()))
+			return append(options, mongo.WithStartAtOperationTime(checkpoint.ClusterTime)), nil
 		}
 		container.GetLogger().Info("No checkpoint found, using configured starting point")
 	}
