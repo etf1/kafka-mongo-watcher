@@ -294,7 +294,7 @@ func TestWatchProduceWhenCtxCanceledDuringSend(t *testing.T) {
 	}
 }
 
-func TestWatchProduceStartAfterTakesPrecedence(t *testing.T) {
+func TestWatchProduceResumeTokenTakesPrecedence(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -305,7 +305,7 @@ func TestWatchProduceStartAfterTakesPrecedence(t *testing.T) {
 	opts := options.ChangeStream().
 		SetBatchSize(0).
 		SetMaxAwaitTime(0).
-		SetStartAfter(startAfter)
+		SetResumeAfter(startAfter)
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	mongoCursor := NewMockStreamCursor(ctrl)
@@ -320,7 +320,7 @@ func TestWatchProduceStartAfterTakesPrecedence(t *testing.T) {
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
 	events, err := watcher.GetProducer(
-		WithStartAfter(startAfter),
+		WithResumeToken(startAfter),
 		WithResumeAfter([]byte(`{"_data":"env"}`)),
 		WithStartAtOperationTime(startAtOperationTime),
 		WithMaxRetries(0),
@@ -331,7 +331,7 @@ func TestWatchProduceStartAfterTakesPrecedence(t *testing.T) {
 	}
 }
 
-func TestWatchProduceReconnectUsesOnlyStartAfter(t *testing.T) {
+func TestWatchProduceReconnectUsesOnlyResumeToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -345,11 +345,11 @@ func TestWatchProduceReconnectUsesOnlyStartAfter(t *testing.T) {
 		SetBatchSize(0).
 		SetMaxAwaitTime(0).
 		SetStartAtOperationTime(&startAtOperationTime)
-	// On reconnection, startAtOperationTime must not be sent along with startAfter
+	// On reconnection, startAtOperationTime must not be sent along with resumeAfter
 	reconnectOpts := options.ChangeStream().
 		SetBatchSize(0).
 		SetMaxAwaitTime(0).
-		SetStartAfter(lastToken)
+		SetResumeAfter(lastToken)
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	firstCursor := NewMockStreamCursor(ctrl)
@@ -401,7 +401,7 @@ func TestWatchProduceReconnectKeepsPreviousTokenWhenNone(t *testing.T) {
 	opts := options.ChangeStream().
 		SetBatchSize(0).
 		SetMaxAwaitTime(0).
-		SetStartAfter(checkpoint)
+		SetResumeAfter(checkpoint)
 
 	mongoCollection := NewMockCollectionAdapter(ctrl)
 	firstCursor := NewMockStreamCursor(ctrl)
@@ -428,7 +428,7 @@ func TestWatchProduceReconnectKeepsPreviousTokenWhenNone(t *testing.T) {
 
 	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
 
-	events, err := watcher.GetProducer(WithStartAfter(checkpoint), WithMaxRetries(1))(ctx)
+	events, err := watcher.GetProducer(WithResumeToken(checkpoint), WithMaxRetries(1))(ctx)
 	assert.Nil(t, err)
 
 	<-events
@@ -451,7 +451,7 @@ func TestWatchProduceWhenResumePointLost(t *testing.T) {
 		mongoCollection.EXPECT().Watch(ctx, bson.A{}, gomock.Any()).Return(nil, historyLost).Times(1)
 
 		watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
-		_, err := watcher.GetProducer(WithStartAfter(checkpoint), WithMaxRetries(3))(ctx)
+		_, err := watcher.GetProducer(WithResumeToken(checkpoint), WithMaxRetries(3))(ctx)
 
 		assert.True(t, IsResumePointLost(err))
 	})
@@ -477,7 +477,7 @@ func TestWatchProduceWhenResumePointLost(t *testing.T) {
 		mongoCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
 
 		watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
-		events, err := watcher.GetProducer(WithStartAfter(checkpoint), WithStartFromNowOnHistoryLost(true), WithMaxRetries(0))(ctx)
+		events, err := watcher.GetProducer(WithResumeToken(checkpoint), WithStartFromNowOnHistoryLost(true), WithMaxRetries(0))(ctx)
 
 		assert.Nil(t, err)
 		for range events {

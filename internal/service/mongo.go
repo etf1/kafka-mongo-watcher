@@ -79,7 +79,7 @@ func (container *Container) getWatchOptions(ctx context.Context) ([]mongo.WatchO
 		}
 		if len(resumeToken) > 0 {
 			container.GetLogger().Info("Resuming change stream from checkpoint", logger.String("resume_token", resumeToken.String()))
-			return append(options, mongo.WithStartAfter(resumeToken)), nil
+			return append(options, mongo.WithResumeToken(resumeToken)), nil
 		}
 		container.GetLogger().Info("No checkpoint found, using configured starting point")
 	}

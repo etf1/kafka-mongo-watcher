@@ -53,9 +53,9 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 				// Keep the previous position when the cursor did not return any token,
 				// otherwise the stream would restart from "now" and lose events.
 				if len(resumeToken) > 0 {
-					position = streamPosition{startAfter: resumeToken}
+					position = streamPosition{resumeToken: resumeToken}
 				}
-				w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", position.startAfter))
+				w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("resume_after", position.resumeToken))
 				closeCursor(cursor)
 				cursor = nil
 				if config.maxRetries == 0 {
@@ -75,20 +75,22 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 
 // streamPosition is the logical starting point of a change stream.
 // MongoDB only accepts one of these options at a time.
+// Resume tokens are applied with resumeAfter rather than startAfter, which is not
+// supported by Amazon DocumentDB.
 type streamPosition struct {
-	startAfter           bson.Raw
+	resumeToken          bson.Raw
 	resumeAfter          bson.M
 	startAtOperationTime *bson.Timestamp
 }
 
 func (p streamPosition) isSet() bool {
-	return len(p.startAfter) > 0 || len(p.resumeAfter) > 0 || p.startAtOperationTime != nil
+	return len(p.resumeToken) > 0 || len(p.resumeAfter) > 0 || p.startAtOperationTime != nil
 }
 
 func (p streamPosition) apply(opts *options.ChangeStreamOptionsBuilder) {
 	switch {
-	case len(p.startAfter) > 0:
-		opts.SetStartAfter(p.startAfter)
+	case len(p.resumeToken) > 0:
+		opts.SetResumeAfter(p.resumeToken)
 	case len(p.resumeAfter) > 0:
 		opts.SetResumeAfter(p.resumeAfter)
 	case p.startAtOperationTime != nil:
@@ -194,7 +196,7 @@ type WatchConfig struct {
 	fullDocumentEnabled       bool
 	ignoreUpdateDescription   bool
 	maxAwaitTime              time.Duration
-	startAfter                bson.Raw
+	resumeToken               bson.Raw
 	resumeAfter               bson.M
 	startAtOperationTime      *bson.Timestamp
 	maxRetries                int32
@@ -203,11 +205,11 @@ type WatchConfig struct {
 }
 
 // initialPosition returns the configured starting point, by priority:
-// startAfter (checkpoint) > resumeAfter > startAtOperationTime > now.
+// resumeToken (checkpoint) > resumeAfter > startAtOperationTime > now.
 func (o *WatchConfig) initialPosition() streamPosition {
 	switch {
-	case len(o.startAfter) > 0:
-		return streamPosition{startAfter: o.startAfter}
+	case len(o.resumeToken) > 0:
+		return streamPosition{resumeToken: o.resumeToken}
 	case len(o.resumeAfter) > 0:
 		return streamPosition{resumeAfter: o.resumeAfter}
 	default:
@@ -272,11 +274,11 @@ func WithResumeAfter(resumeAfter []byte) WatchOption {
 	}
 }
 
-// WithStartAfter allows to specify the resume token (e.g. a stored checkpoint) after which
-// the change stream starts. It takes precedence over resumeAfter and startAtOperationTime.
-func WithStartAfter(startAfter bson.Raw) WatchOption {
+// WithResumeToken allows to specify the resume token (e.g. a stored checkpoint) after which
+// the change stream resumes. It takes precedence over resumeAfter and startAtOperationTime.
+func WithResumeToken(resumeToken bson.Raw) WatchOption {
 	return func(w *WatchConfig) {
-		w.startAfter = startAfter
+		w.resumeToken = resumeToken
 	}
 }
 
