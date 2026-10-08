@@ -32,9 +32,13 @@ var cfg = &Base{
 		CollectionName:         "items",
 		ServerSelectionTimeout: 2 * time.Second,
 		Options: MongoDBOptions{
-			FullDocument:    false,
-			WatchMaxRetries: 3,
-			WatchRetryDelay: 500 * time.Millisecond,
+			FullDocument:         false,
+			WatchMaxRetries:      3,
+			WatchRetryDelay:      500 * time.Millisecond,
+			CheckpointEnabled:    true,
+			CheckpointCollection: "kafka_mongo_watcher_checkpoints",
+			CheckpointInterval:   1 * time.Second,
+			ResumeOnHistoryLost:  ResumeOnHistoryLostFail,
 		},
 	},
 	Kafka: Kafka{

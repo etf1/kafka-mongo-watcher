@@ -16,8 +16,13 @@ import (
 func (container *Container) GetChangeEventProducer() mongo.ChangeEventProducer {
 	if container.Cfg.Replay {
 		return container.getReplayProducer().Produce
-	} else {
-		return container.getWatchProducer().GetProducer(container.getWatchOptions()...)
+	}
+	return func(ctx context.Context) (chan *mongo.ChangeEvent, error) {
+		options, err := container.getWatchOptions(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return container.getWatchProducer().GetProducer(options...)(ctx)
 	}
 }
 
@@ -53,17 +58,33 @@ func (container *Container) getWatchProducer() *mongo.WatchProducer {
 	return container.watchProducer
 }
 
-func (container *Container) getWatchOptions() []mongo.WatchOption {
+func (container *Container) getWatchOptions(ctx context.Context) ([]mongo.WatchOption, error) {
 	configOptions := container.Cfg.MongoDB.Options
 	options := []mongo.WatchOption{
 		mongo.WithBatchSize(configOptions.BatchSize),
 		mongo.WithFullDocument(configOptions.FullDocument),
 		mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
-		mongo.WithResumeAfter([]byte(configOptions.ResumeAfter)),
 		mongo.WithMaxRetries(configOptions.WatchMaxRetries),
 		mongo.WithRetryDelay(configOptions.WatchRetryDelay),
 		mongo.WithIgnoreUpdateDescription(configOptions.IgnoreUpdateDescription),
+		mongo.WithStartFromNowOnHistoryLost(configOptions.ResumeOnHistoryLost == config.ResumeOnHistoryLostNow),
 	}
+
+	// The stored checkpoint takes precedence over the configured starting point
+	if tracker := container.GetCheckpointTracker(); tracker != nil {
+		resumeToken, err := container.getCheckpointStore().Load(ctx)
+		if err != nil {
+			container.GetLogger().Error("Unable to load checkpoint", logger.Error("error", err))
+			return nil, err
+		}
+		if len(resumeToken) > 0 {
+			container.GetLogger().Info("Resuming change stream from checkpoint", logger.String("resume_token", resumeToken.String()))
+			return append(options, mongo.WithStartAfter(resumeToken)), nil
+		}
+		container.GetLogger().Info("No checkpoint found, using configured starting point")
+	}
+
+	options = append(options, mongo.WithResumeAfter([]byte(configOptions.ResumeAfter)))
 
 	switch {
 	case configOptions.StartAtOperationTimeT > 0:
@@ -81,7 +102,7 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 		options = append(options, mongo.WithStartAtOperationTime(startAt))
 	}
 
-	return options
+	return options, nil
 }
 
 func (container *Container) GetMongoCollection() mongo.CollectionAdapter {

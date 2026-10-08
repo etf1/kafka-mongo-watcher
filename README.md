@@ -167,6 +167,26 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 
 *Description*: Sleeping delay between two watch attempts (default: 500ms)
 
+#### MONGODB_OPTION_CHECKPOINT_ENABLED
+*Type*: boolean
+
+*Description*: Persists the resume token of the last event acknowledged by Kafka, so that the change stream restarts from it after a restart (default: true, always disabled in replay mode). When a checkpoint exists, it takes precedence over `MONGODB_OPTION_RESUME_AFTER` and `MONGODB_OPTION_START_AT_*`: delete the checkpoint document to force another starting point. Delivery is *at-least-once*: some events may be sent again after a crash, consumers must be idempotent. The resume token of each event is also sent in the `x-resume-token` message header (usable as `MONGODB_OPTION_RESUME_AFTER`). The MongoDB user needs write access on the checkpoint collection, and the oplog window must be larger than the maximum expected downtime.
+
+#### MONGODB_OPTION_CHECKPOINT_COLLECTION
+*Type*: string
+
+*Description*: Collection (in `MONGODB_DATABASE_NAME`) where checkpoints are stored, one document per `<APP_NAME>/<database>/<collection>/<topic>` (default: "kafka_mongo_watcher_checkpoints")
+
+#### MONGODB_OPTION_CHECKPOINT_INTERVAL
+*Type*: duration
+
+*Description*: Interval between two checkpoint saves, a last save is done on graceful shutdown (default: 1s)
+
+#### MONGODB_OPTION_RESUME_ON_HISTORY_LOST
+*Type*: string
+
+*Description*: Behaviour when the resume point is no longer available in the oplog: `fail` stops the application with an error, `now` logs an error and restarts the change stream from now, losing the missing events (default: "fail")
+
 #### KAFKA_BOOTSTRAP_SERVERS
 *Type*: string
 

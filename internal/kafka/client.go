@@ -25,8 +25,11 @@ func NewClient(producer KafkaProducer) *client {
 func (c *client) Produce(messages chan *Message) {
 	defer c.Close()
 
+	// Retrieved once: some producers (e.g. otelconfluent) return a new channel on each call,
+	// which would not preserve messages ordering.
+	produceChannel := c.producer.ProduceChannel()
 	for message := range messages {
-		c.producer.ProduceChannel() <- &kafka.Message{
+		produceChannel <- &kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &message.Topic, Partition: kafka.PartitionAny},
 			Key:            message.Key,
 			Value:          message.Value,

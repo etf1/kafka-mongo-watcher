@@ -64,7 +64,18 @@ type MongoDBOptions struct {
 	StartAtOperationTimeT   uint32        `config:"MONGODB_OPTION_START_AT_OPERATION_TIME_T"`
 	WatchRetryDelay         time.Duration `config:"MONGODB_OPTION_WATCH_RETRY_DELAY"`
 	WatchMaxRetries         int32         `config:"MONGODB_OPTION_WATCH_MAX_RETRIES"`
+	CheckpointEnabled       bool          `config:"MONGODB_OPTION_CHECKPOINT_ENABLED"`
+	CheckpointCollection    string        `config:"MONGODB_OPTION_CHECKPOINT_COLLECTION"`
+	CheckpointInterval      time.Duration `config:"MONGODB_OPTION_CHECKPOINT_INTERVAL"`
+	ResumeOnHistoryLost     string        `config:"MONGODB_OPTION_RESUME_ON_HISTORY_LOST"`
 }
+
+const (
+	// ResumeOnHistoryLostFail stops the application when the resume point is no longer in the oplog
+	ResumeOnHistoryLostFail = "fail"
+	// ResumeOnHistoryLostNow restarts the change stream from now when the resume point is no longer in the oplog
+	ResumeOnHistoryLostNow = "now"
+)
 
 // Kafka is the configuration provider for Kafka
 type Kafka struct {
@@ -99,9 +110,13 @@ func NewBase(ctx context.Context, configPrefix string) *Base {
 			CollectionName:         "items",
 			ServerSelectionTimeout: 2 * time.Second,
 			Options: MongoDBOptions{
-				FullDocument:    false,
-				WatchMaxRetries: 3,
-				WatchRetryDelay: 500 * time.Millisecond,
+				FullDocument:         false,
+				WatchMaxRetries:      3,
+				WatchRetryDelay:      500 * time.Millisecond,
+				CheckpointEnabled:    true,
+				CheckpointCollection: "kafka_mongo_watcher_checkpoints",
+				CheckpointInterval:   1 * time.Second,
+				ResumeOnHistoryLost:  ResumeOnHistoryLostFail,
 			},
 		},
 		Kafka: Kafka{

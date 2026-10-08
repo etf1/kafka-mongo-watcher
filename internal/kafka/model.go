@@ -6,6 +6,8 @@ type Message struct {
 	Topic   string
 	Key     []byte
 	Value   []byte
+	// ResumeToken is the MongoDB change stream resume token (extended JSON) of the event
+	ResumeToken []byte
 }
 
 // Header represents a message header

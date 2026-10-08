@@ -87,3 +87,20 @@ func TestTransformChangeEventToKafkaMessageWhenDocumentIDError(t *testing.T) {
 	expectedValue := []byte(`{"_id":null,"operationType":"","fullDocument":{"hello":"this-is-my-second-test-event"},"ns":null,"documentKey":{"_id":{"$oid":"5ccfdbb519580ee49d50803d"}},"clusterTime":{"$date":{"$numberLong":"-62135596800000"}}}`)
 	assert.Equal(expectedValue, message.Value)
 }
+
+func TestTransformChangeEventToKafkaMessageWithResumeToken(t *testing.T) {
+	events := make(chan *ChangeEvent)
+	go func() {
+		defer close(events)
+		objectID, _ := bson.ObjectIDFromHex("5ccfdbb519580ee49d50803c")
+		events <- &ChangeEvent{
+			ID:          bson.D{{Key: "_data", Value: "826A1B2C3D"}},
+			DocumentKey: documentKey{ID: objectID},
+		}
+	}()
+
+	transformer := NewChangeEventKafkaMessageTransformer("my-test-topic", logger.NewNopLogger())
+
+	message := <-transformer.Transform(events)
+	assert.Equal(t, []byte(`{"_data":"826A1B2C3D"}`), message.ResumeToken)
+}

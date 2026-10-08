@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/etf1/kafka-mongo-watcher/config"
+	"github.com/etf1/kafka-mongo-watcher/internal/checkpoint"
 	"github.com/etf1/kafka-mongo-watcher/internal/mongo"
 	"github.com/etf1/kafka-mongo-watcher/internal/service"
 	"github.com/gol4ng/logger"
@@ -38,8 +39,36 @@ func main() {
 		container.GetLogger().Error("Giving up: unable to start change event producer", logger.Error("error", err))
 		return
 	}
+
+	tracker := container.GetCheckpointTracker()
+	if tracker != nil {
+		go tracker.Run(ctx, cfg.MongoDB.Options.CheckpointInterval)
+	}
+
 	kafkaMessageChan := container.GetChangeEventKafkaMessageTransformer().Transform(changeEventChan)
 	container.GetKafkaClient().Produce(kafkaMessageChan)
+
+	if tracker != nil {
+		flushCheckpoint(container, tracker)
+	}
+}
+
+// flushCheckpoint waits for the last delivery reports and saves the final checkpoint,
+// before MongoDB is disconnected.
+func flushCheckpoint(container *service.Container, tracker *checkpoint.Tracker) {
+	log := container.GetLogger()
+
+	select {
+	case <-container.GetKafkaDeliveryDispatcher().Done():
+	case <-time.After(10 * time.Second):
+		log.Warning("Timeout while waiting for kafka delivery reports")
+	}
+
+	flushCtx, flushCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer flushCancel()
+	if err := tracker.Flush(flushCtx); err != nil {
+		log.Error("Failed to save final checkpoint", logger.Error("error", err))
+	}
 }
 
 // startProducerWithRetry retries the change event producer creation with
@@ -58,6 +87,10 @@ func startProducerWithRetry(ctx context.Context, container *service.Container, t
 		ch, err := producer(ctx)
 		if err == nil {
 			return ch, nil
+		}
+		if mongo.IsResumePointLost(err) {
+			// Retrying will always fail, see MONGODB_OPTION_RESUME_ON_HISTORY_LOST
+			return nil, err
 		}
 		log.Warning("Failed to start change event producer, retrying…",
 			logger.Error("error", err), logger.Duration("retry_in", delay))

@@ -30,7 +30,8 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 			pipeline = append(customElements, pipeline...)
 		}
 
-		cursor, err := w.watch(ctx, pipeline, config, config.resumeAfter, nil)
+		position := config.initialPosition()
+		cursor, err := w.watch(ctx, pipeline, config, &position)
 
 		if err != nil {
 			w.logger.Error("Mongo client: An error has occured while trying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
@@ -43,19 +44,24 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 			defer close(events)
 			defer func() { closeCursor(cursor) }()
 			for {
-				startAfter := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription)
+				resumeToken := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription)
 				// sendEvents exited: either the cursor broke or the context was canceled.
 				if ctx.Err() != nil {
 					w.logger.Info("Context canceled")
 					return
 				}
-				w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", startAfter))
+				// Keep the previous position when the cursor did not return any token,
+				// otherwise the stream would restart from "now" and lose events.
+				if len(resumeToken) > 0 {
+					position = streamPosition{startAfter: resumeToken}
+				}
+				w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_after", position.startAfter))
 				closeCursor(cursor)
 				cursor = nil
 				if config.maxRetries == 0 {
 					return
 				}
-				cursor, err = w.watch(ctx, pipeline, config, nil, startAfter)
+				cursor, err = w.watch(ctx, pipeline, config, &position)
 				if err != nil {
 					w.logger.Error("Mongo client : An error has occured while retrying to watch collection", logger.String("collection", w.collection.Name()), logger.Error("error", err))
 					return
@@ -67,7 +73,30 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 	}
 }
 
-func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *WatchConfig, resumeAfter bson.M, startAfter bson.Raw) (cursor StreamCursor, err error) {
+// streamPosition is the logical starting point of a change stream.
+// MongoDB only accepts one of these options at a time.
+type streamPosition struct {
+	startAfter           bson.Raw
+	resumeAfter          bson.M
+	startAtOperationTime *bson.Timestamp
+}
+
+func (p streamPosition) isSet() bool {
+	return len(p.startAfter) > 0 || len(p.resumeAfter) > 0 || p.startAtOperationTime != nil
+}
+
+func (p streamPosition) apply(opts *options.ChangeStreamOptionsBuilder) {
+	switch {
+	case len(p.startAfter) > 0:
+		opts.SetStartAfter(p.startAfter)
+	case len(p.resumeAfter) > 0:
+		opts.SetResumeAfter(p.resumeAfter)
+	case p.startAtOperationTime != nil:
+		opts.SetStartAtOperationTime(p.startAtOperationTime)
+	}
+}
+
+func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *WatchConfig, position *streamPosition) (cursor StreamCursor, err error) {
 	// retries loop
 	attempt := int32(0)
 	for {
@@ -77,15 +106,7 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 		if config.fullDocumentEnabled {
 			opts.SetFullDocument(options.UpdateLookup)
 		}
-		if config.startAtOperationTime != nil {
-			opts.SetStartAtOperationTime(config.startAtOperationTime)
-		}
-
-		if startAfter != nil {
-			opts.SetStartAfter(startAfter)
-		} else if len(resumeAfter) > 0 {
-			opts.SetResumeAfter(resumeAfter)
-		}
+		position.apply(opts)
 
 		cursor, err = w.collection.Watch(ctx, pipeline, opts)
 		if err == nil {
@@ -94,6 +115,16 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 		if cursor != nil {
 			closeCursor(cursor)
 			cursor = nil
+		}
+		if IsResumePointLost(err) {
+			// Retrying with the same position will always fail.
+			if !config.startFromNowOnHistoryLost || !position.isSet() {
+				w.logger.Error("Mongo client: resume point is no longer available in the oplog", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+				return
+			}
+			w.logger.Error("Mongo client: resume point is no longer available in the oplog, restarting from now: some events have been lost", logger.String("collection", w.collection.Name()), logger.Error("error", err))
+			*position = streamPosition{}
+			continue
 		}
 		if attempt >= config.maxRetries {
 			w.logger.Warning("failed to open cursor on collection, reach max retries", logger.String("collection", w.collection.Name()), logger.Int32("max_retries", config.maxRetries), logger.Error("error", err))
@@ -118,14 +149,6 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 	go func() {
 		defer close(resumeToken)
 		for cursor.Next(ctx) {
-			if cursor.ID() == 0 {
-				w.logger.Error("Mongo client: Cursor has been closed")
-				break
-			}
-			if err := cursor.Err(); err != nil {
-				w.logger.Error("Mongo client: Failed to watch collection", logger.Error("error", err))
-				break
-			}
 			event := &ChangeEvent{}
 			if err := cursor.Decode(event); err != nil {
 				w.logger.Error("Mongo client: Unable to decode change event value from cursor", logger.Error("error", err))
@@ -140,6 +163,15 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 				resumeToken <- cursor.ResumeToken()
 				return
 			}
+			// Checked after sending: the last event returned by a closed cursor
+			// (e.g. invalidate) must not be dropped.
+			if cursor.ID() == 0 {
+				w.logger.Error("Mongo client: Cursor has been closed")
+				break
+			}
+		}
+		if err := cursor.Err(); err != nil && ctx.Err() == nil {
+			w.logger.Error("Mongo client: Failed to watch collection", logger.Error("error", err))
 		}
 		resumeToken <- cursor.ResumeToken()
 	}()
@@ -158,14 +190,29 @@ func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface, 
 type WatchOption func(*WatchConfig)
 
 type WatchConfig struct {
-	batchSize               int32
-	fullDocumentEnabled     bool
-	ignoreUpdateDescription bool
-	maxAwaitTime            time.Duration
-	resumeAfter             bson.M
-	startAtOperationTime    *bson.Timestamp
-	maxRetries              int32
-	retryDelay              time.Duration
+	batchSize                 int32
+	fullDocumentEnabled       bool
+	ignoreUpdateDescription   bool
+	maxAwaitTime              time.Duration
+	startAfter                bson.Raw
+	resumeAfter               bson.M
+	startAtOperationTime      *bson.Timestamp
+	maxRetries                int32
+	retryDelay                time.Duration
+	startFromNowOnHistoryLost bool
+}
+
+// initialPosition returns the configured starting point, by priority:
+// startAfter (checkpoint) > resumeAfter > startAtOperationTime > now.
+func (o *WatchConfig) initialPosition() streamPosition {
+	switch {
+	case len(o.startAfter) > 0:
+		return streamPosition{startAfter: o.startAfter}
+	case len(o.resumeAfter) > 0:
+		return streamPosition{resumeAfter: o.resumeAfter}
+	default:
+		return streamPosition{startAtOperationTime: o.startAtOperationTime}
+	}
 }
 
 func (o *WatchConfig) apply(options ...WatchOption) {
@@ -222,6 +269,22 @@ func WithResumeAfter(resumeAfter []byte) WatchOption {
 				panic(err)
 			}
 		}
+	}
+}
+
+// WithStartAfter allows to specify the resume token (e.g. a stored checkpoint) after which
+// the change stream starts. It takes precedence over resumeAfter and startAtOperationTime.
+func WithStartAfter(startAfter bson.Raw) WatchOption {
+	return func(w *WatchConfig) {
+		w.startAfter = startAfter
+	}
+}
+
+// WithStartFromNowOnHistoryLost allows to restart the change stream from now when the
+// resume point is no longer available in the oplog, instead of failing.
+func WithStartFromNowOnHistoryLost(enabled bool) WatchOption {
+	return func(w *WatchConfig) {
+		w.startFromNowOnHistoryLost = enabled
 	}
 }
 

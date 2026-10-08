@@ -13,6 +13,8 @@ func (container *Container) GetKafkaProducer() *kafkaconfluent.Producer {
 			"bootstrap.servers":       container.Cfg.Kafka.BootstrapServers,
 			"go.produce.channel.size": container.Cfg.Kafka.ProduceChannelSize,
 			"message.max.bytes":       container.Cfg.Kafka.MessageMaxBytes,
+			// headers are needed to retrieve the resume token of delivered messages (checkpoint)
+			"go.delivery.report.fields": "key,headers",
 		})
 		if err != nil {
 			panic(err)
@@ -42,9 +44,23 @@ func (container *Container) GetKafkaClient() kafka.Client {
 		} else {
 			container.kafkaClient = container.getKafkaBaseClient()
 		}
+
+		if tracker := container.GetCheckpointTracker(); tracker != nil {
+			container.GetKafkaDeliveryDispatcher().Register(tracker.OnDelivery)
+		}
+		// Always drain delivery reports, otherwise the producer never empties its queue
+		go container.GetKafkaDeliveryDispatcher().Run(container.kafkaClient.Events())
 	}
 
 	return container.kafkaClient
+}
+
+// GetKafkaDeliveryDispatcher returns the single reader of the kafka producer delivery reports
+func (container *Container) GetKafkaDeliveryDispatcher() *kafka.DeliveryDispatcher {
+	if container.kafkaDeliveryDispatcher == nil {
+		container.kafkaDeliveryDispatcher = kafka.NewDeliveryDispatcher()
+	}
+	return container.kafkaDeliveryDispatcher
 }
 
 func (container *Container) getKafkaBaseClient() kafka.Client {
@@ -56,7 +72,10 @@ func (container *Container) getKafkaBaseClient() kafka.Client {
 		kafkaProducer = container.decorateKafkaClientWithOpenTelemetry(originalKafkaProducer)
 	}
 
-	client := kafka.NewClient(kafkaProducer)
+	var client kafka.Client = kafka.NewClient(kafkaProducer)
+	if tracker := container.GetCheckpointTracker(); tracker != nil {
+		client = kafka.NewClientCheckpoint(client, tracker.Track)
+	}
 	return container.decorateKafkaClientWithOrigin(client)
 }
 
@@ -86,7 +105,7 @@ func (container *Container) decorateKafkaClientWithTracer(client kafka.Client) k
 
 func (container *Container) decorateKafkaClientWithMetrics(client kafka.Client) kafka.Client {
 	clientMetric := kafka.NewClientMetric(client, container.GetKafkaRecorder())
-	go clientMetric.Record()
+	container.GetKafkaDeliveryDispatcher().Register(clientMetric.OnDelivery)
 
 	return clientMetric
 }
