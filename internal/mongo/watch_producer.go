@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"github.com/gol4ng/logger"
@@ -43,24 +44,52 @@ func (w *WatchProducer) GetProducer(o ...WatchOption) ChangeEventProducer {
 		go func() {
 			defer close(events)
 			defer func() { closeCursor(cursor) }()
+			// consecutive reconnections that did not move the stream forward
+			stalls := int32(0)
 			for {
-				lastClusterTime := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription)
+				openedAt := time.Now()
+				end := <-w.sendEvents(ctx, cursor, events, config.ignoreUpdateDescription)
 				// sendEvents exited: either the cursor broke or the context was canceled.
 				if ctx.Err() != nil {
 					w.logger.Info("Context canceled")
 					return
 				}
-				// Keep the previous position when no event was sent, otherwise the stream
-				// would restart from "now" and lose events. The last event is sent again
-				// (at-least-once).
-				if !lastClusterTime.IsZero() {
-					position = streamPosition{startAtOperationTime: &lastClusterTime}
+				previous := position
+				switch {
+				case end.invalidated:
+					// startAtOperationTime is inclusive: resuming at the invalidate cluster
+					// time returns the same invalidate event again, forever. Resume just
+					// after it (startAfter is not supported by Amazon DocumentDB).
+					next := bson.Timestamp{T: end.lastClusterTime.T, I: end.lastClusterTime.I + 1}
+					position = streamPosition{startAtOperationTime: &next}
+					w.logger.Warning("Mongo client : Change stream invalidated (collection dropped or renamed), resuming after it", logger.String("collection", w.collection.Name()), logger.Any("cluster_time", end.lastClusterTime))
+				case !end.lastClusterTime.IsZero():
+					// Keep the previous position when no event was sent, otherwise the stream
+					// would restart from "now" and lose events. The last event is sent again
+					// (at-least-once).
+					position = streamPosition{startAtOperationTime: &end.lastClusterTime}
+				}
+				if position.equal(previous) && time.Since(openedAt) < stallWindow {
+					stalls++
+				} else {
+					stalls = 0
 				}
 				w.logger.Info("Mongo client : Retry to watch collection", logger.String("collection", w.collection.Name()), logger.Any("start_at_operation_time", position.startAtOperationTime))
 				closeCursor(cursor)
 				cursor = nil
 				if config.maxRetries == 0 {
 					return
+				}
+				if stalls > config.maxRetries {
+					w.logger.Error("Mongo client : Change stream keeps closing without moving forward, reach max retries", logger.String("collection", w.collection.Name()), logger.Int32("max_retries", config.maxRetries), logger.Any("start_at_operation_time", position.startAtOperationTime))
+					return
+				}
+				if stalls > 0 && config.retryDelay > 0 {
+					select {
+					case <-ctx.Done():
+						return
+					case <-time.After(config.retryDelay):
+					}
 				}
 				cursor, err = w.watch(ctx, pipeline, config, &position)
 				if err != nil {
@@ -86,6 +115,16 @@ type streamPosition struct {
 
 func (p streamPosition) isSet() bool {
 	return len(p.resumeAfter) > 0 || p.startAtOperationTime != nil
+}
+
+func (p streamPosition) equal(other streamPosition) bool {
+	if (p.startAtOperationTime == nil) != (other.startAtOperationTime == nil) {
+		return false
+	}
+	if p.startAtOperationTime != nil && !p.startAtOperationTime.Equal(*other.startAtOperationTime) {
+		return false
+	}
+	return reflect.DeepEqual(p.resumeAfter, other.resumeAfter)
 }
 
 func (p streamPosition) apply(opts *options.ChangeStreamOptionsBuilder) {
@@ -144,14 +183,26 @@ func (w *WatchProducer) watch(ctx context.Context, pipeline bson.A, config *Watc
 	return
 }
 
-// sendEvents forwards the cursor events until it breaks or the context is canceled,
-// and returns the cluster time of the last sent event (zero if none)
-func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent, ignoreUpdateDescription bool) <-chan bson.Timestamp {
-	lastClusterTime := make(chan bson.Timestamp, 1)
+// stallWindow is the minimum lifetime of a cursor that closes without moving the
+// stream forward for its reconnection not to count as a stall: an idle stream that
+// breaks from time to time must not exhaust the retries.
+const stallWindow = time.Minute
+
+// streamEnd describes how a cursor ended
+type streamEnd struct {
+	// lastClusterTime is the cluster time of the last sent event (zero if none)
+	lastClusterTime bson.Timestamp
+	// invalidated is true when the last sent event closes the stream (drop, rename, invalidate)
+	invalidated bool
+}
+
+// sendEvents forwards the cursor events until it breaks or the context is canceled
+func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, events chan *ChangeEvent, ignoreUpdateDescription bool) <-chan streamEnd {
+	result := make(chan streamEnd, 1)
 
 	go func() {
-		defer close(lastClusterTime)
-		var last bson.Timestamp
+		defer close(result)
+		var end streamEnd
 		for cursor.Next(ctx) {
 			event := &ChangeEvent{}
 			if err := cursor.Decode(event); err != nil {
@@ -164,10 +215,11 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 			select {
 			case events <- event:
 				if clusterTime := event.ClusterTimestamp(); !clusterTime.IsZero() {
-					last = clusterTime
+					end.lastClusterTime = clusterTime
 				}
+				end.invalidated = event.invalidatesStream()
 			case <-ctx.Done():
-				lastClusterTime <- last
+				result <- end
 				return
 			}
 			// Checked after sending: the last event returned by a closed cursor
@@ -180,10 +232,10 @@ func (w *WatchProducer) sendEvents(ctx context.Context, cursor StreamCursor, eve
 		if err := cursor.Err(); err != nil && ctx.Err() == nil {
 			w.logger.Error("Mongo client: Failed to watch collection", logger.Error("error", err))
 		}
-		lastClusterTime <- last
+		result <- end
 	}()
 
-	return lastClusterTime
+	return result
 }
 
 func NewWatchProducer(adapter CollectionAdapter, logger logger.LoggerInterface, customPipeline string) *WatchProducer {

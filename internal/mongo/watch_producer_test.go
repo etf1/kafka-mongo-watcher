@@ -406,6 +406,109 @@ func TestWatchProduceReconnectKeepsPreviousPositionWhenNoEvent(t *testing.T) {
 	}
 }
 
+func TestWatchProduceReconnectAfterInvalidate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	dropClusterTime := bson.Timestamp{T: 20, I: 3}
+	// startAtOperationTime is inclusive: resuming at the drop cluster time would
+	// return the same drop/invalidate events again, forever
+	afterDrop := bson.Timestamp{T: 20, I: 4}
+
+	initialOpts := options.ChangeStream().SetBatchSize(0).SetMaxAwaitTime(0)
+	reconnectOpts := options.ChangeStream().
+		SetBatchSize(0).
+		SetMaxAwaitTime(0).
+		SetStartAtOperationTime(&afterDrop)
+
+	mongoCollection := NewMockCollectionAdapter(ctrl)
+	firstCursor := NewMockStreamCursor(ctrl)
+	secondCursor := NewMockStreamCursor(ctrl)
+
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
+	gomock.InOrder(
+		mongoCollection.EXPECT().Watch(ctx, bson.A{}, matchesChangeStreamOptions(initialOpts)).Return(firstCursor, nil),
+		mongoCollection.EXPECT().Watch(ctx, bson.A{}, matchesChangeStreamOptions(reconnectOpts)).Return(secondCursor, nil),
+	)
+
+	// first cursor returns drop then invalidate, and is closed by the server
+	firstCursor.EXPECT().Next(ctx).Return(true).Times(2)
+	gomock.InOrder(
+		firstCursor.EXPECT().Decode(gomock.Any()).DoAndReturn(func(val interface{}) error {
+			val.(*ChangeEvent).Operation = "drop"
+			val.(*ChangeEvent).clusterTimestamp = dropClusterTime
+			return nil
+		}),
+		firstCursor.EXPECT().Decode(gomock.Any()).DoAndReturn(func(val interface{}) error {
+			val.(*ChangeEvent).Operation = "invalidate"
+			val.(*ChangeEvent).clusterTimestamp = dropClusterTime
+			return nil
+		}),
+	)
+	gomock.InOrder(
+		firstCursor.EXPECT().ID().Return(int64(1)),
+		firstCursor.EXPECT().ID().Return(int64(0)),
+	)
+	firstCursor.EXPECT().Err().Return(nil)
+	firstCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+
+	secondCursor.EXPECT().Next(ctx).Return(true).AnyTimes()
+	secondCursor.EXPECT().Decode(gomock.Any()).Return(nil).AnyTimes()
+	secondCursor.EXPECT().ID().Return(int64(1)).AnyTimes()
+	secondCursor.EXPECT().Err().Return(nil).AnyTimes()
+	secondCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
+
+	events, err := watcher.GetProducer(WithMaxRetries(1), WithRetryDelay(time.Millisecond))(ctx)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "drop", (<-events).Operation)
+	assert.Equal(t, "invalidate", (<-events).Operation)
+	<-events // from second cursor
+	cancel()
+	for range events {
+	}
+}
+
+func TestWatchProduceStopsWhenStreamDoesNotMoveForward(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	checkpoint := bson.Timestamp{T: 10, I: 1}
+
+	mongoCollection := NewMockCollectionAdapter(ctrl)
+	mongoCursor := NewMockStreamCursor(ctrl)
+
+	mongoCollection.EXPECT().Name().Return("coll").AnyTimes()
+	// initial watch + maxRetries reconnections, then the producer gives up
+	mongoCollection.EXPECT().Watch(ctx, bson.A{}, gomock.Any()).Return(mongoCursor, nil).Times(3)
+	mongoCursor.EXPECT().Next(ctx).Return(false).AnyTimes()
+	mongoCursor.EXPECT().Err().Return(errors.New("cursor closed")).AnyTimes()
+	mongoCursor.EXPECT().Close(gomock.Any()).Return(nil).AnyTimes()
+
+	watcher := NewWatchProducer(mongoCollection, logger.NewNopLogger(), "")
+
+	events, err := watcher.GetProducer(WithStartAtOperationTime(checkpoint), WithMaxRetries(2), WithRetryDelay(time.Millisecond))(ctx)
+	assert.Nil(t, err)
+
+	timeout := time.After(5 * time.Second)
+	for {
+		select {
+		case _, ok := <-events:
+			if !ok {
+				return
+			}
+		case <-timeout:
+			t.Fatal("events channel was not closed after max retries")
+		}
+	}
+}
+
 func TestWatchProduceWhenResumePointLost(t *testing.T) {
 	historyLost := mongodriver.CommandError{Code: errorCodeChangeStreamHistoryLost, Message: "history lost"}
 	checkpoint := bson.Timestamp{T: 10, I: 1}

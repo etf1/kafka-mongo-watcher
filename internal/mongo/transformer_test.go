@@ -88,6 +88,25 @@ func TestTransformChangeEventToKafkaMessageWhenDocumentIDError(t *testing.T) {
 	assert.Equal(expectedValue, message.Value)
 }
 
+func TestTransformChangeEventToKafkaMessageIgnoresInvalidatingEvents(t *testing.T) {
+	events := make(chan *ChangeEvent)
+	go func() {
+		defer close(events)
+		events <- &ChangeEvent{Operation: "drop"}
+		events <- &ChangeEvent{Operation: "invalidate"}
+		objectID, _ := bson.ObjectIDFromHex("5ccfdbb519580ee49d50803c")
+		events <- &ChangeEvent{Operation: "insert", DocumentKey: documentKey{ID: objectID}}
+	}()
+
+	transformer := NewChangeEventKafkaMessageTransformer("my-test-topic", logger.NewNopLogger())
+
+	var keys []string
+	for message := range transformer.Transform(events) {
+		keys = append(keys, string(message.Key))
+	}
+	assert.Equal(t, []string{"5ccfdbb519580ee49d50803c"}, keys)
+}
+
 func TestTransformChangeEventToKafkaMessageWithResumeToken(t *testing.T) {
 	events := make(chan *ChangeEvent)
 	go func() {

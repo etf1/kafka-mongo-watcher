@@ -49,6 +49,16 @@ func (e ChangeEvent) ClusterTimestamp() bson.Timestamp {
 	return e.clusterTimestamp
 }
 
+// invalidatesStream returns true for the events that close the change stream
+// (the collection was dropped or renamed). They have no documentKey.
+func (e ChangeEvent) invalidatesStream() bool {
+	switch e.Operation {
+	case "invalidate", "drop", "rename", "dropDatabase":
+		return true
+	}
+	return false
+}
+
 // marshall event to an array of bytes
 func (e ChangeEvent) marshal() ([]byte, error) {
 	return bson.MarshalExtJSON(e, true, true)

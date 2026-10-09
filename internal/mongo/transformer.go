@@ -17,6 +17,10 @@ func (t *ChangeEventKafkaMessageTransformer) Transform(changeEvents chan *Change
 	go func() {
 		defer close(messageChan)
 		for event := range changeEvents {
+			if event.invalidatesStream() {
+				t.logger.Warning("Mongo transformer: Ignoring event without document", logger.String("operation_type", event.Operation), logger.Any("cluster_time", event.ClusterTimestamp()))
+				continue
+			}
 			documentID, err := event.documentID()
 			if err != nil {
 				t.logger.Error("Mongo transformer: Unable to extract document id from event", logger.Error("error", err))

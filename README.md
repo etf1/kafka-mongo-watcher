@@ -160,7 +160,7 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 #### MONGODB_OPTION_WATCH_MAX_RETRIES
 *Type*: integer
 
-*Description*: The max number of retries when trying to watch a collection (default: 3, set to 0 to disable retry)
+*Description*: The max number of retries when trying to watch a collection (default: 3, set to 0 to disable retry). It also bounds the consecutive reconnections of a change stream that keeps closing without moving forward: the process then exits and restarts from the checkpoint
 
 #### MONGODB_OPTION_WATCH_RETRY_DELAY
 *Type*: duration
