@@ -180,7 +180,7 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 #### MONGODB_OPTION_CHECKPOINT_INTERVAL
 *Type*: duration
 
-*Description*: Interval between two checkpoint saves, a last save is done on graceful shutdown (default: 1s)
+*Description*: Interval between two checkpoint saves, a last save is done on graceful shutdown. Must be positive when the checkpoint is enabled (default: 1s)
 
 #### MONGODB_OPTION_CHECKPOINT_MAX_AGE
 *Type*: duration

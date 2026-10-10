@@ -28,6 +28,11 @@ func main() {
 	cfg := config.NewBase(ctx, configPrefix)
 
 	container := service.NewContainer(ctx, cfg)
+	if err := cfg.Validate(); err != nil {
+		container.GetLogger().Error("Invalid configuration", logger.Error("error", err))
+		cancel()
+		os.Exit(1)
+	}
 	go container.GetHttpServer().Start(ctx)
 
 	// closed once the change stream cursor is closed, nil while it is not opened

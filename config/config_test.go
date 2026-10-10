@@ -60,3 +60,28 @@ func TestNewBase(t *testing.T) {
 	assert.IsType(t, new(Base), base)
 	assert.Equal(t, cfg, base)
 }
+
+func TestValidate(t *testing.T) {
+	valid := func() *Base {
+		return &Base{MongoDB: MongoDB{Options: MongoDBOptions{
+			CheckpointEnabled:   true,
+			CheckpointInterval:  time.Second,
+			ResumeOnHistoryLost: ResumeOnHistoryLostFail,
+		}}}
+	}
+
+	assert.NoError(t, valid().Validate())
+
+	zeroInterval := valid()
+	zeroInterval.MongoDB.Options.CheckpointInterval = 0
+	assert.Error(t, zeroInterval.Validate())
+
+	checkpointDisabled := valid()
+	checkpointDisabled.MongoDB.Options.CheckpointEnabled = false
+	checkpointDisabled.MongoDB.Options.CheckpointInterval = 0
+	assert.NoError(t, checkpointDisabled.Validate())
+
+	unknownPolicy := valid()
+	unknownPolicy.MongoDB.Options.ResumeOnHistoryLost = "later"
+	assert.Error(t, unknownPolicy.Validate())
+}

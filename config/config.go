@@ -141,3 +141,18 @@ func NewBase(ctx context.Context, configPrefix string) *Base {
 
 	return cfg
 }
+
+// Validate checks the options that would otherwise fail at runtime, after the change
+// stream is opened
+func (b *Base) Validate() error {
+	options := b.MongoDB.Options
+	if options.CheckpointEnabled && !b.Replay && options.CheckpointInterval <= 0 {
+		return fmt.Errorf("MONGODB_OPTION_CHECKPOINT_INTERVAL must be positive, got %s", options.CheckpointInterval)
+	}
+	switch options.ResumeOnHistoryLost {
+	case ResumeOnHistoryLostFail, ResumeOnHistoryLostNow:
+	default:
+		return fmt.Errorf("MONGODB_OPTION_RESUME_ON_HISTORY_LOST must be %q or %q, got %q", ResumeOnHistoryLostFail, ResumeOnHistoryLostNow, options.ResumeOnHistoryLost)
+	}
+	return nil
+}
