@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -38,9 +39,27 @@ func main() {
 	// closed once the change stream cursor is closed, nil while it is not opened
 	var watchDone <-chan struct{}
 
+	// set when the application stops because of a delivery failure: exit with an
+	// error once everything is cleaned up, so that the restart is visible
+	var failed atomic.Bool
+	defer func() {
+		if failed.Load() {
+			os.Exit(1)
+		}
+	}()
+
 	defer handleExitSignal(cancel, container)()
 	// Also run on panic: the change stream cursor is closed before MongoDB is disconnected
 	defer func() { cleanup(container, cancel, watchDone) }()
+
+	tracker := container.GetCheckpointTracker()
+	if tracker != nil {
+		tracker.SetFailureHandler(func(err error) {
+			container.GetLogger().Error("Kafka delivery failed: stopping application to replay from the checkpoint", logger.Error("error", err))
+			failed.Store(true)
+			cancel()
+		})
+	}
 
 	// Created before the change stream: a kafka producer failure must not leave
 	// a cursor opened on the MongoDB server
@@ -55,7 +74,6 @@ func main() {
 	}
 	changeEventChan, watchDone = notifyWhenClosed(ctx, changeEventChan)
 
-	tracker := container.GetCheckpointTracker()
 	if tracker != nil {
 		go tracker.Run(ctx, cfg.MongoDB.Options.CheckpointInterval)
 	}

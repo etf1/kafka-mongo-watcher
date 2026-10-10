@@ -3,6 +3,7 @@ package checkpoint
 import (
 	"container/list"
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -21,7 +22,9 @@ type entry struct {
 // Tracker follows the produced events in the change stream order and only commits
 // the position of the last event of the contiguous acknowledged prefix: delivery
 // reports of different partitions may arrive out of order.
-// A failed delivery blocks the checkpoint, the event will be replayed on restart.
+// A message that can never be delivered (e.g. too large) is skipped. Any other
+// delivery failure blocks the checkpoint and calls the failure handler, so that the
+// application restarts and replays the event from the checkpoint.
 type Tracker struct {
 	mu sync.Mutex
 	// flushMu serializes the flushes (periodic and final): an older position saved
@@ -33,6 +36,8 @@ type Tracker struct {
 	index     map[string]*list.Element
 	committed *entry
 	saved     *entry
+	onFailure func(error)
+	failed    bool
 }
 
 // NewTracker returns a new checkpoint tracker
@@ -43,6 +48,14 @@ func NewTracker(store Store, log logger.LoggerInterface) *Tracker {
 		pending: list.New(),
 		index:   map[string]*list.Element{},
 	}
+}
+
+// SetFailureHandler sets the function called once on the first delivery failure
+// that blocks the checkpoint
+func (t *Tracker) SetFailureHandler(onFailure func(error)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.onFailure = onFailure
 }
 
 // Track registers an event that is about to be produced, in the change stream order.
@@ -65,11 +78,51 @@ func (t *Tracker) OnDelivery(message *kafkaconfluent.Message) {
 		return
 	}
 	if err := message.TopicPartition.Error; err != nil {
+		if isPermanentDeliveryError(err) {
+			t.logger.Error("Checkpoint: message can never be delivered, it is skipped and lost",
+				logger.ByteString("resume_token", resumeToken), logger.Error("error", err))
+			t.ack(resumeToken)
+			return
+		}
 		t.logger.Error("Checkpoint: message delivery failed, checkpoint will not move past this event until restart",
 			logger.ByteString("resume_token", resumeToken), logger.Error("error", err))
+		t.fail(err)
 		return
 	}
 	t.ack(resumeToken)
+}
+
+// fail calls the failure handler once: the pending events can no longer be
+// committed, they would grow without limit
+func (t *Tracker) fail(err error) {
+	t.mu.Lock()
+	onFailure := t.onFailure
+	first := !t.failed
+	t.failed = true
+	t.mu.Unlock()
+
+	if first && onFailure != nil {
+		onFailure(err)
+	}
+}
+
+// isPermanentDeliveryError returns true when the message itself can not be
+// delivered: replaying it would always fail
+func isPermanentDeliveryError(err error) bool {
+	var kafkaErr kafkaconfluent.Error
+	if !errors.As(err, &kafkaErr) {
+		return false
+	}
+	switch kafkaErr.Code() {
+	case kafkaconfluent.ErrMsgSizeTooLarge,
+		kafkaconfluent.ErrInvalidMsgSize,
+		kafkaconfluent.ErrInvalidMsg,
+		kafkaconfluent.ErrInvalidRecord,
+		kafkaconfluent.ErrRecordListTooLarge,
+		kafkaconfluent.ErrBadMsg:
+		return true
+	}
+	return false
 }
 
 func (t *Tracker) ack(resumeToken []byte) {

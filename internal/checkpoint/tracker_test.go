@@ -217,3 +217,44 @@ func TestTrackerFlushSkipsPositionNotAfterSavedOne(t *testing.T) {
 
 	assert.Len(t, store.saves, 1)
 }
+
+func TestTrackerSkipsPermanentDeliveryFailure(t *testing.T) {
+	ctx := context.Background()
+	store := &memoryStore{}
+	tracker := NewTracker(store, logger.NewNopLogger())
+	tracker.SetFailureHandler(func(error) { t.Fatal("a permanent failure must not stop the application") })
+
+	track(tracker, "1")
+	track(tracker, "2")
+	track(tracker, "3")
+
+	tracker.OnDelivery(delivery(token("1"), nil))
+	tracker.OnDelivery(delivery(token("2"), kafkaconfluent.NewError(kafkaconfluent.ErrMsgSizeTooLarge, "too large", false)))
+	tracker.OnDelivery(delivery(token("3"), nil))
+
+	assert.Nil(t, tracker.Flush(ctx))
+	assert.Equal(t, "3", store.lastData(t))
+}
+
+func TestTrackerTransientDeliveryFailureCallsHandlerOnce(t *testing.T) {
+	ctx := context.Background()
+	store := &memoryStore{}
+	tracker := NewTracker(store, logger.NewNopLogger())
+
+	var failures []error
+	tracker.SetFailureHandler(func(err error) { failures = append(failures, err) })
+
+	track(tracker, "1")
+	track(tracker, "2")
+	track(tracker, "3")
+
+	timedOut := kafkaconfluent.NewError(kafkaconfluent.ErrMsgTimedOut, "timed out", false)
+	tracker.OnDelivery(delivery(token("1"), nil))
+	tracker.OnDelivery(delivery(token("2"), timedOut))
+	tracker.OnDelivery(delivery(token("3"), timedOut))
+
+	assert.Equal(t, []error{timedOut}, failures)
+	// the checkpoint stops before the failed event, which is replayed on restart
+	assert.Nil(t, tracker.Flush(ctx))
+	assert.Equal(t, "1", store.lastData(t))
+}
