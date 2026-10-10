@@ -205,7 +205,7 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 #### KAFKA_PRODUCE_CHANNEL_SIZE
 *Type*: integer
 
-*Description*: The maximum size of the internal channel producer size (default: 10000)
+*Description*: Deprecated, no longer used: messages are produced with `Produce()` instead of the produce channel. The producer queue is bounded by librdkafka (`queue.buffering.max.messages`) (default: 10000)
 
 A big value here can increase the heap memory of the application as all the payload that have to be sent to Kafka will be maintained in channel.
 

@@ -66,6 +66,20 @@ func (mr *MockKafkaProducerMockRecorder) Events() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Events", reflect.TypeOf((*MockKafkaProducer)(nil).Events))
 }
 
+// Flush mocks base method.
+func (m *MockKafkaProducer) Flush(timeoutMs int) int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Flush", timeoutMs)
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// Flush indicates an expected call of Flush.
+func (mr *MockKafkaProducerMockRecorder) Flush(timeoutMs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Flush", reflect.TypeOf((*MockKafkaProducer)(nil).Flush), timeoutMs)
+}
+
 // Len mocks base method.
 func (m *MockKafkaProducer) Len() int {
 	m.ctrl.T.Helper()

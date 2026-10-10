@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"testing"
+	"time"
 
 	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/golang/mock/gomock"
@@ -28,8 +29,6 @@ func TestClientProduce(t *testing.T) {
 	defer ctrl.Finish()
 
 	// Given
-	produceChannel := make(chan *kafkaconfluent.Message, 1)
-
 	messages := make(chan *Message)
 	go func() {
 		defer close(messages)
@@ -43,10 +42,16 @@ func TestClientProduce(t *testing.T) {
 		}
 	}()
 
+	var inserted *kafkaconfluent.Message
 	producer := NewMockKafkaProducer(ctrl)
-	producer.EXPECT().ProduceChannel().Return(produceChannel)
-	producer.EXPECT().Len().Return(0)
-	producer.EXPECT().Close()
+	producer.EXPECT().Produce(gomock.Any(), nil).DoAndReturn(func(msg *kafkaconfluent.Message, _ chan kafkaconfluent.Event) error {
+		inserted = msg
+		return nil
+	})
+	gomock.InOrder(
+		producer.EXPECT().Flush(1000).Return(0),
+		producer.EXPECT().Close(),
+	)
 
 	cli := NewClient(producer)
 
@@ -54,8 +59,6 @@ func TestClientProduce(t *testing.T) {
 	cli.Produce(messages)
 
 	// Then
-	inserted := <-produceChannel
-
 	assert := assert.New(t)
 	assert.IsType(new(kafkaconfluent.Message), inserted)
 
@@ -65,6 +68,51 @@ func TestClientProduce(t *testing.T) {
 
 	assert.Equal("x-test-header", inserted.Headers[0].Key)
 	assert.Equal([]byte("test"), inserted.Headers[0].Value)
+}
+
+func TestClientProduceRetriesWhenQueueIsFull(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	defer func(delay time.Duration) { queueFullRetryDelay = delay }(queueFullRetryDelay)
+	queueFullRetryDelay = time.Millisecond
+
+	messages := make(chan *Message, 1)
+	messages <- &Message{Topic: "test-topic", Key: []byte(`my-key`)}
+	close(messages)
+
+	producer := NewMockKafkaProducer(ctrl)
+	gomock.InOrder(
+		producer.EXPECT().Produce(gomock.Any(), nil).Return(kafkaconfluent.NewError(kafkaconfluent.ErrQueueFull, "queue full", false)),
+		producer.EXPECT().Produce(gomock.Any(), nil).Return(nil),
+		producer.EXPECT().Flush(1000).Return(0),
+		producer.EXPECT().Close(),
+	)
+
+	NewClient(producer).Produce(messages)
+}
+
+func TestClientProduceReportsEnqueueFailureAsDelivery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	messages := make(chan *Message, 1)
+	messages <- &Message{Topic: "test-topic", Key: []byte(`my-key`)}
+	close(messages)
+
+	enqueueErr := kafkaconfluent.NewError(kafkaconfluent.ErrMsgSizeTooLarge, "message too large", false)
+	events := make(chan kafkaconfluent.Event, 1)
+	producer := NewMockKafkaProducer(ctrl)
+	producer.EXPECT().Produce(gomock.Any(), nil).Return(enqueueErr)
+	producer.EXPECT().Events().Return(events)
+	producer.EXPECT().Flush(1000).Return(0)
+	producer.EXPECT().Close()
+
+	NewClient(producer).Produce(messages)
+
+	report := (<-events).(*kafkaconfluent.Message)
+	assert.Equal(t, enqueueErr, report.TopicPartition.Error)
+	assert.Equal(t, []byte(`my-key`), report.Key)
 }
 
 func TestClientEvents(t *testing.T) {
@@ -91,8 +139,11 @@ func TestClientClose(t *testing.T) {
 
 	// Given
 	producer := NewMockKafkaProducer(ctrl)
-	producer.EXPECT().Len().Return(0)
-	producer.EXPECT().Close()
+	gomock.InOrder(
+		producer.EXPECT().Flush(1000).Return(1),
+		producer.EXPECT().Flush(1000).Return(0),
+		producer.EXPECT().Close(),
+	)
 
 	cli := NewClient(producer)
 
