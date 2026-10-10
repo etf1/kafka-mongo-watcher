@@ -23,7 +23,10 @@ type entry struct {
 // reports of different partitions may arrive out of order.
 // A failed delivery blocks the checkpoint, the event will be replayed on restart.
 type Tracker struct {
-	mu        sync.Mutex
+	mu sync.Mutex
+	// flushMu serializes the flushes (periodic and final): an older position saved
+	// last would move the stored checkpoint backward
+	flushMu   sync.Mutex
 	store     Store
 	logger    logger.LoggerInterface
 	pending   *list.List
@@ -92,11 +95,17 @@ func (t *Tracker) ack(resumeToken []byte) {
 
 // Flush saves the last committed position if it changed since the last save
 func (t *Tracker) Flush(ctx context.Context) error {
+	t.flushMu.Lock()
+	defer t.flushMu.Unlock()
+
 	t.mu.Lock()
 	committed, saved := t.committed, t.saved
 	t.mu.Unlock()
 
 	if committed == nil || committed == saved {
+		return nil
+	}
+	if saved != nil && !committed.clusterTime.After(saved.clusterTime) {
 		return nil
 	}
 

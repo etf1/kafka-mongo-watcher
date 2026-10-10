@@ -3,6 +3,7 @@ package checkpoint
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -145,4 +146,74 @@ func TestCheckpointAge(t *testing.T) {
 	checkpoint := Checkpoint{ClusterTime: bson.Timestamp{T: 1791460981, I: 78}}
 
 	assert.Equal(t, 2121*time.Second, checkpoint.Age(now))
+}
+
+// blockingStore blocks the first save until released
+type blockingStore struct {
+	mu      sync.Mutex
+	saves   []Checkpoint
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (s *blockingStore) Load(context.Context) (*Checkpoint, error) { return nil, nil }
+
+func (s *blockingStore) Save(_ context.Context, checkpoint Checkpoint) error {
+	s.mu.Lock()
+	first := len(s.saves) == 0
+	s.saves = append(s.saves, checkpoint)
+	s.mu.Unlock()
+	if first {
+		close(s.entered)
+		<-s.release
+	}
+	return nil
+}
+
+func (s *blockingStore) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.saves)
+}
+
+func TestTrackerConcurrentFlushesDoNotRegress(t *testing.T) {
+	store := &blockingStore{entered: make(chan struct{}), release: make(chan struct{})}
+	tracker := NewTracker(store, logger.NewNopLogger())
+
+	track(tracker, "a")
+	tracker.OnDelivery(delivery(token("a"), nil))
+	first := make(chan error)
+	go func() { first <- tracker.Flush(context.Background()) }()
+	<-store.entered
+
+	track(tracker, "b")
+	tracker.OnDelivery(delivery(token("b"), nil))
+	second := make(chan error)
+	go func() { second <- tracker.Flush(context.Background()) }()
+
+	// the second flush waits for the first one
+	time.Sleep(50 * time.Millisecond)
+	assert.Equal(t, 1, store.count())
+
+	close(store.release)
+	assert.NoError(t, <-first)
+	assert.NoError(t, <-second)
+
+	assert.Equal(t, []bson.Timestamp{clusterTime("a"), clusterTime("b")},
+		[]bson.Timestamp{store.saves[0].ClusterTime, store.saves[1].ClusterTime})
+}
+
+func TestTrackerFlushSkipsPositionNotAfterSavedOne(t *testing.T) {
+	store := &memoryStore{}
+	tracker := NewTracker(store, logger.NewNopLogger())
+
+	// two events of the same transaction share their cluster time
+	tracker.Track(token("a1"), clusterTime("a"))
+	tracker.Track(token("a2"), clusterTime("a"))
+	tracker.OnDelivery(delivery(token("a1"), nil))
+	assert.NoError(t, tracker.Flush(context.Background()))
+	tracker.OnDelivery(delivery(token("a2"), nil))
+	assert.NoError(t, tracker.Flush(context.Background()))
+
+	assert.Len(t, store.saves, 1)
 }
