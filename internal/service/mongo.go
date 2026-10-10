@@ -16,8 +16,13 @@ import (
 func (container *Container) GetChangeEventProducer() mongo.ChangeEventProducer {
 	if container.Cfg.Replay {
 		return container.getReplayProducer().Produce
-	} else {
-		return container.getWatchProducer().GetProducer(container.getWatchOptions()...)
+	}
+	return func(ctx context.Context) (chan *mongo.ChangeEvent, error) {
+		options, err := container.getWatchOptions(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return container.getWatchProducer().GetProducer(options...)(ctx)
 	}
 }
 
@@ -53,17 +58,45 @@ func (container *Container) getWatchProducer() *mongo.WatchProducer {
 	return container.watchProducer
 }
 
-func (container *Container) getWatchOptions() []mongo.WatchOption {
+func (container *Container) getWatchOptions(ctx context.Context) ([]mongo.WatchOption, error) {
 	configOptions := container.Cfg.MongoDB.Options
 	options := []mongo.WatchOption{
 		mongo.WithBatchSize(configOptions.BatchSize),
 		mongo.WithFullDocument(configOptions.FullDocument),
 		mongo.WithMaxAwaitTime(configOptions.MaxAwaitTime),
-		mongo.WithResumeAfter([]byte(configOptions.ResumeAfter)),
 		mongo.WithMaxRetries(configOptions.WatchMaxRetries),
 		mongo.WithRetryDelay(configOptions.WatchRetryDelay),
 		mongo.WithIgnoreUpdateDescription(configOptions.IgnoreUpdateDescription),
+		mongo.WithStartFromNowOnHistoryLost(configOptions.ResumeOnHistoryLost == config.ResumeOnHistoryLostNow),
 	}
+
+	// The stored checkpoint takes precedence over the configured starting point
+	if tracker := container.GetCheckpointTracker(); tracker != nil {
+		checkpoint, err := container.getCheckpointStore().Load(ctx)
+		if err != nil {
+			container.GetLogger().Error("Unable to load checkpoint", logger.Error("error", err))
+			return nil, err
+		}
+		if checkpoint != nil {
+			age := checkpoint.Age(time.Now())
+			if maxAge := configOptions.CheckpointMaxAge; maxAge > 0 && age > maxAge {
+				if configOptions.ResumeOnHistoryLost != config.ResumeOnHistoryLostNow {
+					container.GetLogger().Error("Checkpoint is older than the configured maximum age",
+						logger.Any("cluster_time", checkpoint.ClusterTime), logger.Duration("age", age), logger.Duration("max_age", maxAge))
+					return nil, mongo.ErrResumePointTooOld
+				}
+				container.GetLogger().Error("Checkpoint is older than the configured maximum age, restarting from now: some events have been lost",
+					logger.Any("cluster_time", checkpoint.ClusterTime), logger.Duration("age", age), logger.Duration("max_age", maxAge))
+				return options, nil
+			}
+			container.GetLogger().Info("Resuming change stream from checkpoint",
+				logger.Any("cluster_time", checkpoint.ClusterTime), logger.Duration("age", age), logger.String("resume_token", checkpoint.ResumeToken.String()))
+			return append(options, mongo.WithStartAtOperationTime(checkpoint.ClusterTime)), nil
+		}
+		container.GetLogger().Info("No checkpoint found, using configured starting point")
+	}
+
+	options = append(options, mongo.WithResumeAfter([]byte(configOptions.ResumeAfter)))
 
 	switch {
 	case configOptions.StartAtOperationTimeT > 0:
@@ -81,7 +114,7 @@ func (container *Container) getWatchOptions() []mongo.WatchOption {
 		options = append(options, mongo.WithStartAtOperationTime(startAt))
 	}
 
-	return options
+	return options, nil
 }
 
 func (container *Container) GetMongoCollection() mongo.CollectionAdapter {

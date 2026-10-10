@@ -31,3 +31,19 @@ func Test_documentID(t *testing.T) {
 	_, err = event.documentID()
 	assert.Error(t, err)
 }
+
+func TestChangeEventUnmarshalBSONKeepsClusterTimestamp(t *testing.T) {
+	data, err := bson.Marshal(bson.D{
+		{Key: "_id", Value: bson.D{{Key: "_data", Value: "826A1B2C3D"}}},
+		{Key: "operationType", Value: "insert"},
+		{Key: "clusterTime", Value: bson.Timestamp{T: 1791452154, I: 37}},
+	})
+	assert.Nil(t, err)
+
+	var event ChangeEvent
+	assert.Nil(t, bson.Unmarshal(data, &event))
+
+	assert.Equal(t, "insert", event.Operation)
+	assert.Equal(t, bson.Timestamp{T: 1791452154, I: 37}, event.ClusterTimestamp())
+	assert.Equal(t, int64(1791452154), event.ClusterTime.Unix())
+}

@@ -1,6 +1,9 @@
 package kafka
 
 import (
+	"errors"
+	"time"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
@@ -21,17 +24,42 @@ func NewClient(producer KafkaProducer) *client {
 	}
 }
 
-// Produce sends a message using the producer
+// queueFullRetryDelay is the delay before producing again a message rejected because
+// the producer queue is full
+var queueFullRetryDelay = 100 * time.Millisecond
+
+// Produce sends the messages using the producer, in order
 func (c *client) Produce(messages chan *Message) {
 	defer c.Close()
 
+	// Produce() instead of the deprecated ProduceChannel(): with otelconfluent, the
+	// produce channel is forwarded by a goroutine that could still hold the last
+	// message when the producer is closed ("send on closed channel" panic).
 	for message := range messages {
-		c.producer.ProduceChannel() <- &kafka.Message{
+		c.produce(&kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &message.Topic, Partition: kafka.PartitionAny},
 			Key:            message.Key,
 			Value:          message.Value,
 			Headers:        buildHeaders(message.Headers),
+		})
+	}
+}
+
+// produce enqueues the message, waiting while the producer queue is full.
+// Like the channel producer, an enqueue failure is reported as a failed delivery.
+func (c *client) produce(message *kafka.Message) {
+	for {
+		err := c.producer.Produce(message, nil)
+		var kafkaErr kafka.Error
+		if errors.As(err, &kafkaErr) && kafkaErr.Code() == kafka.ErrQueueFull {
+			time.Sleep(queueFullRetryDelay)
+			continue
 		}
+		if err != nil {
+			message.TopicPartition.Error = err
+			c.producer.Events() <- message
+		}
+		return
 	}
 }
 
@@ -55,8 +83,8 @@ func (c *client) Events() chan kafka.Event {
 
 // Close allows to close/disconnect the kafka client
 func (c *client) Close() {
-	for wait := true; wait; wait = c.producer.Len() > 0 {
-		// Wait for all events to be retrieved from Kafka library
+	// Wait for all messages to be delivered and their reports to be retrieved
+	for c.producer.Flush(1000) > 0 {
 	}
 
 	c.producer.Close()

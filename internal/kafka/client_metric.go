@@ -19,16 +19,12 @@ func NewClientMetric(cli Client, recorder metrics.KafkaRecorder) *clientMetric {
 	}
 }
 
-func (c *clientMetric) Record() {
-	for e := range c.Events() {
-		switch ev := e.(type) {
-		case *kafkaconfluent.Message:
-			if ev.TopicPartition.Error != nil {
-				c.recorder.IncKafkaProducerErrorCounter(*ev.TopicPartition.Topic)
-			} else {
-				c.recorder.IncKafkaProducerSuccessCounter(*ev.TopicPartition.Topic)
-			}
-		}
+// OnDelivery records the delivery report of a produced message
+func (c *clientMetric) OnDelivery(message *kafkaconfluent.Message) {
+	if message.TopicPartition.Error != nil {
+		c.recorder.IncKafkaProducerErrorCounter(*message.TopicPartition.Topic)
+	} else {
+		c.recorder.IncKafkaProducerSuccessCounter(*message.TopicPartition.Topic)
 	}
 }
 

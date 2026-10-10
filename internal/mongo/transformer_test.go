@@ -87,3 +87,41 @@ func TestTransformChangeEventToKafkaMessageWhenDocumentIDError(t *testing.T) {
 	expectedValue := []byte(`{"_id":null,"operationType":"","fullDocument":{"hello":"this-is-my-second-test-event"},"ns":null,"documentKey":{"_id":{"$oid":"5ccfdbb519580ee49d50803d"}},"clusterTime":{"$date":{"$numberLong":"-62135596800000"}}}`)
 	assert.Equal(expectedValue, message.Value)
 }
+
+func TestTransformChangeEventToKafkaMessageIgnoresInvalidatingEvents(t *testing.T) {
+	events := make(chan *ChangeEvent)
+	go func() {
+		defer close(events)
+		events <- &ChangeEvent{Operation: "drop"}
+		events <- &ChangeEvent{Operation: "invalidate"}
+		objectID, _ := bson.ObjectIDFromHex("5ccfdbb519580ee49d50803c")
+		events <- &ChangeEvent{Operation: "insert", DocumentKey: documentKey{ID: objectID}}
+	}()
+
+	transformer := NewChangeEventKafkaMessageTransformer("my-test-topic", logger.NewNopLogger())
+
+	var keys []string
+	for message := range transformer.Transform(events) {
+		keys = append(keys, string(message.Key))
+	}
+	assert.Equal(t, []string{"5ccfdbb519580ee49d50803c"}, keys)
+}
+
+func TestTransformChangeEventToKafkaMessageWithResumeToken(t *testing.T) {
+	events := make(chan *ChangeEvent)
+	go func() {
+		defer close(events)
+		objectID, _ := bson.ObjectIDFromHex("5ccfdbb519580ee49d50803c")
+		events <- &ChangeEvent{
+			ID:               bson.D{{Key: "_data", Value: "826A1B2C3D"}},
+			DocumentKey:      documentKey{ID: objectID},
+			clusterTimestamp: bson.Timestamp{T: 20, I: 3},
+		}
+	}()
+
+	transformer := NewChangeEventKafkaMessageTransformer("my-test-topic", logger.NewNopLogger())
+
+	message := <-transformer.Transform(events)
+	assert.Equal(t, []byte(`{"_data":"826A1B2C3D"}`), message.ResumeToken)
+	assert.Equal(t, bson.Timestamp{T: 20, I: 3}, message.ClusterTime)
+}

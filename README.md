@@ -160,12 +160,37 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 #### MONGODB_OPTION_WATCH_MAX_RETRIES
 *Type*: integer
 
-*Description*: The max number of retries when trying to watch a collection (default: 3, set to 0 to disable retry)
+*Description*: The max number of retries when trying to watch a collection (default: 3, set to 0 to disable retry). It also bounds the consecutive reconnections of a change stream that keeps closing without moving forward: the process then exits and restarts from the checkpoint
 
 #### MONGODB_OPTION_WATCH_RETRY_DELAY
 *Type*: duration
 
 *Description*: Sleeping delay between two watch attempts (default: 500ms)
+
+#### MONGODB_OPTION_CHECKPOINT_ENABLED
+*Type*: boolean
+
+*Description*: Persists the operation time (`clusterTime`) of the last event acknowledged by Kafka, so that the change stream restarts from it (`startAtOperationTime`) after a restart (default: true, always disabled in replay mode). Reconnections after a connection loss also restart from the operation time of the last sent event. Resume tokens are not used to resume, for compatibility with Amazon DocumentDB. When a checkpoint exists, it takes precedence over `MONGODB_OPTION_RESUME_AFTER` and `MONGODB_OPTION_START_AT_*`: delete the checkpoint document to force another starting point. Delivery is *at-least-once*: the last acknowledged event (and the other events of the same operation time) is sent again on restart, more events may be sent again after a crash, consumers must be idempotent. The resume token of each event is also sent in the `x-resume-token` message header (usable as `MONGODB_OPTION_RESUME_AFTER`). The MongoDB user needs write access on the checkpoint collection, and the oplog window (`change_stream_log_retention_duration` on DocumentDB, 3 hours by default) must be larger than the maximum expected downtime.
+
+#### MONGODB_OPTION_CHECKPOINT_COLLECTION
+*Type*: string
+
+*Description*: Collection (in `MONGODB_DATABASE_NAME`) where checkpoints are stored, one document per `<APP_NAME>/<database>/<collection>/<topic>` (default: "kafka_mongo_watcher_checkpoints")
+
+#### MONGODB_OPTION_CHECKPOINT_INTERVAL
+*Type*: duration
+
+*Description*: Interval between two checkpoint saves, a last save is done on graceful shutdown. Must be positive when the checkpoint is enabled (default: 1s)
+
+#### MONGODB_OPTION_CHECKPOINT_MAX_AGE
+*Type*: duration
+
+*Description*: Maximum age of the checkpoint to resume from. An older checkpoint is handled as a lost resume point, according to `MONGODB_OPTION_RESUME_ON_HISTORY_LOST` (default: 0 / disabled). Recommended on Amazon DocumentDB: resuming from a position about 30 minutes old (within the change stream retention) opens the stream without error but never returns any event.
+
+#### MONGODB_OPTION_RESUME_ON_HISTORY_LOST
+*Type*: string
+
+*Description*: Behaviour when the resume point is no longer available in the oplog (or older than `MONGODB_OPTION_CHECKPOINT_MAX_AGE`): `fail` stops the application with an error, `now` logs an error and restarts the change stream from now, losing the missing events (default: "fail")
 
 #### KAFKA_BOOTSTRAP_SERVERS
 *Type*: string
@@ -180,7 +205,7 @@ Configuration variables with prefix are first loaded and then without prefix. Fo
 #### KAFKA_PRODUCE_CHANNEL_SIZE
 *Type*: integer
 
-*Description*: The maximum size of the internal channel producer size (default: 10000)
+*Description*: Deprecated, no longer used: messages are produced with `Produce()` instead of the produce channel. The producer queue is bounded by librdkafka (`queue.buffering.max.messages`) (default: 10000)
 
 A big value here can increase the heap memory of the application as all the payload that have to be sent to Kafka will be maintained in channel.
 

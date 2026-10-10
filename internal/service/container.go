@@ -5,6 +5,7 @@ import (
 
 	kafkaconfluent "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/etf1/kafka-mongo-watcher/config"
+	"github.com/etf1/kafka-mongo-watcher/internal/checkpoint"
 	"github.com/etf1/kafka-mongo-watcher/internal/debug"
 	"github.com/etf1/kafka-mongo-watcher/internal/http"
 	"github.com/etf1/kafka-mongo-watcher/internal/kafka"
@@ -35,7 +36,10 @@ type Container struct {
 	kafkaProducer *kafkaconfluent.Producer
 	kafkaRecorder metrics.KafkaRecorder
 
-	kafkaClient kafka.Client
+	kafkaClient             kafka.Client
+	kafkaDeliveryDispatcher *kafka.DeliveryDispatcher
+
+	checkpointTracker *checkpoint.Tracker
 
 	tracerProvider trace.TracerProvider
 }

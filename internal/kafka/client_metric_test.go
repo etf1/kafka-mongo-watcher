@@ -88,3 +88,18 @@ func TestClientMetricClose(t *testing.T) {
 	// When - Then
 	cli.Close()
 }
+
+func TestClientMetricOnDelivery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	topic := "test-topic"
+	recorder := metrics.NewMockKafkaRecorder(ctrl)
+	recorder.EXPECT().IncKafkaProducerSuccessCounter(topic)
+	recorder.EXPECT().IncKafkaProducerErrorCounter(topic)
+
+	cli := NewClientMetric(NewMockClient(ctrl), recorder)
+
+	cli.OnDelivery(&kafkaconfluent.Message{TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic}})
+	cli.OnDelivery(&kafkaconfluent.Message{TopicPartition: kafkaconfluent.TopicPartition{Topic: &topic, Error: kafkaconfluent.NewError(kafkaconfluent.ErrMsgTimedOut, "timeout", false)}})
+}
